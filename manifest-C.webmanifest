@@ -1,0 +1,17 @@
+{
+  "name": "소원저장소 · 아이디어 음성 일기",
+  "short_name": "소원저장소",
+  "description": "생각나는 대로 말하면 글자로 쌓이는 아이디어 음성 일기",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#CDEBFF",
+  "theme_color": "#CDEBFF",
+  "icons": [
+    { "src": "icons/C/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/C/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/C/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>소원저장소</title>
+<meta name="description" content="생각나는 대로 말하면 글자로 쌓이는 아이디어 음성 일기">
+<meta name="theme-color" content="#CDEBFF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="소원저장소">
+<meta name="format-detection" content="telephone=no">
+<link id="manifestLink" rel="manifest" href="manifest-B.webmanifest">
+<link id="touchIcon" rel="apple-touch-icon" href="icons/B/apple-touch-icon.png">
+<link id="favIcon" rel="icon" type="image/png" sizes="192x192" href="icons/B/icon-192.png">
+<link rel="preload" href="fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="sky" aria-hidden="true">
+  <span class="spark s1">✦</span><span class="spark s2">✦</span><span class="spark s3">✧</span>
+  <span class="spark s4">★</span><span class="spark s5">✦</span><span class="spark s6">♡</span>
+</div>
+
+<div id="app">
+  <header class="top">
+    <div class="brand">
+      <img id="brandIcon" class="brand-icon" src="icons/B/icon-192.png" alt="" width="44" height="44">
+      <div class="brand-text">
+        <h1>소원저장소</h1>
+        <p>아이디어 음성 일기</p>
+      </div>
+    </div>
+    <div class="top-right">
+      <button id="syncPill" class="pill" type="button" aria-live="polite">확인 중</button>
+      <button id="openSettings" class="icon-btn" type="button" aria-label="설정 열기">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1c.5.4 1.1.7 1.7 1l.4 2.5h4l.4-2.5c.6-.3 1.2-.6 1.7-1l2.4 1 2-3.4-2-1.6ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <main>
+    <!-- 말하기 -->
+    <section id="tab-talk" class="tab is-active" aria-label="말하기">
+      <div id="micWrap" class="mic-wrap">
+        <button id="micBtn" class="heart-btn" type="button" aria-pressed="false" aria-label="하트를 누르고 말하기">
+          <span class="ring r1"></span><span class="ring r2"></span>
+          <svg class="heart-svg" viewBox="0 0 1024 1024" aria-hidden="true">
+            <defs>
+              <radialGradient id="hb" cx="38%" cy="26%" r="85%"><stop offset="0" stop-color="#EAF8FF"/><stop offset=".38" stop-color="#8ED0FF"/><stop offset=".78" stop-color="#4AA6F7"/><stop offset="1" stop-color="#2F86E6"/></radialGradient>
+              <radialGradient id="hbRec" cx="38%" cy="26%" r="85%"><stop offset="0" stop-color="#FFF0F8"/><stop offset=".38" stop-color="#FFB3DA"/><stop offset=".78" stop-color="#FF7DBE"/><stop offset="1" stop-color="#F0529F"/></radialGradient>
+            </defs>
+            <path class="heart-cut" d="M512 868C296 708 138 566 138 388c0-122 98-210 212-210 74 0 130 36 162 94 32-58 88-94 162-94 114 0 212 88 212 210 0 178-158 320-374 480Z"/>
+            <path class="heart-fill" d="M512 868C296 708 138 566 138 388c0-122 98-210 212-210 74 0 130 36 162 94 32-58 88-94 162-94 114 0 212 88 212 210 0 178-158 320-374 480Z"/>
+            <ellipse class="heart-shine" cx="330" cy="318" rx="120" ry="66" transform="rotate(-38 330 318)"/>
+            <circle class="heart-shine" cx="238" cy="440" r="22"/>
+            <g class="heart-mic"><rect x="462" y="360" width="100" height="170" rx="50"/><path d="M412 470c0 60 44 104 100 104s100-44 100-104" fill="none" stroke-width="24" stroke-linecap="round"/><path d="M512 574v60m-50 0h100" fill="none" stroke-width="24" stroke-linecap="round"/></g>
+          </svg>
+        </button>
+        <p id="micLabel" class="mic-label">하트를 누르고 말해요</p>
+        <button id="micRetry" class="text-btn" type="button" hidden>하트 마이크 다시 써보기</button>
+      </div>
+
+      <div class="win">
+        <div class="win-bar">
+          <span class="win-title">♡ new_idea.txt</span>
+          <span class="win-right"><span id="count" class="count">0자</span><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span>
+        </div>
+        <div class="win-body">
+          <label class="sr-only" for="note">아이디어 적는 칸</label>
+          <textarea id="note" class="paper" rows="4" placeholder="생각나는 대로 말해보세요.&#10;이 칸을 누르고 키보드의 마이크(🎤)로 말해도 돼요."></textarea>
+          <div class="under">
+            <div id="kinds" class="chips" role="group" aria-label="종류 (안 골라도 돼요)"></div>
+          </div>
+        </div>
+      </div>
+
+      <button id="saveBtn" class="aqua-btn" type="button">💙 뇌에 쌓기</button>
+      <p id="todayLine" class="today-line"></p>
+    </section>
+
+    <!-- 스택 -->
+    <section id="tab-stack" class="tab" aria-label="스택">
+      <div class="search-row">
+        <label class="sr-only" for="search">쌓인 아이디어 찾기</label>
+        <input id="search" class="search" type="search" placeholder="쌓인 아이디어에서 찾기" autocomplete="off">
+      </div>
+      <div id="list" class="list"></div>
+      <button id="moreBtn" class="ghost-btn" type="button">이전 달 더 보기</button>
+    </section>
+  </main>
+
+  <nav class="tabbar" aria-label="화면 전환">
+    <button class="tab-btn is-active" data-tab="talk" type="button"><span class="tab-ico">♡</span>말하기</button>
+    <button class="tab-btn" data-tab="stack" type="button"><span class="tab-ico">☰</span>스택 <em id="stackCount"></em></button>
+  </nav>
+</div>
+
+<!-- 설정 -->
+<dialog id="settings" class="sheet" aria-labelledby="setTitle">
+  <div class="sheet-bar"><h2 id="setTitle">설정</h2><button class="icon-btn" data-close type="button" aria-label="닫기">✕</button></div>
+  <div class="sheet-body">
+    <div class="card">
+      <h3>① 저장소 열쇠</h3>
+      <p class="hint">내 비공개 저장소(<b id="repoLabel"></b>)에 글자를 쌓으려면 GitHub 전용 열쇠가 한 번 필요해요. 열쇠는 이 휴대폰 안에만 저장돼요.</p>
+      <label class="sr-only" for="token">GitHub 열쇠</label>
+      <input id="token" class="field" type="password" inputmode="latin" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_… 붙여넣기">
+      <button id="connectBtn" class="aqua-btn small" type="button">저장하고 연결 확인</button>
+      <p id="connectMsg" class="msg" role="status"></p>
+      <details>
+        <summary>열쇠 발급 방법 보기</summary>
+        <ol class="steps" id="tokenSteps"></ol>
+        <a id="tokenLink" class="link-btn" target="_blank" rel="noopener noreferrer">열쇠 발급 페이지 열기 ↗</a>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3>② 로고 변경</h3>
+      <p id="logoNow" class="hint"></p>
+      <div id="logoGrid" class="logo-grid" role="group" aria-label="로고 고르기"></div>
+      <p class="hint small">여기서 바꾸면 앱 안의 로고가 바로 바뀌어요. 홈 화면 아이콘은 아이폰이 “홈 화면에 추가”할 때 한 번 찍어두는 그림이라, 바꾸려면 홈 화면 아이콘을 지우고 Safari에서 원하는 로고를 고른 다음 다시 추가해야 해요. (그때는 열쇠도 다시 넣어야 해요)</p>
+    </div>
+
+    <div class="card">
+      <h3>③ 홈 화면에 앱으로 깔기</h3>
+      <ol class="steps">
+        <li>아이폰 <b>Safari</b>로 이 주소를 열어요. 홈 화면 아이콘을 고르고 싶으면 먼저 위 <b>② 로고 변경</b>에서 골라요.</li>
+        <li>아래쪽 <b>공유 버튼</b>(네모에서 화살표가 위로 나가는 모양)을 눌러요.</li>
+        <li><b>홈 화면에 추가</b>를 누르면 하트 아이콘이 생겨요.</li>
+        <li>열쇠는 <b>홈 화면의 하트 앱을 연 뒤</b>에 넣어주세요. (Safari와 앱은 저장 공간이 따로예요)</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h3>상태</h3>
+      <p class="kv"><span>올리기 대기</span><b id="queueInfo">0개</b></p>
+      <p class="kv"><span>마지막 오류</span><b id="errInfo">없음</b></p>
+      <p class="kv"><span>버전</span><b id="verInfo"></b></p>
+      <div class="row">
+        <button id="flushBtn" class="ghost-btn" type="button">지금 올리기</button>
+        <button id="updateBtn" class="ghost-btn" type="button">업데이트 확인</button>
+      </div>
+      <details>
+        <summary>고급 (보통은 건드리지 않아요)</summary>
+        <label class="lab" for="cfgOwner">계정</label><input id="cfgOwner" class="field" autocapitalize="off" spellcheck="false">
+        <label class="lab" for="cfgRepo">저장소</label><input id="cfgRepo" class="field" autocapitalize="off" spellcheck="false">
+        <label class="lab" for="cfgBranch">브랜치</label><input id="cfgBranch" class="field" autocapitalize="off" spellcheck="false">
+        <label class="lab" for="cfgDir">폴더</label><input id="cfgDir" class="field" autocapitalize="off" spellcheck="false">
+        <button id="forgetBtn" class="danger-btn" type="button">이 휴대폰에서 열쇠 지우기</button>
+      </details>
+    </div>
+  </div>
+</dialog>
+
+<!-- 고치기 -->
+<dialog id="editor" class="sheet" aria-labelledby="edTitle">
+  <div class="sheet-bar"><h2 id="edTitle">고치기</h2><button class="icon-btn" data-close type="button" aria-label="닫기">✕</button></div>
+  <div class="sheet-body">
+    <p id="edMeta" class="hint"></p>
+    <label class="sr-only" for="edText">내용</label>
+    <textarea id="edText" class="paper" rows="9"></textarea>
+    <div id="edKinds" class="chips" role="group" aria-label="종류"></div>
+    <div class="row">
+      <button id="edDelete" class="danger-btn" type="button">지우기</button>
+      <button id="edSave" class="aqua-btn small" type="button">고친 내용 저장</button>
+    </div>
+  </div>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="app.js" defer></script>
+</body>
+</html>
