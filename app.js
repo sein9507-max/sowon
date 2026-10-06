@@ -1,10 +1,10 @@
-/* 소원저장소 — 말하면 글자로 쌓이는 아이디어 음성 일기
+/* 소원저장소 — 말하면 글자로 쌓이는 아이디어 음성 일기 + 릴스 대본 공방(대본 기능은 script.js)
  * 저장 위치: GitHub 비공개 저장소의 <dir>/<YYYY-MM>.json (GitHub Contents API)
  * 열쇠(토큰)는 이 기기의 localStorage 에만 둔다. 다른 곳으로 보내지 않는다. */
 (() => {
   'use strict';
 
-  const VERSION = '1.1.0';
+  const VERSION = '1.3.0';
   const DEFAULT_CFG = { owner: 'sein9507-max', repo: 'newlywed_tech', branch: 'main', dir: '아이디어뇌/스택', token: '' };
   const KINDS = ['블로그', '카드뉴스', '대본', '경험', '기타'];
   const FIRST_MONTH = '2026-09';
@@ -243,10 +243,12 @@
       if (e._wait) head.append(el('span', 'tag wait', '⏳ 올리는 중'));
       (Array.isArray(e.used) ? e.used : []).forEach((u) => head.append(el('span', 'tag used', `✔ ${u.where || '사용함'}${u.date ? ' · ' + u.date.slice(5).replace('-', '/') : ''}`)));
       const text = el('p', 'note-text', e.text);
-      const foot = el('div', 'note-foot'); const open = el('span', '', '펼치기'); const edit = el('span', '', '고치기'); foot.append(open, edit);
+      const foot = el('div', 'note-foot'); const open = el('span', '', '펼치기'); const toScript = el('span', 'go', '✎ 대본으로'); const topic = el('span', 'go', '주제 3개'); const edit = el('span', '', '고치기'); foot.append(open, toScript, topic, edit);
       card.append(head, text, foot);
       card.addEventListener('click', (ev) => {
         if (ev.target === edit) { openEditor(e); return; }
+        if (ev.target === toScript) { document.dispatchEvent(new CustomEvent('sowon:toScript', { detail: e })); return; }
+        if (ev.target === topic) { document.dispatchEvent(new CustomEvent('sowon:topic', { detail: e })); return; }
         const on = card.classList.toggle('is-open'); open.textContent = on ? '접기' : '펼치기';
       });
       box.append(card);
@@ -254,7 +256,7 @@
     $('#moreBtn').hidden = noMoreMonths || !cfg.token || !!q;
   }
 
-  function renderAll() { renderStatus(); renderBanner(); renderTalk(); renderList(); }
+  function renderAll() { renderStatus(); renderBanner(); renderTalk(); renderList(); document.dispatchEvent(new CustomEvent('sowon:entries')); }
 
   // ── 말하기(음성 인식) ───────────────────────────────────
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -440,7 +442,24 @@
     document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('is-active', b.dataset.tab === name));
     if (name === 'stack') { if (wantRec) stopRec(); renderList(); refreshMonth(loadedMonths[0]); }
     window.scrollTo(0, 0);
+    document.dispatchEvent(new CustomEvent('sowon:tab', { detail: name }));
   }
+
+  // 대본 쓰는 메모에 ✔ 표시 (script.js 가 부른다)
+  function markUsed(id, where) {
+    const e = visibleEntries().find((x) => x.id === id); if (!e) return;
+    const used = (Array.isArray(e.used) ? e.used : []).filter((u) => u.where !== where).concat([{ where, date: isoLocal(new Date()).slice(0, 10) }]);
+    const pending = queuedAdd(id);
+    if (pending) pending.entry.used = used;
+    else queue.push({ op: 'edit', month: e.at.slice(0, 7), id, patch: { used } });
+    persistQueue(); renderAll(); flush();
+  }
+
+  // script.js(모듈)와 나누는 다리
+  window.sowon = {
+    entries: () => visibleEntries(), markUsed, toast, isoLocal, makeId, switchTab, openSettings,
+    cfg: () => cfg, gh, repoPath, b64encode, b64decode,
+  };
 
   function init() {
     const draft = store.get('mb.draft', null);

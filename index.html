@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://api.github.com https://api.anthropic.com; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>소원저장소</title>
-<meta name="description" content="생각나는 대로 말하면 글자로 쌓이는 아이디어 음성 일기">
+<meta name="description" content="말하면 쌓이는 아이디어 일기 + 인스타 릴스 대본 공방">
 <meta name="theme-color" content="#CDEBFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -32,7 +32,7 @@
       <img id="brandIcon" class="brand-icon" src="icons/B/icon-192.png" alt="" width="44" height="44">
       <div class="brand-text">
         <h1>소원저장소</h1>
-        <p>아이디어 음성 일기</p>
+        <p>아이디어 ✦ 대본 ✦ 블로그</p>
       </div>
     </div>
     <div class="top-right">
@@ -94,11 +94,85 @@
       <div id="list" class="list"></div>
       <button id="moreBtn" class="ghost-btn" type="button">이전 달 더 보기</button>
     </section>
+
+    <!-- 대본 만들기 -->
+    <section id="tab-make" class="tab" aria-label="대본 만들기">
+      <div class="win">
+        <div class="win-bar"><span class="win-title">✎ make_script.exe</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
+        <div class="win-body sc-form">
+          <label class="lab" for="mTopic">주제·키워드</label>
+          <input id="mTopic" class="field" type="text" autocomplete="off" placeholder="예: 청년미래적금 2차, 체크카드 혜택">
+          <label class="lab" for="mRough">대강 대본·메모 <small>막 적어도 돼요</small></label>
+          <textarea id="mRough" class="paper" rows="4" placeholder="하고 싶은 말, 넣고 싶은 문장, 순서 아무렇게나"></textarea>
+          <label class="lab" for="mFacts">확인한 숫자·날짜 <small>출처 있는 것만</small></label>
+          <textarea id="mFacts" class="paper" rows="3" placeholder="예: 10월 7일 2차 신청 시작 / 월 50만 원 / 연 19.4% (금융위 보도자료)"></textarea>
+          <p class="hint small">여기 없는 숫자는 대본에 [확인: …] 자리로 남겨요. 지어내지 않아요.</p>
+          <details class="sc-opt">
+            <summary>구조·후킹·말투 고르기 (기본은 자동)</summary>
+            <div class="sc-grid">
+              <div><label class="lab" for="mStruct">구조</label><select id="mStruct" class="field"></select></div>
+              <div><label class="lab" for="mHook">후킹</label><select id="mHook" class="field"></select></div>
+              <div><label class="lab" for="mTone">말투</label><select id="mTone" class="field"></select></div>
+              <div><label class="lab" for="mLen">길이</label><select id="mLen" class="field"></select></div>
+            </div>
+            <label class="lab" for="mCta">댓글 키워드 <small>비우면 주제어 한 단어</small></label>
+            <input id="mCta" class="field" type="text" autocomplete="off" placeholder="예: 적금">
+          </details>
+          <span class="lab">아이디어 붙이기 <small>내 경험·관점으로 씀</small></span>
+          <div id="attachList" class="sc-attach"></div>
+        </div>
+      </div>
+      <button id="genBtn" class="aqua-btn" type="button">대본 뽑기</button>
+      <div id="genBusy" class="sc-busy" hidden><div class="pbar"><i></i></div><p id="genBusyText"></p><button id="genStop" class="ghost-btn" type="button">그만 뽑기</button></div>
+      <div id="genErr" class="sc-box warn" hidden></div>
+
+      <div id="resultWin" class="win">
+        <div class="win-bar"><span id="resultTitle" class="win-title">♡ new_script.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
+        <div id="resultBody" class="win-body sc-result"></div>
+      </div>
+
+      <details class="sc-opt sc-paste">
+        <summary>열쇠 없이 쓰기 (Claude 앱에 붙여넣기)</summary>
+        <ol class="steps">
+          <li>위에 주제·메모를 적고 <b>프롬프트 복사</b>를 눌러요.</li>
+          <li>Claude 앱 새 채팅에 붙여넣고 보내요. (모델은 Fable 추천)</li>
+          <li>Claude 답 전체를 복사해서 아래 칸에 붙여넣고 <b>대본 열기</b>를 눌러요.</li>
+        </ol>
+        <button id="copyPromptBtn" class="ghost-btn" type="button">프롬프트 복사</button>
+        <label class="sr-only" for="pasteBox">Claude 답 붙여넣기</label>
+        <textarea id="pasteBox" class="paper" rows="3" placeholder="Claude 답을 여기에 붙여넣기"></textarea>
+        <button id="pasteApply" class="ghost-btn" type="button">대본 열기</button>
+      </details>
+    </section>
+
+    <!-- 완성대본 -->
+    <section id="tab-scripts" class="tab" aria-label="완성대본">
+      <div class="search-row">
+        <label class="sr-only" for="scQ">완성 대본 찾기</label>
+        <input id="scQ" class="search" type="search" placeholder="완성 대본에서 찾기 (주제·후킹·제목)" autocomplete="off">
+      </div>
+      <div id="scFilter" class="chips sc-filter" role="group" aria-label="상태"></div>
+      <div id="scList" class="list"></div>
+    </section>
+    <!-- 블로그 (일상 글) -->
+    <section id="tab-blog" class="tab" aria-label="블로그">
+      <div class="win">
+        <div class="win-bar"><span class="win-title">✿ daily_blog.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
+        <div class="win-body">
+          <p class="hint">사진첩 사진을 시간대별로 묶었어요. 말풍선에 짧은 후기를 적고 <b>발행</b>을 누르면, 밤 10시에 그 후기로 일상 글을 써서 크롬 확장에 넣어둬요.</p>
+          <button id="blRefresh" class="ghost-btn" type="button">새로 불러오기</button>
+        </div>
+      </div>
+      <div id="blList" class="list bl-list"></div>
+    </section>
   </main>
 
   <nav class="tabbar" aria-label="화면 전환">
     <button class="tab-btn is-active" data-tab="talk" type="button"><span class="tab-ico">♡</span>말하기</button>
-    <button class="tab-btn" data-tab="stack" type="button"><span class="tab-ico">☰</span>스택 <em id="stackCount"></em></button>
+    <button class="tab-btn" data-tab="stack" type="button"><span class="tab-ico">☰</span><span>스택 <em id="stackCount"></em></span></button>
+    <button class="tab-btn" data-tab="make" type="button"><span class="tab-ico">✎</span>대본</button>
+    <button class="tab-btn" data-tab="scripts" type="button"><span class="tab-ico">★</span><span>완성대본 <em id="scriptCount"></em></span></button>
+    <button class="tab-btn" data-tab="blog" type="button"><span class="tab-ico">✿</span><span>블로그 <em id="blogCount"></em></span></button>
   </nav>
 </div>
 
@@ -138,6 +212,28 @@
     </div>
 
     <div class="card">
+      <h3>④ 대본 만들기 열쇠 (Claude)</h3>
+      <p class="hint">대본 뽑기는 Claude API로 돌아가요. Claude 구독과는 따로, <b>쓴 만큼 API 크레딧</b>이 나가요. 대본 1편에 대략 200~500원(Fable 5.1), 주제 뽑기는 1원 안팎(Haiku). 열쇠는 이 휴대폰 안에만 저장되고 Claude 서버 말고는 어디로도 보내지 않아요.</p>
+      <label class="sr-only" for="claudeKey">Claude 열쇠</label>
+      <input id="claudeKey" class="field" type="password" inputmode="latin" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-ant-… 붙여넣기">
+      <button id="claudeSave" class="aqua-btn small" type="button">저장하고 연결 확인</button>
+      <p id="claudeMsg" class="msg" role="status"></p>
+      <details>
+        <summary>열쇠 발급 방법 보기</summary>
+        <ol class="steps">
+          <li>아래 버튼으로 Claude 콘솔을 열고 로그인해요. (Claude 앱과 같은 이메일로 가입해도 돼요)</li>
+          <li><code>Settings</code> → <code>Billing</code>에서 크레딧을 충전해요. 처음엔 5달러면 대본 수십 편이에요.</li>
+          <li><code>API keys</code> → <code>Create key</code>를 누르고 이름을 <code>sowon-phone</code>으로 적어요.</li>
+          <li>나온 <code>sk-ant-…</code> 글자를 복사해서 위 칸에 붙여넣어요. (그 화면을 벗어나면 다시 볼 수 없어요)</li>
+          <li>홈 화면의 하트 앱 안에서 넣어야 해요. Safari와 앱은 저장 공간이 따로예요.</li>
+        </ol>
+        <a class="link-btn" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">Claude 콘솔 열기 ↗</a>
+      </details>
+      <button id="claudeForget" class="danger-btn" type="button" hidden>이 휴대폰에서 Claude 열쇠 지우기</button>
+      <p class="hint small">열쇠가 없어도 대본 탭 맨 아래 “열쇠 없이 쓰기”로 Claude 앱에 붙여넣어 만들 수 있어요.</p>
+    </div>
+
+    <div class="card">
       <h3>상태</h3>
       <p class="kv"><span>올리기 대기</span><b id="queueInfo">0개</b></p>
       <p class="kv"><span>마지막 오류</span><b id="errInfo">없음</b></p>
@@ -173,7 +269,27 @@
   </div>
 </dialog>
 
+<!-- 완성대본 펼치기 -->
+<dialog id="scriptSheet" class="sheet" aria-labelledby="sheetTitle">
+  <div class="sheet-bar"><h2 id="sheetTitle">완성대본</h2><button class="icon-btn" data-close type="button" aria-label="닫기">✕</button></div>
+  <div id="sheetBody" class="sheet-body sc-result"></div>
+</dialog>
+
+<!-- 메모 → 주제 3개 -->
+<dialog id="topicSheet" class="sheet" aria-labelledby="topicTitle">
+  <div class="sheet-bar"><h2 id="topicTitle">이 메모로 찍을 주제</h2><button class="icon-btn" data-close type="button" aria-label="닫기">✕</button></div>
+  <div class="sheet-body"><p class="hint">고르면 대본 탭으로 옮겨요.</p><div id="topicList" class="sc-hooks"></div></div>
+</dialog>
+
+<!-- 복사가 막힐 때 -->
+<dialog id="copySheet" class="sheet" aria-labelledby="copyTitle">
+  <div class="sheet-bar"><h2 id="copyTitle">길게 눌러 전체 선택 → 복사</h2><button class="icon-btn" data-close type="button" aria-label="닫기">✕</button></div>
+  <div class="sheet-body"><label class="sr-only" for="copyArea">복사할 글</label><textarea id="copyArea" class="paper" rows="14" readonly></textarea></div>
+</dialog>
+
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="app.js" defer></script>
+<script src="blog.js" defer></script>
+<script type="module" src="script.js"></script>
 </body>
 </html>
