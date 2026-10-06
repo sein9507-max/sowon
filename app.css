@@ -272,3 +272,16 @@ select.field { background-image: linear-gradient(45deg, transparent 50%, var(--n
 .sc-expand > b { color: var(--pink-deep); }
 .sc-expand .aqua-btn.small { margin-top: 6px; }
 .sc-files { margin: 4px 0 8px; padding-left: 18px; font-size: 13.5px; }
+
+/* 🔥급상승 탭 */
+#trFilter { margin: 8px 0; }
+.tr-list { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+.tr-card { background: #fff; border: 3px solid #fff; border-radius: 22px 22px 22px 6px; box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.tr-card.is-used { opacity: .7; }
+.tr-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.tr-n { font-family: var(--pix); font-size: 18px; color: #E8542F; }
+.tr-user { font-family: var(--pix); font-size: 14px; color: var(--blue-deep); }
+.tr-sub { font-size: 12px; color: var(--navy-soft); margin-left: auto; }
+.tr-cap { margin: 0; font-size: 14px; line-height: 1.5; color: var(--navy); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.tr-row { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.tr-row .ghost-btn { width: auto; margin-top: 0; padding: 8px 12px; text-decoration: none; display: inline-flex; align-items: center; }

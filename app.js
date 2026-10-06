@@ -4,7 +4,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.3.0';
+  const VERSION = '1.4.0';
   const DEFAULT_CFG = { owner: 'sein9507-max', repo: 'newlywed_tech', branch: 'main', dir: '아이디어뇌/스택', token: '' };
   const KINDS = ['블로그', '카드뉴스', '대본', '경험', '기타'];
   const FIRST_MONTH = '2026-09';
@@ -333,6 +333,14 @@
     renderAll(); flush();
   }
 
+  function addNote(text, k) {     // 다른 탭(🔥급상승)이 스택에 메모를 넣을 때
+    const now = new Date();
+    const entry = { id: makeId(now), at: isoLocal(now), kind: k || '', text, used: [] };
+    queue.push({ op: 'add', month: monthOf(now), entry }); persistQueue();
+    renderAll(); flush();
+    return entry;
+  }
+
   // ── 고치기 ──────────────────────────────────────────────
   let edKind = '';
   function openEditor(entry) {
@@ -457,7 +465,7 @@
 
   // script.js(모듈)와 나누는 다리
   window.sowon = {
-    entries: () => visibleEntries(), markUsed, toast, isoLocal, makeId, switchTab, openSettings,
+    entries: () => visibleEntries(), markUsed, addNote, toast, isoLocal, makeId, switchTab, openSettings,
     cfg: () => cfg, gh, repoPath, b64encode, b64decode,
   };
 

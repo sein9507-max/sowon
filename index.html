@@ -165,6 +165,19 @@
       </div>
       <div id="blList" class="list bl-list"></div>
     </section>
+    <!-- 급상승 (인스타 레퍼런스 아이디어 뱅크) -->
+    <section id="tab-trend" class="tab" aria-label="급상승">
+      <div class="win">
+        <div class="win-bar"><span class="win-title">🔥 trending_reels.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
+        <div class="win-body">
+          <p class="hint">크롬에서 인스타를 내리면 확장이 <b>어제오늘 올라온 댓글 많은 게시물</b>을 여기 쌓아요. 마음에 드는 걸 <b>대본에 붙이기</b>로 가져가세요.</p>
+          <div id="trFilter" class="chips" role="group" aria-label="보기"></div>
+          <button id="trRefresh" class="ghost-btn" type="button">새로 불러오기</button>
+        </div>
+      </div>
+      <div id="trList" class="list tr-list"></div>
+    </section>
+
   </main>
 
   <nav class="tabbar" aria-label="화면 전환">
@@ -173,6 +186,7 @@
     <button class="tab-btn" data-tab="make" type="button"><span class="tab-ico">✎</span>대본</button>
     <button class="tab-btn" data-tab="scripts" type="button"><span class="tab-ico">★</span><span>완성대본 <em id="scriptCount"></em></span></button>
     <button class="tab-btn" data-tab="blog" type="button"><span class="tab-ico">✿</span><span>블로그 <em id="blogCount"></em></span></button>
+    <button class="tab-btn" data-tab="trend" type="button"><span class="tab-ico">🔥</span><span>급상승 <em id="trendCount"></em></span></button>
   </nav>
 </div>
 
@@ -290,6 +304,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="app.js" defer></script>
 <script src="blog.js" defer></script>
+<script src="trend.js" defer></script>
 <script type="module" src="script.js"></script>
 </body>
 </html>

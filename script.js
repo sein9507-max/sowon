@@ -971,8 +971,8 @@ function init() {
   document.addEventListener('sowon:tab', (e) => { if (e.detail === 'scripts') sRefresh(); if (e.detail === 'make') renderAttach(); });
   document.addEventListener('sowon:toScript', (e) => {
     const x = e.detail; S.attached.add(x.id); LS.set('sw.attached', [...S.attached]);
-    if (!$('#mRough').value.trim()) { $('#mRough').value = x.text; saveForm(); }
-    renderAttach(); SW.switchTab('make'); toast('대본 탭에 메모를 붙였어요');
+    if (!x.ref && !$('#mRough').value.trim()) { $('#mRough').value = x.text; saveForm(); }   // 레퍼런스는 대강 대본 칸을 채우지 않는다
+    renderAttach(); SW.switchTab('make'); toast(x.ref ? '대본 탭에 레퍼런스를 붙였어요' : '대본 탭에 메모를 붙였어요');
   });
   document.addEventListener('sowon:topic', async (e) => {   // 스택의 "주제 3개" (Haiku)
     const x = e.detail;
