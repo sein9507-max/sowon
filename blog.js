@@ -18,6 +18,7 @@
   const url = (p) => `${SW.repoPath()}/contents/${enc(p)}?ref=${encodeURIComponent(SW.cfg().branch)}&t=${Date.now()}`;
   const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
+  let updatedAt = '', pullAt = LS.get('mb.blogPullAt', '');
   let groups = [], names = {}, reviews = [], reviewsSha = null, loading = false, loadedAt = 0;
   const thumbs = new Map();                       // 경로 → data: 주소
   let drafts = LS.get('mb.blogDrafts', {});      // 묶음 id → 쓰다 만 후기
@@ -48,6 +49,7 @@
     try {
       const [g, n, r] = await Promise.all([readJSON(`${DIR()}/묶음.json`), readJSON(`${DIR()}/이름.json`), readJSON(`${DIR()}/후기.json`)]);
       groups = Array.isArray(g.data.groups) ? g.data.groups : [];
+      updatedAt = g.data.updatedAt || '';
       names = n.data.names || {};
       reviews = Array.isArray(r.data.entries) ? r.data.entries : []; reviewsSha = r.sha;
       loadedAt = Date.now();
@@ -122,7 +124,35 @@
     finally { btn.disabled = false; render(); }
   }
 
+  // 맥북에 '지금 가져오기' 요청을 남긴다. 맥북 동기화(5분마다)가 일상/요청.json 을 보고 바로 사진첩을 확인한다.
+  async function pull(btn) {
+    if (!SW.cfg().token) { SW.toast('설정에서 저장소 열쇠를 먼저 넣어주세요'); SW.openSettings(); return; }
+    btn.disabled = true;
+    const path = `${DIR()}/요청.json`;
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const f = await readJSON(path);
+        pullAt = SW.isoLocal(new Date());
+        const body = { version: 1, note: '소원저장소 블로그 탭 지금 사진 가져오기 버튼. 맥북 도구/일상사진_받기.py 가 읽는다', requestedAt: pullAt };
+        try {
+          await SW.gh(`${SW.repoPath()}/contents/${enc(path)}`, { method: 'PUT', body: { message: '일상 사진 지금 가져오기', branch: SW.cfg().branch, content: SW.b64encode(JSON.stringify(body, null, 2) + '\n'), ...(f.sha ? { sha: f.sha } : {}) } });
+          break;
+        } catch (e) { if ((e.status === 409 || e.status === 422) && attempt < 2) continue; throw e; }
+      }
+      LS.set('mb.blogPullAt', pullAt);
+      SW.toast('맥북에 요청했어요. 5분쯤 뒤 새로 불러오기를 눌러주세요');
+    } catch (e) { SW.toast(`요청 실패: ${e.message || e}`); }
+    finally { btn.disabled = false; render(); }
+  }
+  const hm = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+
   function render() {
+    const up = $('#blUpdated');
+    if (up) {
+      const waiting = pullAt && (!updatedAt || new Date(pullAt) > new Date(updatedAt));
+      up.textContent = (updatedAt ? `사진 묶음 마지막 업데이트 ${hm(updatedAt)} · 맥북이 3시간마다 확인해요` : '')
+        + (waiting ? ` · ⏳ ${hm(pullAt)} 요청함 — 맥북이 켜져 있으면 5분 안에 가져와요` : '');
+    }
     const box = $('#blList'); if (!box) return;
     const n = reviews.filter((r) => r.status === '대기').length;
     $('#blogCount').textContent = n ? String(n) : '';
@@ -142,6 +172,7 @@
 
   document.addEventListener('sowon:tab', (e) => { if (e.detail === 'blog') load(); });
   $('#blRefresh').addEventListener('click', () => load(true));
+  $('#blPull').addEventListener('click', (e) => pull(e.currentTarget));
   window.addEventListener('online', () => load(true));
   render();
   load(true);

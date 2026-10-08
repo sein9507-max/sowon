@@ -167,7 +167,11 @@
         <div class="win-bar"><span class="win-title">✿ daily_blog.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
         <div class="win-body">
           <p class="hint">사진첩 사진을 시간대별로 묶었어요. 말풍선에 짧은 후기를 적고 <b>발행</b>을 누르면, 밤 10시에 그 후기로 일상 글을 써서 크롬 확장에 넣어둬요.</p>
-          <button id="blRefresh" class="ghost-btn" type="button">새로 불러오기</button>
+          <p id="blUpdated" class="hint small"></p>
+          <div class="row">
+            <button id="blPull" class="ghost-btn" type="button">📷 지금 사진 가져오기</button>
+            <button id="blRefresh" class="ghost-btn" type="button">새로 불러오기</button>
+          </div>
         </div>
       </div>
       <div id="blList" class="list bl-list"></div>
