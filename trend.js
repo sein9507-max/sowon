@@ -87,6 +87,8 @@
     const open = el('a', 'ghost-btn', '인스타에서 보기'); open.href = x.url; open.target = '_blank'; open.rel = 'noopener noreferrer';
     const cp = el('button', 'ghost-btn', '링크 복사'); cp.type = 'button'; cp.addEventListener('click', () => copy(x.url));
     const go = el('button', 'aqua-btn small', used[x.code] ? '✔ 다시 붙이기' : '대본에 붙이기'); go.type = 'button'; go.addEventListener('click', () => toScript(x));
+    const stk = el('button', 'ghost-btn', '📼 대본 스택에 쌓기'); stk.type = 'button';   // 1.5.0: 받아쓰기·대본 정리까지 (script.js)
+    stk.addEventListener('click', () => document.dispatchEvent(new CustomEvent('sowon:refAdd', { detail: { url: x.url, memo: x.caption ? String(x.caption).slice(0, 80) : '' } })));
     row.append(open, cp, go); c.append(row);
     return c;
   }

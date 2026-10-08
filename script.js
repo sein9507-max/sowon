@@ -65,9 +65,12 @@ const BANNED = ["핵심이에요","핵심은","핵심 포인트","결론부터",
 const REFS = [{"n": 1, "title": "1억 모으는 치트키 통장 TOP 3", "structure": "n가지형", "text": "후킹) 1억 모으고 싶다면 이 세 개는 무조건 만드세요!\n베네핏 - 주제 + n가지) 월급 2~300만 원 직장인, 2년 만에 1억 모으는 통장 TOP 3\n문제점 제시) 내 돈 어디에 두느냐에 따라서 속도가 5배 이상 차이 나서, 토스나 카카오뱅크 같이 이자 낮은 곳에 넣어두면 절대 안 되고,\n첫 번째) 월급은 이자 10배 쌓이는 통장으로,\n두 번째) 비상금은 하루만 도둑 8% 주는 통장으로,\n세 번째) 투자는 세금 400만 원 아끼는 통장으로 하면 되는데,\nCTA) 제가 자세한 내용 정리해놨으니까 저를 팔로우하고 댓글에 '3' 적어주세요."}, {"n": 2, "title": "11월 청년 혜택 TOP 7 (5000만 원 지원)", "structure": "혜택강조형", "text": "후킹) 2030은 이거 무조건 받아가세요!\n주제 - 베네핏) 2025년 11월 5000만 원 청년 혜택 TOP 7\n혜택나열) 올해 체크카드 한 번이라도 썼다면? 그럼 30만 원 돌려받을 수 있어요. 심지어 헬스장, 필라테스 비용 300만 원까지 지원받을 수 있고, 콘서트/뮤지컬/영화 예매권 15만 원, 월세 학자금 혜택까지,\nCTA) 꿀혜택 TOP 7 정리해놨으니까 저를 팔로우하고 댓글에 '7' 남기고 받아가세요."}, {"n": 3, "title": "S&P 500 똑똑하게 사는 꿀팁", "structure": "문제해결형", "text": "후킹) S&P 500 아무거나 사는 거 아니시죠?\n베네핏 - 주제) S&P 500 똑똑하게 사는 꿀팁\n공감유도 or 문제점 제시) S&P 500 검색하면 엄청 많이 나오는데 아무거나 사면 똑같이 투자해도 나만 수백만 원 손해 볼 수 있어요.\n문제해결) 수익률, 추적오차율, 배당 규모 이렇게 네 가지 지주 두고 구매하시면 되는데, 가장 똑똑하게 사는 방법부터 S&P 500 베스트 원까지 싹 다 정리해놨으니까\ncta(무료자료)) 저를 팔로우하고 댓글에 '500' 남겨주세요."}, {"n": 4, "title": "연말정산 374만 원 환급 꿀팁", "structure": "문제해결형", "text": "후킹) 저 연말정산 374만 원 받을 수 있대요!!\n베네핏 - 주제) 월급 한 번 더 생기는 연말정산 REAL 꿀팁\n공감유도 or 문제점 제시) 연말정산 세법은 매년 바뀌고, 공제 항목은 모가 뭔지도 또 너무 복잡하고, 일일이 환급받는 법 찾아보기 번거롭잖아요?\n문제해결) 근데 진짜 쉬운 방법 제가 가져왔습니다!! 카카오톡만 있다면 누구나! + 간편 인증, 연말정산 예상액을 1분 만에 확인 가능하고, 게다가 환급금 최대한으로 높일 수 있는 구체적인 방법까지 싹 다 알려줘서, 그냥 그대로 따라하기만 해도 한 달 월급 뚝-딱! 이에요. 저는 이렇게 따라하면 최대 374만 원까지 환급받을 수 있다네요?\ncta(무료자료)) 여러분도 돈 전부 챙겨가시라고 꿀팁 싹 다 정리해놨으니까, 댓글에 '연말정산' 달고 요 계산기 링크랑 정리본 바로 받아가세요."}, {"n": 5, "title": "환율 폭등 시기 당장 사야 할 자산 TOP 3", "structure": "문제해결형", "text": "후킹) 상위 1% 부자들은 전부 이걸로 갈아타고 있대요!\n베네핏 - 주제) 환율 폭등 시기 지금 당장 사야 할 자산 TOP 3\n공감유도 or 문제점 제시) 환율이 1400원을 넘어서 1500원을 가고 있는데 지금 가만히 있으면 아무것도 안 했는데 내 돈 30% 사라지는 충격적인 상황이 닥칠 수 있어요.\n문제해결) 하지만 준비만 잘하면 부자 될 기회가 오기도 한 거라 지금 당장 사야 할 자산 TOP 3 정리해놨으니까\ncta(무료자료)) 저를 팔로우하고 댓글에 '3' 적어주세요."}, {"n": 6, "title": "12월 마지막 정부 지원금 3000만 원 총정리", "structure": "혜택강조형", "text": "후킹) 12월 마지막 지원금 얼른 받아가세요!\n주제 - 베네핏) 3000만 원 받는 정부 지원금 총정리\n혜택나열) 12월 연말이라 정부에서 남은 예산을 싹 다 푼다고 해요!! 이번 겨울 따뜻하게 보내라고 주는 감기 조심하세요 여러분 ☃️ 난방비 지원금 70만 원부터 회사만 다니면 받는 480만 원 지원금 말고도 일곱 가지나 더 있는데,\n포모형성 or 혜택 강조) 예산 얼마 안 남은 것도 있으니 얼른 받아가야겠죠?\nCTA) 제가 싹 다 정리해놨으니까 저를 팔로우하고 댓글에 '12' 적어주세요."}, {"n": 7, "title": "4000만 원 만드는 정부지원통장", "structure": "문제해결형", "text": "후킹) 50만 원씩만 저축하면 나라에서 4000만 원까지?\n베네핏 - 주제) 이자 15% 통장, 50 → 4000만 원 빠르게 알려드릴게요\n공감유도 or 문제점 제시) 돈 나갈 곳은 많고 저축하기는 힘들잖아요?\n문제해결) 그래서 나라에서 50만 원씩만 저축하면 4000만 원을 만들어주는데, 나이랑 소득 제한 또 없어서 빨리 마감될 수 있어요.\ncta(무료자료)) 작용 요건이랑 방법 다 정리해놨으니까 댓글에 '1' 남겨주세요."}, {"n": 8, "title": "수백만 원 아끼는 증권사 갈아타기 꿀팁", "structure": "문제해결형", "text": "후킹) 증권사 아무거나 쓰지 마세요!\n베네핏 - 주제) 증권사 바꾸고 수백만 원 아끼는 꿀팁 바로 알려드릴게요\n공감유도 or 문제점 제시) 증권사 유명하다고 아무거나 쓰면 최소 수십에서 수백만 원은 더 나갈 수 있어서\n문제해결) 수수료 이벤트, 주식 계산 방식을 알아보고 선택해야 하는데, 요즘 증권사끼리 경쟁한다고 갈아타기만 해도 혜택을 주더라고요. 일곱 개 증권사 싹 다 비교해 놓고 베스트 1까지 상장해놨는데,\ncta(무료자료)) 팔로우하고 댓글에 '1' 적어주시면 바로 보내드릴게요."}, {"n": 9, "title": "2026년 더 늘어난 청년 혜택 총정리", "structure": "혜택강조형", "text": "후킹) 새해엔 2000만 원 무조건 받아가세요!\n주제 - 베네핏) 2026년 더 늘어난 청년혜택 총정리\n혜택나열) 올해에는 나라에서 더 많은 돈을 뿌릴 예정인데, 이자 17% 주는 목돈 통장부터 교통비 100% 돌려주는 교통카드, 취업하면 주는 축하금 700만 원에 상시 월세 지원 혜택까지 올해 5000만 원은 받을 수 있겠더라고요.\n포모형성 or 혜택 강조) 안 놓치고 신청하려면 미리 저장해둬야겠죠?\nCTA) 자세하게 정리해놨으니 댓글에 '1' 적어주세요."}, {"n": 10, "title": "이자 8% 주는 파킹통장 추천", "structure": "문제해결형", "text": "후킹) 아직도 카카오뱅크, 토스만 쓰시는 거 아니시죠?\n베네핏 - 주제) 이자 8% 주는 파킹통장으로 싹 갈아타세요\n공감유도 or 문제점 제시) 일반 통장에 돈 넣어두면 돈 거의 못 받는데,\n문제해결) 파킹통장은 하루만 넣어둬도 이자를 8%나 줘서 몇만 원씩 들어와요. 언제든지 꺼내 쓸 수도 있고 1억까지는 예금자보호되니까 안심하고 넣으셔도 되는데, 그럴 걸로 가장 높은 이자 받는 통장 제가 꼼꼼하게 정리해놨으니까\ncta(무료자료)) 저를 팔로우하고 댓글에 '파킹' 적어주세요."}, {"n": 11, "title": "2026년 가장 핫한 체크카드 TOP5", "structure": "혜택강조형", "text": "후킹) 체크카드는 제발 이거 쓰세요!\n주제 - 베네핏) 2026년 가장 핫한 체크카드 TOP5\n혜택나열) 요즘 체크카드는 신용카드보다 혜택이 훨씬 좋은데, OTT 50% 할인에, 온라인 쇼핑, 카페, 배달 30% 할인, 3만 5천 원 캐시백까지 되는데, 신용카드보다 소득공제도 2배 높아서 이거 안 쓰면 진짜 손해예요.\n포모형성 or 혜택 강조) 혜택이 너무 좋아서 언제 단종될지 모르니까,\nCTA) 댓글에 '체크' 적고 빨리 받아 가세요."}, {"n": 12, "title": "전월세 지원받는 자취 지원 TOP5", "structure": "혜택강조형", "text": "후킹) 아직도 내 돈으로 자취하는 거 아니시죠?\n주제 - 베네핏) 전월세 지원받는 자취 지원 TOP5\n혜택나열) 내년에도 전월세값이 더 오를 예정이라, 무조건 나라 돈으로 자취해야 되는데, 2026년엔 혜택이 더 늘어난대요. 보증금 1억 지원부터 집주인에게 못 받은 보증금까지 지원해 주고, 상시 월세 지원 혜택까지\nCTA) 올해 꼭 챙겨야 하는 혜택 자세하게 정리해 놨으니까, 댓글에 '자취' 적어 주세요."}, {"n": 13, "title": "S&P500 이제 그만 사야 돼요!", "structure": "n가지형", "text": "후킹) S&P500 이제 그만 사야 돼요!\n베네핏 - 주제 + n가지) S&P500보다 2배 수익난 ETF TOP5\n첫 번째) SPMO, S&P500 중에서도 최근 1년 수익률 상위 100개 종목만 남겨서, 주식 오를 때 주식을 사면 더 벌 수 있어요.\n두 번째) SMH, 엔비디아 등 AI/반도체 탑티어만 골라 담아서, 성장이 미쳤고.\n세 번째) GLDM, 금값 역대급으로 오른 수익 다 가져가는 거라 요즘 엄청 핫한데.\nCTA) 이외에도 S&P500보다 수익 내는 ETF들 싹 다 정리해 놨으니까, 댓글에 '5' 남겨 주세요. 팔로우 필수."}, {"n": 14, "title": "ISA통장 당장 멈추세요!", "structure": "혜택강조형", "text": "후킹) ISA통장 당장 멈추세요!\n주제 - 베네핏) 이재명 정부 역대급 통장 TOP5\n혜택나열) 올해 역대급 통장들이 쏟아지는데, 50만 원씩 5만 원 넣으면 2,200만 원 만들어 주는 이자 17% 적금부터, 해외 주식 세금 100% 면제되는 통장, 이자 3배 더 주는 청약통장 등 역대급 통장들만 싹 다 정리했는데,\n포모형성 or 혜택 강조) 올해 3월까지인 것도 있으니 빨리 받아 가야겠죠?\nCTA) 댓글에 '1' 적고 받아 가세요."}, {"n": 15, "title": "상위 1% 부자들은 적금 대신 이거!", "structure": "문제해결형", "text": "후킹) 상위 1% 부자들은 적금 말고 이거 한대요.\n베네핏 - 주제) 4개의 통장으로 월 300만 원 받는 꿀팁. 그 외에도 월세처럼 돈 따박따박 고치는 ETF 세팅법 빠르게 알려 드릴게요.\n공감유도 or 문제점 제시) 노후에도 매달 월금만큼 돈 들어오면 좋겠다고 생각하는데, 어디서부터 시작해야 될지 막막하잖아요.\n문제해결) 구조만 한 번 잘 세팅하면 되는데, 미래에셋 PB 1등 출신 105만 유튜버 박곰희 님이 매달 300만 원 받는 연금 노하우를 풀었어요. 투자 성향에 맞는 포트폴리오부터 종목명, 투자 비중까지 싹 다 알려줘서 이거 하면 연금 준비 끝이니 놓치면 안 되겠죠?\ncta(무료자료)) 월 300만 원 받는 연금 포트폴리오부터 링크까지 싹 다 정리해 놨으니까, 댓글에 '연금' 적어 주세요."}, {"n": 16, "title": "2026년 3,4월 파킹통장 추천", "structure": "문제해결형", "text": "후킹) 아직도 카카오뱅크랑 토스만 쓰시는 거 아니시죠?\n베네핏 - 주제) 이자 7% 주는 파킹통장으로 갈아타세요\n공감유도 or 문제점 제시) 일반 통장에 돈 넣어두면 돈 거의 못 받는데,\n문제해결) 파킹통장은 하루만 넣어둬도 이자를 7%나 줘서 몇만 원씩 들어와요. 언제든지 꺼내쓸 수도 있고, 1억까지는 예금자보호 되니까 안심하고 넣으셔도 되는데, 금액별 가장 높은 이자 받는 통장 제가 꼼꼼하게 정리해 놨으니까\ncta(무료자료)) 저를 팔로우하고 댓글에 '파킹' 적어 주세요."}, {"n": 17, "title": "5년 치 세금 돌려받으세요!", "structure": "문제해결형", "text": "후킹) 일하면서 낸 세금 당장 돌려받으세요! 두 달 뒤면 소멸된대요.\n베네핏 - 주제) 국세청에 있는 내 돈 5년 치 세금 돌려받는 꿀팁\n문제해결) 아무 조건 없이 놓쳤던 세금 5년 치까지 전부 찾아주고, 월세 낸 적 있다면 월세 공제까지 받을 수 있는데, 조에는 100% 무료라 300만 원이 이미 내 돈 찾아갔어요. 앱 설치도 필요 없이 2~3분이면 내 환급 바로 뜨는데,\n포모형성 or 혜택 강조) 5년 지나면 내 돈 국고로 사라지니까 이번에 꼭 받아 가야겠죠?\ncta(무료자료)) 댓글에 '환급' 적고 바로 받아 가세요. 3명 중 1명은 예상 환급액 있어요. 이미 300만 명이 받아 감."}, {"n": 18, "title": "2026년 주식시장 대박 기회!", "structure": "문제해결형", "text": "후킹) 주식시장에 곧 큰 거 하나 터져요!\n베네핏 - 주제) SK하이닉스와 토스가 미국 시장에 상장한다는 거 다들 알고 계시죠?\n공감유도 or 문제점 제시) 한국에 있어서 억눌렸던 주가가 미국 돈을 빨아들이면서 미친듯이 재평가된다는 건데,\n문제해결) 미국 상장 터지기 전에 알아둬야 하는 매수 타이밍이랑 전략 싹 다 정리해 뒀어요.\ncta(무료자료)) 댓글에 '1'이라고 적고 바로 받아 가세요."}, {"n": 19, "title": "2026년 1월 월배당 ETF 추천", "structure": "문제해결형", "text": "후킹) 예적금 대신 이걸로 월 100만 원 받으세요. 연 1,200만 원 꽁돈!\n베네핏 - 주제) 월급처럼 따박따박 돈 들어오는 ETF 베스트 5. 저는 이 방법으로 연봉만큼 더 모았어요.\n공감유도 or 문제점 제시) 요즘 예적금 이자 2%밖에 안 되는데,\n문제해결) ETF 세팅만 잘해놨더니 매달 100만 원씩 월급처럼 들어오더라고요. 요즘 가장 핫한 ETF 다섯 개부터 수익 두 배 나는 꿀팁 쉽게 정리해 놨으니까,\ncta(무료자료)) 댓글에 '배당' 적어 주시면 정리본 바로 보내드릴게요."}, {"n": 20, "title": "2026년 명절 지원금 총정리", "structure": "혜택강조형", "text": "후킹) 이번 설에 60만 원 지원금 꼭 받아 가세요!\n주제 - 베네핏) 60만 원 받아 가는 설날 지원금 총정리\n혜택나열) 누구나 받는 50만 원 지원금부터 농축산물 40% 할인, 효도지원금까지 설 지원금이 정말 넘쳐나는데,\n포모형성 or 혜택 강조) 선착순인 것도 있어서 빨리 정리해 왔으니까,\nCTA) 댓글에 '설날' 적고 받아 가세요."}, {"n": 21, "title": "직장인이 무조건 알아야 할 청약통장 꿀팁", "structure": "문제해결형", "text": "후킹) 청약 통장 2만 원씩 절대 넣지 마세요!\n공감유도 or 문제점 제시) 아직도 2만 원씩 넣고 계신 거 아니죠? 청약 통장 2만 원씩 넣으면 오히려 손해 보고, 무작정 많이 넣는다고 당첨되는 것도 아니더라고요.\n문제해결) 지역별 금액이 정해져 있고, 그 금액 넘으면 적금 따로 넣는 게 훨씬 이득인데, 이거 모르고 자동이체만 걸어두면 진짜 손해라서 싹 다 정리해 놨으니까\ncta(무료자료)) 댓글에 청약 적고 빨리 받아 가세요."}, {"n": 22, "title": "ISA 금지 종목 TOP3", "structure": "문제해결형", "text": "후킹) ISA에 절대 사지 마세요!\n베네핏 - 주제) ISA 금지 종목 TOP3\n공감유도 or 문제점 제시) 다들 세금 아끼려고 ISA 계좌 만들잖아요. 근데 어떤 건 ISA에서 안 사는 게 낫고, 어떤 건 ISA에 넣어야 혜택 왕창 받는데, 이거 모르고 담았다가 혜택 날리시는 분들 진짜 많아서\n문제해결) 싹 다 정리해 뒀으니까 지금 당장 확인해 봐야겠죠?!\ncta(무료자료)) 댓글에 3 적고 바로 받아 가세요."}, {"n": 23, "title": "2030 청년 60만 원 지원금 총정리", "structure": "문제해결형", "text": "후킹) 연봉 5,000만 원 이하면 무조건 신청하세요!\n베네핏 - 주제) 2030 청년 60만 원 지원금 총정리\n문제해결) 이재명 정부에서 3차 민생 지원금으로 최대 60만 원까지 지급하는데, 사는 지역 소득 구간마다 다 달라서 전부 정리해 뒀어요.\n포모형성 or 혜택 강조) 신청 기간 지나면 못 받으니까\ncta(무료자료)) 댓글에 5 적고 받아 가세요."}, {"n": 24, "title": "연 19% 적금이 나왔어요!", "structure": "혜택강조형", "text": "후킹) 6월 22일 연 19% 적금이 나와요.\n주제 - 베네핏) 정부가 12%를 얹어주고, 금리도 최대 8%, 비과세까지 합치면 19% 효과래요.\n혜택나열) 14개 시중은행 싹 다 분석해서 가장 이자 많이 주는 은행부터 청년도약계좌 있으신 분들은 갈아타는 게 유리한지 시뮬레이션까지 만들어 왔는데,\nCTA) 댓글에 미래 남겨주시면 바로 보내드릴게요 :)"}, {"n": 25, "title": "월세 환급금 170만 원 총정리", "structure": "문제해결형", "text": "후킹) 월세 사시는 분들 170만 원 받아 가세요.\n베네핏 - 주제) 월세 환급금 170만 원 총정리\n공감유도 or 문제점 제시) 이거 신청만 하면 받는 건데, 모르는 월세 다 내시는 분들이 너무 많으시더라고요.\n문제해결) 집 주인 동의 필요 없어요. 신청해도 집 주인에게 알람 안 갑니다. 5년 전 월세까지 싹 다 돌려받을 수 있는데, 1년만 늦어져도 사라지니까 얼른 받아 가야겠죠?\ncta(무료자료)) 신청 방법이랑 준비물 전부 정리해 뒀으니까 댓글에 5 남겨주세요."}, {"n": 26, "title": "삼성전자 하이닉스 놓쳤다면 이거 사세요! (2단)", "structure": "문제해결형", "text": "후킹) 삼전 하이닉스 놓쳤다면 이거 사세요!\n베네핏 - 주제) 반도체 ETF 추천\n공감유도 or 문제점 제시) 삼전 하이닉스 1년 동안 400% 올랐는데, 지금 너무 오를 거 같고 그렇다고 안 사기에 애매하고 너무 비싸잖아요.\n문제해결) 그럴 테니 이 ETF만 딱 골라 사면 되는데, 주린이도 돈 벌 수 있도록 싹 다 정리해 냈으니까\ncta(무료자료)) 삼전 적고 받아 가세요."}, {"n": 27, "title": "직장인은 5월에, 330만 원 받아 가세요!", "structure": "문제해결형", "text": "후킹) 직장 다니시는 분들 5월에 나라에서 330만 원 뿌린대요.\n베네핏 - 주제) 근로장려금 330만 원 총정리\n공감유도 or 문제점 제시) 나라에서 직장인 힘내라고 주는 건데, 신청 안 해서 못 받으시는 분들이 너무 많으시더라고요.\n문제해결) 받을 수 있는 조건이 딱 세 가지인데, 이 중에 두 가지만 해당돼도 최대 330만 원 받을 수 있어요. 근데 이거 5월 한 대가만 신청 가능해서 놓치면 끝이니까 빨리 받아 가야겠죠?\ncta(무료자료)) 세 가지 조건이랑 신청 방법까지 싹 다 정리해 뒀으니까 댓글에 3 남겨주시면 바로 보내드릴게요."}, {"n": 28, "title": "30대인데 모은 돈이 없다면 이렇게 따라하세요!", "structure": "n가지형", "text": "후킹) 30대인데 모른 돈이 없다면 이렇게 따라하세요!\n베네핏 - 주제 + n가지) 월급 2배 빨리 모으는 재테크 치트키\n첫 번째) 1단계 월급을 2배 빨리 모으는 시스템 만들고,\n두 번째) 2단계 예적금 4배 이상 굴리는 나만의 포트폴리오,\n세 번째) 3단계 추가 돈 벌기 이 3스텝 같이 밟아 가야 되는데,\n공감유도) 저는 20대 때 마이너스 통장으로 시작했고 돈 못 모았던 사람이라 시행착오 겪었던 거 제가 전부 정리해 뒀거든요.\nCTA) 이것은 곧 삭제될 예정이니까 댓글에 30다고 꼭 바로 확인해 보세요!"}, {"n": 29, "title": "주식 파란불이라고 슬퍼하지 마세요!", "structure": "문제해결형", "text": "후킹) 주식 파란불이라고 슬퍼하지 마세요! 그거 아직 내 돈 아니에요.\n공감유도 or 문제점 제시) 저도 예전엔 이거 몰라서 마이너스 75%까지 갔거든요. 어 그때 알았어요. 문제는 종목이 아니라 관리였다는 걸!\n문제해결) 코스피 폭락한 이유부터 대응 방안까지 전부 정리해 놨으니까\ncta(무료자료)) 댓글에 아무 말 달고 받아 가세요."}, {"n": 30, "title": "7월 청년혜택 3000만원 총정리", "structure": "혜택강조형", "text": "후킹) 7월에 2030은 3000만 원 받아 가세요.\n주제 - 베네핏) 3000만 원 받는 청년지원금 총정리\n혜택나열) 7월에도 나라에서 돈을 퍼주고 있는데, 120만 원 복지지원금, 70만 원 냉방비 지원, 150만 원 인재지원금, 여름 휴가비 반값 지원까지 싹 다 정리했거든요.\n포모형성 or 혜택 강조) 7월에 마감되는 것도 있으니까\nCTA) 7 적고 바로 받아 가세요."}, {"n": 31, "title": "반려동물 키우는 분들 100만원 받아가세요", "structure": "문제해결형", "text": "후킹) 반려동물 키우는 분들 나라에서 돈 준대요!\n베네핏 - 주제) 100만 원 주는 반려동물 지원금 바로 알려드릴게요\n공감유도 or 문제점 제시) 강아지, 고양이 키우면 병원비에 미용비에 몇만 원은 기본으로 나가잖아요.\n문제해결) 우리 정부에서 주는 반려동물 복지가 엄청 늘었는데, 지역별로 신청 시기가 달라서 잘 체크해야 되거든요. 제가 자세하게 싹 다 정리해 놨으니까\ncta(무료자료)) 댓글에 '반려동물' 적고 받아 가세요."}, {"n": 32, "title": "부자들이 쓸어담고 있는 ETF", "structure": "n가지형", "text": "후킹) 미국이랑 한국 주식 다 폭락했어요! 부자는 이 ETF 조용히 쓸어담고 있다는데,\n베네핏 - 주제 + n가지) 당장 사야 하는 AI 반도체 ETF 바로 알려드릴게요\n공감유도 or 문제점 제시) 지난번 트럼프 관세 때문에 주가 빠졌을 때 주줍한 사람들도 결국 다 부자 됐잖아요. 주가 조정 받는 지금이 딱 부자 될 기회인데, 아무 AI 반도체나 사면 돈 다 묶이거든요.\n첫 번째) 삼성전란 하이닉스가 50% 이상 담긴 걸로 골라야 반등할 때 남들보다 더욱 크게 수익 먹고,\n두 번째) 소재 부품 장비까지 깔아둔 걸로 골라야 떨어질 때 덜 떨어지고,\n세 번째) 뜨는 종목 알아서 리밸런싱해 줘야 지금 트렌드 안 놓치거든요.\n포모형성) 관련해서 제가 싹 다 정리해 놨는데 반등 시작하면 늦으니까 무조건 챙겨야겠죠?!\nCTA) 댓글에 '반도체' 적고 빨리 받아 가세요."}, {"n": 33, "title": "월 100만원 만드는 ETF 베스트 3", "structure": "문제해결형", "text": "후킹) 예적금 대신 이걸로 월 100만 원 받으세요.\n베네핏 - 주제) 월급처럼 따박따박 돈 들어오는 ETF 베스트 3. 저도 이 방법으로 연봉만큼 더 모았어요.\n공감유도 or 문제점 제시) 요즘 예적금 이자 2%밖에 안 되는데,\n문제해결) ETF 세팅만 잘 해놨더니 매달 월급처럼 돈이 따박따박 들어오더라고요. 성장형 고배당형 커버드콜형 이 세 가지만 알면 끝인데, 배당주 세팅법 쉽게 싹 다 정리해 놨으니까\ncta(무료자료)) 댓글에 '배당' 적어 주시면 정리본 바로 보내드릴게요."}, {"n": 34, "title": "딱 3년 만에 1억 만드는 통장 TOP 3", "structure": "n가지형", "text": "후킹) 월급 250만 원인데 3년 안에 1억 모으려면 어떻게 해야 하나요?\n베네핏 - 주제 + n가지) 내 돈 어디에 두느냐에 따라 속도가 3배 이상 차이 나거든요. 먼저 이 통장 3개 있는지 점검해 보세요.\n첫 번째) 일반 통장보다 이자 10배 더 주는 월급 통장에 돈 넣어놨나?!\n두 번째) 목돈은 하루만 넣어도 이자 70배 더 주는 통장에,\n세 번째) 투자는 세금 400만 원 아끼는 통장에 넣어놨다?\nCTA) 3개 다 하셨나요? 제가 쉽게 할 수 있도록 전부 정리해 놨거든요. 댓글 달아주시면 자세하게 정리해서 보내드릴게요."}];
 
 
+// 앱의 '대본 스택'(사용자가 링크로 쌓은 릴스를 받아쓰기·정리한 것). 설치 앱이 채운다. 아티팩트판은 빈 채로 둔다.
+let STACK_REFS = [];
 function refsText(struct){
-  // 고른 구조의 대본을 앞에, 나머지는 뒤에. 34편 전부 넣는다(9천 자 남짓).
-  const pick = struct && struct !== "자동" ? REFS.filter(r => r.structure === struct).concat(REFS.filter(r => r.structure !== struct)) : REFS;
+  // 고른 구조의 대본을 앞에, 나머지는 뒤에. 34편 전부 + 내 대본 스택 최근 30편.
+  const all = REFS.concat(STACK_REFS.slice(0, 30));
+  const pick = struct && struct !== "자동" ? all.filter(r => r.structure === struct).concat(all.filter(r => r.structure !== struct)) : all;
   return pick.map(r => `## ${r.n}. ${r.title} (${r.structure})\n${r.text}`).join("\n\n");
 }
 
@@ -205,7 +208,7 @@ ${refsText(sc.structure)}`;
 }
 
 // ── 글 형식 답 읽기 ─────────────────────────────────────
-const META_KEYS = { "제목": "title", "표지": "cover", "구조": "structure", "후킹유형": "hookType", "후킹 유형": "hookType", "바꾼 점": "why", "바꾼점": "why",
+const META_KEYS = { "제목": "title", "표지": "cover", "구조": "structure", "후킹유형": "hookType", "후킹 유형": "hookType", "바꾼 점": "why", "바꾼점": "why", "잘된점": "why", "잘된 점": "why", "대본구조": "structure",
   "캡션": "caption", "해시태그": "hashtags", "쓴 메모": "usedIdeaIds", "확인할 것": "needCheck" };
 function splitLines(text){
   // "문장 ( 화면 ) 문장 ( 화면 )" → [{text, visual}]
@@ -410,6 +413,50 @@ const stripEmoji = (s) => String(s).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27B
 function slugOf(s){ return (String(s).replace(/[^0-9A-Za-z가-힣]/g, "").slice(0, 16)) || "대본"; }
 
 
+// ── 대본 스택: 받아쓰기 → 대본 칸 정리 (Sonnet, 2026-10-08) ─────────────
+function buildStackPrompt(x){
+  const m = x.meta || {};
+  const ex = REFS.filter(r => [3, 2, 1].includes(r.n)).map(r => `## ${r.title} (${r.structure})\n${r.text}`).join("\n\n");
+  return `아래는 인스타 릴스(또는 쇼츠) 한 편의 받아쓰기야. 음성 인식이라 띄어쓰기·문장부호가 없고 낱말이 틀린 곳이 있어.
+이걸 아래 [형식 예시]처럼 대본 칸으로 나눠서 정리해 줘.
+
+규칙
+- 말한 문장은 토씨 하나 바꾸지 말고 그대로 둔다. 반말·구어체·말줄임도 그대로. 다듬거나 요약하지 않는다.
+- 고치는 건 두 가지뿐: 문장부호·띄어쓰기, 그리고 문맥상 확실한 음성 인식 오류(예: "청년 미래 적검" → "청년미래적금"). 확실하지 않으면 그대로 두고 [?]를 붙인다.
+- 칸 이름은 구조에 맞게: 문제해결형(후킹 / 베네핏 - 주제 / 공감유도 or 문제점 제시 / 문제해결 / 포모형성 or 혜택 강조 / CTA), 혜택강조형(후킹 / 주제 - 베네핏 / 혜택나열 / 포모형성 or 혜택 강조 / CTA), n가지형(후킹 / 베네핏 - 주제 + n가지 / 문제점 제시 / 첫 번째 / 두 번째 / 세 번째 / CTA). 없는 칸은 뺀다.
+- 화면은 못 보니까 ( )는 쓰지 않는다.
+
+[영상 정보]
+올린 사람: ${m.uploader || "?"} · 조회수: ${m.views || "?"} · 길이: ${m.duration ? Math.round(m.duration) + "초" : "?"}
+글(캡션): ${String(m.caption || "").slice(0, 600)}
+${x.memo ? `사용자 메모: ${x.memo}` : ""}
+
+[받아쓰기]
+${String(x.transcript || "").slice(0, 6000)}
+
+[형식 예시]
+${ex}
+
+[답 형식 — 아래 그대로. 설명·코드펜스 없이]
+제목) 이 영상 주제를 한 줄로(예: 청년미래적금 2차 신청 꿀팁)
+대본구조) 문제해결형 | 혜택강조형 | n가지형
+후킹유형) 금액 제시 · 부정·경고 · 뉴스·속보 · 조건 제시 · 질문·호기심 · 마감 압박 · 선언·단정 · 가림말 지시형 · 부자 따라가기 · 위로·반전 · 시즌 알림 · 1인칭 사례 중 하나
+후킹) …
+(나머지 칸)
+CTA) …
+잘된점) 이 대본이 잘 먹힌 이유 한두 줄(후킹 심리, 숫자 위치, CTA 키워드 등)`;
+}
+function parseStackScript(text, x){
+  const v = parseScriptText(text, {})[0];
+  if(!v || !v.slots.length){ const e = new Error("형식"); e.code = "invalid_json"; throw e; }
+  return {
+    title: v.title === "제목 없음" ? "" : v.title, structure: v.structure, hookType: v.hookType, why: v.why,
+    text: v.slots.map(s => `${s.slot}) ${s.lines.map(l => l.text).join(" ")}`).join("\n"),
+    hook: v.slots[0] ? v.slots[0].lines.map(l => l.text).join(" ") : ""
+  };
+}
+
+
 // ── Claude 호출 ───────────────────────────────────────────
 const claudeKey = () => LS.get('mb.claudeKey', '');
 function client() { return new Anthropic({ apiKey: claudeKey(), dangerouslyAllowBrowser: true, maxRetries: 1 }); }
@@ -456,6 +503,13 @@ async function askMid(prompt) {
 async function askQuick(prompt) {
   const msg = await client().messages.create({ model: M_QUICK, max_tokens: 1024, messages: [{ role: 'user', content: prompt }] });
   check(msg); return parseJSON(textOf(msg));
+}
+async function askText(prompt, model, effort) {
+  const msg = await client().beta.messages.create({
+    model, max_tokens: 8000, output_config: { effort }, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+    messages: [{ role: 'user', content: prompt }],
+  });
+  check(msg); return textOf(msg);
 }
 function errMsg(e) {
   if (e && e.code === 'invalid_json') return '대본 형식이 깨져서 왔어요. 한 번만 다시 눌러 주세요.';
@@ -621,6 +675,152 @@ function expandHtml(x) {
   return h + '</div>';
 }
 
+// ── 대본 스택 (아이디어뇌/대본스택/스택.json 한 파일) ──────────
+// 앱: 링크를 '대기'로 넣는다 → 맥북 도구/대본스택_받기.py 가 영상을 받아 받아쓰기('전사완료')
+// → 앱이 Sonnet으로 대본 칸 정리('정리완료') → 대본 만들기 레퍼런스(STACK_REFS)로 쓴다.
+const stackPath = () => SW.cfg().dir.split('/').filter(Boolean)[0] + '/대본스택/스택.json';
+let rstack = LS.get('mb.rstack', []);       // 마지막으로 읽은 스택
+let rq = LS.get('mb.rq', []);               // 아직 못 올린 작업 [{op:'add'|'edit'|'del', ...}]
+let rflushing = false, rloading = false, rsorting = false;
+const R = { filter: '전체', openId: null, confirm: false, pasteOpen: false };
+function rApply(entries, ops) {
+  const list = entries.map((e) => ({ ...e }));
+  for (const op of ops) {
+    if (op.op === 'add') { if (!list.some((e) => e.id === op.entry.id)) list.push(op.entry); }
+    else if (op.op === 'edit') { const t = list.find((e) => e.id === op.id); if (t) Object.assign(t, op.patch); }
+    else if (op.op === 'del') { const i = list.findIndex((e) => e.id === op.id); if (i >= 0) list.splice(i, 1); }
+  }
+  return list;
+}
+async function rLoad() {
+  try {
+    const meta = await SW.gh(`${repoFile(stackPath())}?ref=${encodeURIComponent(SW.cfg().branch)}&t=${Date.now()}`);
+    let raw = meta.content; if (!raw && meta.size > 0) raw = (await SW.gh(`${SW.repoPath()}/git/blobs/${meta.sha}`)).content;
+    const d = JSON.parse(SW.b64decode(raw || '') || '{}');
+    return { entries: Array.isArray(d.entries) ? d.entries : [], sha: meta.sha };
+  } catch (e) { if (e.status === 404) return { entries: [], sha: null }; throw e; }
+}
+function rView() { return rApply(rstack, rq).sort((a, b) => (a.at < b.at ? 1 : -1)); }
+function rSetRefs() {
+  STACK_REFS = rView().filter((x) => x.status === '정리완료' && x.script && x.script.text)
+    .map((x, i) => ({ n: `스택${i + 1}`, title: `${x.script.title || x.meta?.uploader || '레퍼런스'}${x.meta && x.meta.views ? ` · 조회 ${x.meta.views}` : ''}`, structure: x.script.structure || '문제해결형', text: x.script.text }));
+}
+function rPersist() { LS.set('mb.rstack', rstack); LS.set('mb.rq', rq); rSetRefs(); }
+async function rFlush() {
+  if (rflushing || !rq.length || !SW.cfg().token || !navigator.onLine) { renderRefs(); return; }
+  rflushing = true;
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const ops = rq.slice(); const f = await rLoad(); const entries = rApply(f.entries, ops);
+      const body = { version: 1, note: '소원저장소 대본 스택 — 링크(대기) → 맥북 받아쓰기(전사완료) → 앱 대본 정리(정리완료). 사람이 읽는 판은 레퍼런스_대본스택.md', entries };
+      try {
+        await SW.gh(repoFile(stackPath()), { method: 'PUT', body: { message: `대본 스택 ${ops.length}건`, branch: SW.cfg().branch, content: SW.b64encode(JSON.stringify(body, null, 2) + '\n'), ...(f.sha ? { sha: f.sha } : {}) } });
+        rq = rq.filter((o) => !ops.includes(o)); rstack = entries; rPersist(); break;
+      } catch (e) { if ((e.status === 409 || e.status === 422) && attempt < 2) continue; throw e; }
+    }
+  } catch (e) { toast(`대본 스택 올리기 실패: ${e.message || e}`); }
+  finally { rflushing = false; renderRefs(); }
+}
+async function rRefresh() {
+  if (rloading || !SW.cfg().token || !navigator.onLine) { renderRefs(); return; }
+  rloading = true;
+  try { const f = await rLoad(); rstack = f.entries; rPersist(); } catch { /* 조용히 */ }
+  finally { rloading = false; renderRefs(); }
+  await rFlush(); rSortPending();
+}
+function rEdit(id, patch) { rq.push({ op: 'edit', id, patch }); rPersist(); renderRefs(); rFlush(); }
+const shortcode = (u) => (String(u).match(/instagram\.com\/(?:[^/]+\/)?(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/) || String(u).match(/(?:shorts\/|youtu\.be\/|v=)([A-Za-z0-9_-]{6,})/) || String(u).match(/tiktok\.com\/.*\/video\/(\d+)/) || [])[1] || '';
+function rAdd(url, memo) {
+  url = String(url || '').trim().match(/https?:\/\/\S+/)?.[0] || '';
+  if (!url || !/instagram\.com|youtube\.com|youtu\.be|tiktok\.com/.test(url)) { toast('인스타·유튜브 쇼츠·틱톡 링크를 넣어 주세요'); return false; }
+  const clean = url.replace(/[?&](igsh|igshid|stkn|utm_[a-z]+|si)=[^&]*/g, '').replace(/[?&]$/, '');
+  const code = shortcode(clean);
+  if (code && rView().some((x) => x.code === code)) { toast('이미 스택에 있는 영상이에요'); return false; }
+  const now = new Date();
+  rq.push({ op: 'add', entry: { id: SW.makeId(now), at: localISO(now), url: clean, code, memo: memo || '', status: '대기' } });
+  rPersist(); renderRefs(); rFlush();
+  toast('스택에 쌓았어요. 맥북이 5분 안에 받아쓰기해요'); return true;
+}
+// 받아쓰기가 끝난 것을 Sonnet으로 대본 칸 정리 (열쇠가 있을 때, 한 번에 하나씩)
+async function rSortPending() {
+  if (rsorting || !claudeKey()) return;
+  const todo = rView().filter((x) => x.status === '전사완료' && x.transcript && !x.sortError).slice(0, 3);
+  if (!todo.length) return;
+  rsorting = true; renderRefs();
+  for (const x of todo) {
+    try {
+      const text = await askText(buildStackPrompt(x), M_MID, 'medium');
+      rEdit(x.id, { status: '정리완료', script: parseStackScript(text, x), sortedAt: localISO() });
+    } catch (e) { rEdit(x.id, { sortError: errMsg(e) }); }
+  }
+  rsorting = false; renderRefs();
+}
+function rStatusLabel(x) {
+  if (x.status === '대기') return '맥북 받는 중';
+  if (x.status === '전사완료') return x.sortError ? '정리 실패' : (claudeKey() ? '정리 중' : '정리 대기(열쇠)');
+  if (x.status === '정리완료') return '정리완료';
+  if (x.status === '실패') return '받기 실패';
+  return x.status || '';
+}
+function renderRefs() {
+  const box = $('#refList'); if (!box) return;
+  const all = rView(); rSetRefs();
+  const cnt = $('#refCount'); if (cnt) cnt.textContent = all.length ? String(all.length) : '';
+  const groups = { '전체': all, '정리완료': all.filter((x) => x.status === '정리완료'), '진행 중': all.filter((x) => ['대기', '전사완료'].includes(x.status)), '실패': all.filter((x) => x.status === '실패' || x.sortError) };
+  $('#refFilter').innerHTML = Object.keys(groups).filter((k) => k === '전체' || groups[k].length).map((k) => `<button class="chip${k === R.filter ? ' is-on' : ''}" type="button" data-f="${k}" aria-pressed="${k === R.filter}">${k} ${groups[k].length}</button>`).join('');
+  const list = groups[R.filter] || all;
+  if (!list.length) { box.innerHTML = `<div class="empty"><b>📼</b>${all.length ? '여기엔 아직 없어요' : '좋았던 릴스 링크를 위에 붙여넣고 스택에 쌓아 보세요'}</div>`; }
+  else box.innerHTML = list.map((x) => {
+    const m = x.meta || {}; const sc = x.script || {};
+    const who = [m.uploader ? '@' + m.uploader : '', m.views ? `조회 ${m.views}` : ''].filter(Boolean).join(' · ') || x.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 34);
+    const st = x.sortError && x.status === '전사완료' ? '실패' : x.status;
+    return `<button class="ref-card" type="button" data-id="${esc(x.id)}">
+      <span class="bar"><span>${fmtDate(x.at)} · ${esc(who)}</span><span class="rs rs-${esc(st)}">${esc(rStatusLabel(x))}</span></span>
+      <span class="in"><span class="hk">${esc(sc.hook || (x.transcript ? String(x.transcript).slice(0, 50) + '…' : x.memo || '받아쓰기를 기다리는 중'))}</span>
+      ${sc.title ? `<span class="ti">${esc(sc.title)}</span>` : ''}
+      ${sc.structure ? `<span class="chips"><span class="tag">${esc(sc.structure)}</span>${sc.hookType ? `<span class="tag used">${esc(sc.hookType)}</span>` : ''}</span>` : ''}
+      ${x._wait ? '<span class="tag wait">⏳ 올리는 중</span>' : ''}</span></button>`;
+  }).join('');
+  if (R.openId) renderRefSheet();
+}
+function renderRefSheet() {
+  const x = rView().find((r) => r.id === R.openId); const dlg = $('#refSheet');
+  if (!x) { if (dlg.open) dlg.close(); R.openId = null; return; }
+  const m = x.meta || {}; const sc = x.script || {};
+  $('#refSheetTitle').textContent = sc.title || (m.uploader ? '@' + m.uploader : '레퍼런스');
+  const failed = x.status === '실패' || x.sortError;
+  $('#refSheetBody').innerHTML = `
+    <div class="chips"><span class="rs rs-${esc(x.sortError ? '실패' : x.status)}">${esc(rStatusLabel(x))}</span>${sc.structure ? `<span class="tag">${esc(sc.structure)}</span>` : ''}${sc.hookType ? `<span class="tag used">${esc(sc.hookType)}</span>` : ''}${m.views ? `<span class="tag">조회 ${esc(m.views)}</span>` : ''}${m.likes ? `<span class="tag">좋아요 ${esc(m.likes)}</span>` : ''}</div>
+    <a class="link-btn" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">영상 열기 ↗</a>
+    ${x.memo ? `<p class="hint">내 메모: ${esc(x.memo)}</p>` : ''}
+    ${failed ? `<div class="sc-box warn"><b>${x.status === '실패' ? '맥북이 영상을 못 받았어요' : '대본 정리가 안 됐어요'}</b><div>${esc(x.error || x.sortError || '')}</div></div>` : ''}
+    ${sc.text ? `<div class="ref-raw">${esc(sc.text)}</div>${sc.why ? `<div class="sc-box"><b>잘된 점</b>${esc(sc.why)}</div>` : ''}` : ''}
+    ${x.transcript ? `<div class="sc-box"><details><summary>받아쓰기 원문 보기</summary><div class="cap">${esc(x.transcript)}</div></details></div>` : ''}
+    ${(x.status === '실패' || x.status === '대기' || R.pasteOpen) ? `<div class="sc-box"><b>받아쓰기 직접 넣기</b><p class="hint small">맥북이 못 받으면 영상 자막을 여기 붙여넣어도 돼요.</p><label class="sr-only" for="refPasteText">받아쓰기</label><textarea id="refPasteText" class="paper" rows="5" placeholder="영상에서 말한 내용 붙여넣기"></textarea><button class="ghost-btn" type="button" data-act="rPaste">이걸로 정리하기 <span class="tier">Sonnet</span></button></div>` : ''}
+    <div class="sc-btns">
+      ${sc.text ? '<button class="aqua-btn small" type="button" data-act="rCopy">대본 복사</button>' : ''}
+      ${x.transcript ? '<button class="ghost-btn" type="button" data-act="rResort">다시 정리 <span class="tier">Sonnet</span></button>' : ''}
+      ${x.status === '실패' ? '<button class="ghost-btn" type="button" data-act="rRetry">맥북에 다시 받기</button>' : ''}
+    </div>
+    <div class="sc-btns">${R.confirm ? '<button class="danger-btn" type="button" data-act="rReallyDel">정말 지우기</button><button class="ghost-btn" type="button" data-act="rCancelDel">남겨 두기</button>' : '<button class="ghost-btn" type="button" data-act="rDel">스택에서 지우기</button>'}</div>`;
+  if (!dlg.open) dlg.showModal();
+}
+async function onRefSheetClick(e) {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const x = rView().find((r) => r.id === R.openId); if (!x) return;
+  const act = b.dataset.act;
+  if (act === 'rCopy') copyText(`${x.script.title ? '제목) ' + x.script.title + '\n' : ''}대본구조: ${x.script.structure} · 후킹: ${x.script.hookType}\n${x.script.text}\n링크) ${x.url}`, '대본');
+  else if (act === 'rRetry') { rEdit(x.id, { status: '대기', error: '' }); toast('맥북이 다음 동기화 때 다시 받아요'); }
+  else if (act === 'rResort') { rEdit(x.id, { status: '전사완료', sortError: '', script: null }); rSortPending(); toast('다시 정리하는 중…'); }
+  else if (act === 'rPaste') {
+    const t = ($('#refPasteText').value || '').trim(); if (t.length < 30) { toast('조금 더 길게 붙여넣어 주세요'); return; }
+    rEdit(x.id, { status: '전사완료', transcript: t, transcriptBy: '직접', error: '', sortError: '', script: null }); R.pasteOpen = false; rSortPending();
+  }
+  else if (act === 'rDel') { R.confirm = true; renderRefSheet(); }
+  else if (act === 'rCancelDel') { R.confirm = false; renderRefSheet(); }
+  else if (act === 'rReallyDel') { R.confirm = false; R.openId = null; $('#refSheet').close(); rq.push({ op: 'del', id: x.id }); rPersist(); renderRefs(); rFlush(); toast('지웠어요'); }
+}
+
 // ── 상태 ─────────────────────────────────────────────────
 const S = {
   current: LS.get('sw.current', null), editing: false,
@@ -642,8 +842,14 @@ function readForm() {
   return { topic: $('#mTopic').value.trim(), rough: $('#mRough').value.trim(), facts: $('#mFacts').value.trim(),
     struct: $('#mStruct').value, hook: $('#mHook').value, tone: $('#mTone').value, len: $('#mLen').value, cta: $('#mCta').value.trim().replace(/['"]/g, '') };
 }
-function saveForm() { LS.set('sw.form', readForm()); }
+function saveForm() { LS.set('sw.form', readForm()); renderMoreHint(); }
+function renderMoreHint() {
+  const n = S.attached.size, f = ($('#mFacts') && $('#mFacts').value.trim()) ? 1 : 0;
+  const h = $('#moreHint'); if (h) h.textContent = [n ? `메모 ${n}개 붙음` : '', f ? '숫자 있음' : ''].filter(Boolean).join(' · ');
+}
+function openMore() { const d = $('.sc-more'); if (d) d.open = true; }
 function renderAttach() {
+  renderMoreHint();
   const box = $('#attachList'); if (!box) return;
   const pool = ideas().filter((x) => S.attached.has(x.id) || !(x.used && x.used.length)).slice(0, 30);
   if (!pool.length) { box.innerHTML = '<p class="hint">말하기로 쌓은 메모가 여기 떠요.</p>'; return; }
@@ -972,7 +1178,7 @@ function init() {
   document.addEventListener('sowon:toScript', (e) => {
     const x = e.detail; S.attached.add(x.id); LS.set('sw.attached', [...S.attached]);
     if (!x.ref && !$('#mRough').value.trim()) { $('#mRough').value = x.text; saveForm(); }   // 레퍼런스는 대강 대본 칸을 채우지 않는다
-    renderAttach(); SW.switchTab('make'); toast(x.ref ? '대본 탭에 레퍼런스를 붙였어요' : '대본 탭에 메모를 붙였어요');
+    renderAttach(); openMore(); SW.switchTab('make'); toast(x.ref ? '대본 탭에 레퍼런스를 붙였어요' : '대본 탭에 메모를 붙였어요');
   });
   document.addEventListener('sowon:topic', async (e) => {   // 스택의 "주제 3개" (Haiku)
     const x = e.detail;
@@ -986,16 +1192,28 @@ function init() {
       $('#topicList').onclick = (ev) => {
         const b = ev.target.closest('[data-i]'); if (!b) return; const s = list[+b.dataset.i];
         $('#mTopic').value = s.topic; const hk = HOOKS.find((h) => h[0] === s.hookType); $('#mHook').value = hk ? hk[0] : '자동';
-        S.attached.add(x.id); LS.set('sw.attached', [...S.attached]); saveForm(); renderAttach();
+        S.attached.add(x.id); LS.set('sw.attached', [...S.attached]); saveForm(); renderAttach(); openMore();
         $('#topicSheet').close(); SW.switchTab('make'); toast('주제를 옮겼어요');
       };
       $('#topicSheet').showModal();
     } catch (err) { toast(errMsg(err)); }
   });
+  // 대본 스택
+  $('#refAdd').addEventListener('click', () => { if (rAdd($('#refUrl').value)) $('#refUrl').value = ''; });
+  $('#refUrl').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#refAdd').click(); } });
+  $('#refPaste').addEventListener('click', async () => { try { const t = await navigator.clipboard.readText(); if (t) { $('#refUrl').value = t.trim(); } } catch { toast('칸을 길게 눌러 붙여넣어 주세요'); } });
+  $('#refFilter').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; R.filter = b.dataset.f; renderRefs(); });
+  $('#refList').addEventListener('click', (e) => { const c = e.target.closest('[data-id]'); if (!c) return; R.openId = c.dataset.id; R.confirm = false; renderRefSheet(); });
+  $('#refSheetBody').addEventListener('click', onRefSheetClick);
+  $('#refSheet').addEventListener('close', () => { R.openId = null; });
+  document.addEventListener('sowon:refAdd', (e) => { rAdd(e.detail.url, e.detail.memo); });
+  document.addEventListener('sowon:tab', (e) => { if (e.detail === 'refs') rRefresh(); });
+  window.addEventListener('online', rFlush);
   window.addEventListener('online', sFlush);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) sFlush(); });
 
-  renderKeyState(); renderAttach(); renderResult(); renderScripts();
+  renderKeyState(); renderAttach(); renderResult(); renderScripts(); renderRefs();
+  rRefresh();
   sFlush(); sRefresh();
 }
 init();

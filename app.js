@@ -4,7 +4,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.4.0';
+  const VERSION = '1.5.0';
   const DEFAULT_CFG = { owner: 'sein9507-max', repo: 'newlywed_tech', branch: 'main', dir: '아이디어뇌/스택', token: '' };
   const KINDS = ['블로그', '카드뉴스', '대본', '경험', '기타'];
   const FIRST_MONTH = '2026-09';
@@ -445,9 +445,16 @@
   }
 
   // ── 시작 ────────────────────────────────────────────────
+  // 아래 큰 탭 4개 → 그 안의 작은 탭. 큰 탭을 누르면 그 묶음에서 마지막에 보던 작은 탭으로 간다 (1.5.0)
+  const GROUPS = { memo: ['talk', 'stack'], script: ['make', 'scripts'], ref: ['refs', 'trend'], blog: ['blog'] };
+  const groupOf = (name) => Object.keys(GROUPS).find((g) => GROUPS[g].includes(name)) || 'memo';
+  function switchGroup(g) { const last = store.get('mb.sub.' + g, GROUPS[g][0]); switchTab(GROUPS[g].includes(last) ? last : GROUPS[g][0]); }
   function switchTab(name) {
+    const g = groupOf(name); store.set('mb.sub.' + g, name);
     document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('is-active', t.id === `tab-${name}`));
-    document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('is-active', b.dataset.tab === name));
+    document.querySelectorAll('.tab-btn').forEach((b) => { const on = b.dataset.tab === name; b.classList.toggle('is-active', on); b.setAttribute('aria-selected', String(on)); });
+    document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('is-active', b.dataset.group === g));
+    document.querySelectorAll('#subnav .seg').forEach((s) => { s.hidden = s.dataset.group !== g; });
     if (name === 'stack') { if (wantRec) stopRec(); renderList(); refreshMonth(loadedMonths[0]); }
     window.scrollTo(0, 0);
     document.dispatchEvent(new CustomEvent('sowon:tab', { detail: name }));
@@ -486,6 +493,7 @@
       if (prevMonth(next) < FIRST_MONTH) noMoreMonths = true; renderList();
     });
     document.querySelectorAll('.tab-btn').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+    document.querySelectorAll('.nav-btn').forEach((b) => b.addEventListener('click', () => switchGroup(b.dataset.group)));
     $('#openSettings').addEventListener('click', openSettings);
     $('#syncPill').addEventListener('click', () => { if (!cfg.token) openSettings(); else if (queue.length) { lastError = ''; flush(); } else refreshMonth(loadedMonths[0]).then(() => toast('최신 상태예요')); });
     document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => b.closest('dialog').close()));

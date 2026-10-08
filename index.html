@@ -45,6 +45,13 @@
 
   <div id="banner" class="banner" hidden></div>
 
+  <!-- 아래 큰 탭 4개 안의 작은 탭 (지금 고른 큰 탭 것만 보인다) -->
+  <div id="subnav" class="subnav" role="tablist" aria-label="세부 화면">
+    <div class="seg" data-group="memo"><button class="tab-btn seg-btn is-active" data-tab="talk" type="button">말하기</button><button class="tab-btn seg-btn" data-tab="stack" type="button">쌓인 메모 <em id="stackCount"></em></button></div>
+    <div class="seg" data-group="script" hidden><button class="tab-btn seg-btn" data-tab="make" type="button">만들기</button><button class="tab-btn seg-btn" data-tab="scripts" type="button">완성대본 <em id="scriptCount"></em></button></div>
+    <div class="seg" data-group="ref" hidden><button class="tab-btn seg-btn" data-tab="refs" type="button">대본 스택 <em id="refCount"></em></button><button class="tab-btn seg-btn" data-tab="trend" type="button">급상승 <em id="trendCount"></em></button></div>
+  </div>
+
   <main>
     <!-- 말하기 -->
     <section id="tab-talk" class="tab is-active" aria-label="말하기">
@@ -104,11 +111,13 @@
           <input id="mTopic" class="field" type="text" autocomplete="off" placeholder="예: 청년미래적금 2차, 체크카드 혜택">
           <label class="lab" for="mRough">대강 대본·메모 <small>막 적어도 돼요</small></label>
           <textarea id="mRough" class="paper" rows="4" placeholder="하고 싶은 말, 넣고 싶은 문장, 순서 아무렇게나"></textarea>
-          <label class="lab" for="mFacts">확인한 숫자·날짜 <small>출처 있는 것만</small></label>
-          <textarea id="mFacts" class="paper" rows="3" placeholder="예: 10월 7일 2차 신청 시작 / 월 50만 원 / 연 19.4% (금융위 보도자료)"></textarea>
-          <p class="hint small">여기 없는 숫자는 대본에 [확인: …] 자리로 남겨요. 지어내지 않아요.</p>
-          <details class="sc-opt">
-            <summary>구조·후킹·말투 고르기 (기본은 자동)</summary>
+          <details class="sc-opt sc-more">
+            <summary>더 넣기 · 숫자·메모·구조 <em id="moreHint"></em></summary>
+            <label class="lab" for="mFacts">확인한 숫자·날짜 <small>출처 있는 것만</small></label>
+            <textarea id="mFacts" class="paper" rows="3" placeholder="예: 10월 7일 2차 신청 시작 / 월 50만 원 / 연 19.4% (금융위 보도자료)"></textarea>
+            <p class="hint small">대강 대본에 쓴 숫자는 그대로 써요. 그 밖의 숫자는 [확인: …] 자리로 남겨요.</p>
+            <span class="lab">아이디어 붙이기 <small>내 경험·관점으로 씀</small></span>
+            <div id="attachList" class="sc-attach"></div>
             <div class="sc-grid">
               <div><label class="lab" for="mStruct">구조</label><select id="mStruct" class="field"></select></div>
               <div><label class="lab" for="mHook">후킹</label><select id="mHook" class="field"></select></div>
@@ -118,8 +127,6 @@
             <label class="lab" for="mCta">댓글 키워드 <small>비우면 주제어 한 단어</small></label>
             <input id="mCta" class="field" type="text" autocomplete="off" placeholder="예: 적금">
           </details>
-          <span class="lab">아이디어 붙이기 <small>내 경험·관점으로 씀</small></span>
-          <div id="attachList" class="sc-attach"></div>
         </div>
       </div>
       <button id="genBtn" class="aqua-btn" type="button">대본 뽑기</button>
@@ -165,6 +172,24 @@
       </div>
       <div id="blList" class="list bl-list"></div>
     </section>
+    <!-- 대본 스택 (좋은 릴스 링크 → 맥북이 받아쓰기 → 대본 칸으로 정리) -->
+    <section id="tab-refs" class="tab" aria-label="대본 스택">
+      <div class="win">
+        <div class="win-bar"><span class="win-title">◎ script_stack.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
+        <div class="win-body">
+          <label class="sr-only" for="refUrl">릴스 링크</label>
+          <div class="ref-row">
+            <input id="refUrl" class="field" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="좋았던 릴스·쇼츠 링크 붙여넣기">
+            <button id="refPaste" class="mini-btn" type="button">붙여넣기</button>
+          </div>
+          <button id="refAdd" class="aqua-btn small" type="button">📼 스택에 쌓기</button>
+          <p class="hint small">맥북이 켜져 있으면 5분 안에 영상을 받아 받아쓰기하고, 앱이 대본 칸(후킹·베네핏…)으로 정리해 한 파일에 쌓아요. 쌓인 대본은 대본 만들기의 레퍼런스로 같이 써요.</p>
+        </div>
+      </div>
+      <div id="refFilter" class="chips sc-filter" role="group" aria-label="상태"></div>
+      <div id="refList" class="list"></div>
+    </section>
+
     <!-- 급상승 (인스타 레퍼런스 아이디어 뱅크) -->
     <section id="tab-trend" class="tab" aria-label="급상승">
       <div class="win">
@@ -181,12 +206,10 @@
   </main>
 
   <nav class="tabbar" aria-label="화면 전환">
-    <button class="tab-btn is-active" data-tab="talk" type="button"><span class="tab-ico">♡</span>말하기</button>
-    <button class="tab-btn" data-tab="stack" type="button"><span class="tab-ico">☰</span><span>스택 <em id="stackCount"></em></span></button>
-    <button class="tab-btn" data-tab="make" type="button"><span class="tab-ico">✎</span>대본</button>
-    <button class="tab-btn" data-tab="scripts" type="button"><span class="tab-ico">★</span><span>완성대본 <em id="scriptCount"></em></span></button>
-    <button class="tab-btn" data-tab="blog" type="button"><span class="tab-ico">✿</span><span>블로그 <em id="blogCount"></em></span></button>
-    <button class="tab-btn" data-tab="trend" type="button"><span class="tab-ico">🔥</span><span>급상승 <em id="trendCount"></em></span></button>
+    <button class="nav-btn is-active" data-group="memo" type="button"><span class="tab-ico">♡</span>메모</button>
+    <button class="nav-btn" data-group="script" type="button"><span class="tab-ico">✎</span>대본</button>
+    <button class="nav-btn" data-group="ref" type="button"><span class="tab-ico">◎</span>레퍼런스</button>
+    <button class="nav-btn" data-group="blog" type="button"><span class="tab-ico">✿</span><span>블로그 <em id="blogCount"></em></span></button>
   </nav>
 </div>
 
@@ -287,6 +310,12 @@
 <dialog id="scriptSheet" class="sheet" aria-labelledby="sheetTitle">
   <div class="sheet-bar"><h2 id="sheetTitle">완성대본</h2><button class="icon-btn" data-close type="button" aria-label="닫기">✕</button></div>
   <div id="sheetBody" class="sheet-body sc-result"></div>
+</dialog>
+
+<!-- 대본 스택 펼치기 -->
+<dialog id="refSheet" class="sheet" aria-labelledby="refSheetTitle">
+  <div class="sheet-bar"><h2 id="refSheetTitle">레퍼런스</h2><button class="icon-btn" data-close type="button" aria-label="닫기">✕</button></div>
+  <div id="refSheetBody" class="sheet-body sc-result"></div>
 </dialog>
 
 <!-- 메모 → 주제 3개 -->
