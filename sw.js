@@ -1,5 +1,5 @@
 /* 소원저장소 서비스 워커 — 앱 껍데기만 캐시한다. GitHub·Claude API 요청은 건드리지 않는다. */
-const CACHE = 'sowon-v1.5.1';
+const CACHE = 'sowon-v1.5.2';
 const LOGOS = ['A', 'B', 'C', 'D'];
 const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'script.js', 'blog.js', 'trend.js', 'vendor/anthropic-sdk.mjs', 'vendor/standardwebhooks.mjs', 'vendor/stablelib-base64.mjs', 'vendor/fast-sha256.mjs', 'fonts/Galmuri11.woff2', 'fonts/Galmuri11-Bold.woff2',
   ...LOGOS.flatMap((k) => [`manifest-${k}.webmanifest`, `icons/${k}/icon-192.png`, `icons/${k}/apple-touch-icon.png`])];

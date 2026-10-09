@@ -2,6 +2,7 @@
  * 맥북이 사진첩 사진을 찍은 시간대별로 묶어 <아이디어뇌>/일상/묶음.json + 미리보기/ 에 올린다(도구/일상사진_받기.py).
  * 여기서 묶음마다 말풍선을 띄우고, 사용자가 짧은 후기를 적어 '발행'을 누르면 일상/후기.json 에 status '대기'로 쌓는다.
  * 매일 밤 클라우드 루틴(신혼테크 일상 글, Opus)이 대기 후기로 패션 블로그(dnwls5102) 일상 글을 써서 확장에 넣는다.
+ * 이미 쓴 묶음·안 쓸 묶음은 '건너뛰기'로 status '건너뜀' 을 남긴다(루틴은 대기만 읽으니 글을 안 쓴다). 되돌리기로 지운다.
  * 묶음 이름(예: 한강 밤)은 루틴이 사진을 보고 일상/이름.json 에 붙인다. 없으면 날짜·시간대로 부른다. */
 (() => {
   'use strict';
@@ -85,6 +86,15 @@
     pick.forEach((f) => { const im = el('img'); im.alt = ''; im.loading = 'lazy'; strip.append(im); thumb(im, `${DIR()}/미리보기/${g.id}/${f}`); });
     card.append(strip);
 
+    if (rv && rv.status === '건너뜀') {
+      card.classList.add('is-done');
+      const row = el('div', 'bl-row');
+      row.append(el('span', 'bl-status', `⏭ 건너뛴 묶음 · ${rv.note || '안 쓸래요'}`));
+      const back = el('button', 'mini-btn', '되돌리기'); back.type = 'button';
+      back.addEventListener('click', () => unskip(g, back));
+      row.append(back); card.append(row);
+      return card;
+    }
     if (rv && rv.status === '완료') {
       card.classList.add('is-done');
       card.append(el('p', 'bl-status ok', `✔ 글로 만들었어요${rv.title ? ` · “${rv.title}”` : ''} — 크롬 확장에서 확인하고 발행하세요`));
@@ -99,9 +109,19 @@
     const row = el('div', 'bl-row');
     if (rv && rv.status === '대기') row.append(el('span', 'bl-status wait', '⏳ 대기 중 — 밤 10시에 글로 만들어요 (고쳐서 다시 눌러도 돼요)'));
     if (rv && rv.status === '실패') row.append(el('span', 'bl-status bad', `다시 확인 필요: ${rv.note || '루틴이 글을 못 썼어요'}`));
-    const btn = el('button', 'aqua-btn small', rv && rv.status === '대기' ? '고친 후기로 다시 발행' : '발행');
+    const btn = el('button', 'aqua-btn small bl-pub', rv && rv.status === '대기' ? '고친 후기로 다시 발행' : '발행');
     btn.type = 'button';
     btn.addEventListener('click', () => publish(g, label, ta.value, btn));
+    if (!rv || rv.status !== '대기') {
+      const skips = el('div', 'bl-skips');
+      skips.append(el('span', 'bl-sub', '이 묶음은'));
+      [['이미 썼어요', '이미 쓴 글'], ['안 쓸래요', '안 쓸래요']].forEach(([t, note]) => {
+        const sk = el('button', 'mini-btn bl-skip', `⏭ ${t}`); sk.type = 'button';
+        sk.addEventListener('click', () => skip(g, label, note, sk));
+        skips.append(sk);
+      });
+      row.append(skips);
+    }
     row.append(btn); card.append(row);
     return card;
   }
@@ -121,6 +141,31 @@
       delete drafts[g.id]; LS.set('mb.blogDrafts', drafts);
       SW.toast('발행 대기에 넣었어요. 밤 10시에 글로 만들어요');
     } catch (e) { SW.toast(`발행 실패: ${e.message || e}`); }
+    finally { btn.disabled = false; render(); }
+  }
+
+  async function skip(g, label, note, btn) {
+    if (!SW.cfg().token) { SW.toast('설정에서 저장소 열쇠를 먼저 넣어주세요'); SW.openSettings(); return; }
+    btn.disabled = true;
+    try {
+      await writeReviews((entries) => {
+        const i = entries.findIndex((x) => x.groupId === g.id && x.status !== '완료');
+        const entry = { id: i >= 0 ? entries[i].id : SW.makeId(new Date()), groupId: g.id, label, text: '', at: SW.isoLocal(new Date()), status: '건너뜀', note, photos: g.count };
+        if (i >= 0) entries[i] = entry; else entries.push(entry);
+      }, `일상 묶음 건너뛰기 ${label}`);
+      SW.toast('건너뛰었어요. 맨 아래 \'건너뛴 묶음\'에서 되돌릴 수 있어요');
+    } catch (e) { SW.toast(`건너뛰기 실패: ${e.message || e}`); }
+    finally { btn.disabled = false; render(); }
+  }
+  async function unskip(g, btn) {
+    btn.disabled = true;
+    try {
+      await writeReviews((entries) => {
+        const i = entries.findIndex((x) => x.groupId === g.id && x.status === '건너뜀');
+        if (i >= 0) entries.splice(i, 1);
+      }, `일상 묶음 되돌리기 ${names[g.id] || g.id}`);
+      SW.toast('다시 목록에 올렸어요');
+    } catch (e) { SW.toast(`되돌리기 실패: ${e.message || e}`); }
     finally { btn.disabled = false; render(); }
   }
 
@@ -161,13 +206,17 @@
     if (loading && !groups.length) { box.append(el('p', 'hint', '사진 묶음 불러오는 중…')); return; }
     if (!groups.length) { box.append(el('p', 'hint', '아직 사진 묶음이 없어요. 맥북이 켜져 있으면 3시간마다 사진첩에서 새 사진을 가져와요.')); return; }
     const sorted = [...groups].sort((a, b) => (a.start < b.start ? 1 : -1));
-    const open = sorted.filter((g) => !(reviewOf(g.id) && reviewOf(g.id).status === '완료'));
-    const done = sorted.filter((g) => reviewOf(g.id) && reviewOf(g.id).status === '완료');
+    const st = (g) => (reviewOf(g.id) || {}).status;
+    const open = sorted.filter((g) => st(g) !== '완료' && st(g) !== '건너뜀');
+    const done = sorted.filter((g) => st(g) === '완료');
+    const skipped = sorted.filter((g) => st(g) === '건너뜀');
+    if (!open.length) box.append(el('p', 'hint', '후기 쓸 묶음이 없어요. 새 사진이 오면 여기 떠요.'));
     open.forEach((g) => box.append(bubble(g)));
-    if (done.length) {
-      const d = el('details', 'sc-opt'); d.append(el('summary', null, `글로 만든 묶음 ${done.length}개`));
-      done.forEach((g) => d.append(bubble(g))); box.append(d);
-    }
+    [[done, '글로 만든 묶음'], [skipped, '건너뛴 묶음']].forEach(([list, title]) => {
+      if (!list.length) return;
+      const d = el('details', 'sc-opt'); d.append(el('summary', null, `${title} ${list.length}개`));
+      list.forEach((g) => d.append(bubble(g))); box.append(d);
+    });
   }
 
   document.addEventListener('sowon:tab', (e) => { if (e.detail === 'blog') load(); });
