@@ -741,8 +741,7 @@ function rRetryAll() {
   }
   if (R.filter === '실패') R.filter = '전체';
   rPersist(); renderRefs();
-  if (sort && !claudeKey()) toast('정리하려면 설정 ④에 Claude 열쇠가 필요해요');
-  else toast([sort ? `${sort}개 지금 정리해요` : '', get ? `${get}개는 맥북이 다음 동기화 때 받아요` : ''].filter(Boolean).join(' · '));
+  toast([sort ? (claudeKey() ? `${sort}개 지금 정리해요` : `${sort}개는 맥북이 다음 동기화 때 정리해요`) : '', get ? `${get}개는 맥북이 다음 동기화 때 받아요` : ''].filter(Boolean).join(' · '));
   rFlush().then(() => rSortPending(true));
 }
 const shortcode = (u) => (String(u).match(/instagram\.com\/(?:[^/]+\/)?(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/) || String(u).match(/(?:shorts\/|youtu\.be\/|v=)([A-Za-z0-9_-]{6,})/) || String(u).match(/tiktok\.com\/.*\/video\/(\d+)/) || [])[1] || '';
@@ -777,7 +776,7 @@ async function rSortPending(all) {
 }
 function rStatusLabel(x) {
   if (x.status === '대기') return '맥북 받는 중';
-  if (x.status === '전사완료') return x.sortError ? '정리 실패' : (claudeKey() ? '정리 중' : '정리 대기(열쇠)');
+  if (x.status === '전사완료') return x.sortError ? '정리 실패' : (claudeKey() ? '정리 중' : '맥북 정리 중');
   if (x.status === '정리완료') return '정리완료';
   if (x.status === '실패') return '받기 실패';
   return x.status || '';
