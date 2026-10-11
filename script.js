@@ -729,6 +729,19 @@ async function rRefresh() {
   await rFlush(); rSortPending();
 }
 function rEdit(id, patch) { rq.push({ op: 'edit', id, patch }); rPersist(); renderRefs(); rFlush(); }
+// 10/11: 받기 실패는 다시 대기로(맥북이 다시 받음), 정리 실패는 오류만 지워 바로 다시 정리
+function rRetryAll() {
+  const bad = rView().filter((x) => x.status === '실패' || x.sortError);
+  if (!bad.length) { toast('다시 시도할 게 없어요'); return; }
+  let get = 0;
+  for (const x of bad) {
+    if (x.status === '실패') { rq.push({ op: 'edit', id: x.id, patch: { status: '대기', error: '' } }); get++; }
+    else rq.push({ op: 'edit', id: x.id, patch: { sortError: '' } });
+  }
+  if (R.filter === '실패') R.filter = '전체';
+  rPersist(); renderRefs(); rFlush().then(rSortPending);
+  toast(get ? `${bad.length}개 다시 시도해요. 맥북이 다음 동기화 때 받아요` : `${bad.length}개 다시 정리해요`);
+}
 const shortcode = (u) => (String(u).match(/instagram\.com\/(?:[^/]+\/)?(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/) || String(u).match(/(?:shorts\/|youtu\.be\/|v=)([A-Za-z0-9_-]{6,})/) || String(u).match(/tiktok\.com\/.*\/video\/(\d+)/) || [])[1] || '';
 function rAdd(url, memo) {
   url = String(url || '').trim().match(/https?:\/\/\S+/)?.[0] || '';
@@ -768,6 +781,7 @@ function renderRefs() {
   const cnt = $('#refCount'); if (cnt) cnt.textContent = all.length ? String(all.length) : '';
   const groups = { '전체': all, '정리완료': all.filter((x) => x.status === '정리완료'), '진행 중': all.filter((x) => ['대기', '전사완료'].includes(x.status)), '실패': all.filter((x) => x.status === '실패' || x.sortError) };
   $('#refFilter').innerHTML = Object.keys(groups).filter((k) => k === '전체' || groups[k].length).map((k) => `<button class="chip${k === R.filter ? ' is-on' : ''}" type="button" data-f="${k}" aria-pressed="${k === R.filter}">${k} ${groups[k].length}</button>`).join('');
+  const rb = $('#refRetryAll'); if (rb) { const n = groups['실패'].length; rb.hidden = !n; rb.textContent = `↻ 실패한 것 한번에 다시 시도 (${n})`; }
   const list = groups[R.filter] || all;
   if (!list.length) { box.innerHTML = `<div class="empty"><b>📼</b>${all.length ? '여기엔 아직 없어요' : '좋았던 릴스 링크를 위에 붙여넣고 스택에 쌓아 보세요'}</div>`; }
   else box.innerHTML = list.map((x) => {
@@ -1200,6 +1214,7 @@ function init() {
   });
   // 대본 스택
   $('#refAdd').addEventListener('click', () => { if (rAdd($('#refUrl').value)) $('#refUrl').value = ''; });
+  $('#refRetryAll').addEventListener('click', rRetryAll);
   $('#refUrl').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#refAdd').click(); } });
   $('#refPaste').addEventListener('click', async () => { try { const t = await navigator.clipboard.readText(); if (t) { $('#refUrl').value = t.trim(); } } catch { toast('칸을 길게 눌러 붙여넣어 주세요'); } });
   $('#refFilter').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; R.filter = b.dataset.f; renderRefs(); });
