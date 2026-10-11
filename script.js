@@ -731,16 +731,19 @@ async function rRefresh() {
 function rEdit(id, patch) { rq.push({ op: 'edit', id, patch }); rPersist(); renderRefs(); rFlush(); }
 // 10/11: 받기 실패는 다시 대기로(맥북이 다시 받음), 정리 실패는 오류만 지워 바로 다시 정리
 function rRetryAll() {
-  const bad = rView().filter((x) => x.status === '실패' || x.sortError);
-  if (!bad.length) { toast('다시 시도할 게 없어요'); return; }
-  let get = 0;
-  for (const x of bad) {
+  const todo = rView().filter((x) => x.status !== '정리완료');
+  if (!todo.length) { toast('다시 시도할 게 없어요. 전부 정리완료예요'); return; }
+  let get = 0, sort = 0;
+  for (const x of todo) {
     if (x.status === '실패') { rq.push({ op: 'edit', id: x.id, patch: { status: '대기', error: '' } }); get++; }
-    else rq.push({ op: 'edit', id: x.id, patch: { sortError: '' } });
+    else if (x.status === '전사완료') { if (x.sortError) rq.push({ op: 'edit', id: x.id, patch: { sortError: '' } }); sort++; }
+    else get++;   // 대기: 맥북이 다음 동기화 때 받음
   }
   if (R.filter === '실패') R.filter = '전체';
-  rPersist(); renderRefs(); rFlush().then(rSortPending);
-  toast(get ? `${bad.length}개 다시 시도해요. 맥북이 다음 동기화 때 받아요` : `${bad.length}개 다시 정리해요`);
+  rPersist(); renderRefs();
+  if (sort && !claudeKey()) toast('정리하려면 설정 ④에 Claude 열쇠가 필요해요');
+  else toast([sort ? `${sort}개 지금 정리해요` : '', get ? `${get}개는 맥북이 다음 동기화 때 받아요` : ''].filter(Boolean).join(' · '));
+  rFlush().then(() => rSortPending(true));
 }
 const shortcode = (u) => (String(u).match(/instagram\.com\/(?:[^/]+\/)?(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/) || String(u).match(/(?:shorts\/|youtu\.be\/|v=)([A-Za-z0-9_-]{6,})/) || String(u).match(/tiktok\.com\/.*\/video\/(\d+)/) || [])[1] || '';
 function rAdd(url, memo) {
@@ -755,9 +758,12 @@ function rAdd(url, memo) {
   toast('스택에 쌓았어요. 맥북이 5분 안에 받아쓰기해요'); return true;
 }
 // 받아쓰기가 끝난 것을 Sonnet으로 대본 칸 정리 (열쇠가 있을 때, 한 번에 하나씩)
-async function rSortPending() {
+let rSortAll = false;   // 10/11: '전부 다시 시도'는 정리 중이어도 끝나면 남은 것까지 이어서
+async function rSortPending(all) {
+  if (all) rSortAll = true;
   if (rsorting || !claudeKey()) return;
-  const todo = rView().filter((x) => x.status === '전사완료' && x.transcript && !x.sortError).slice(0, 3);
+  const todo = rView().filter((x) => x.status === '전사완료' && x.transcript && !x.sortError).slice(0, rSortAll ? 99 : 3);
+  rSortAll = false;
   if (!todo.length) return;
   rsorting = true; renderRefs();
   for (const x of todo) {
@@ -767,6 +773,7 @@ async function rSortPending() {
     } catch (e) { rEdit(x.id, { sortError: errMsg(e) }); }
   }
   rsorting = false; renderRefs();
+  if (rSortAll) rSortPending();
 }
 function rStatusLabel(x) {
   if (x.status === '대기') return '맥북 받는 중';
@@ -781,7 +788,7 @@ function renderRefs() {
   const cnt = $('#refCount'); if (cnt) cnt.textContent = all.length ? String(all.length) : '';
   const groups = { '전체': all, '정리완료': all.filter((x) => x.status === '정리완료'), '진행 중': all.filter((x) => ['대기', '전사완료'].includes(x.status)), '실패': all.filter((x) => x.status === '실패' || x.sortError) };
   $('#refFilter').innerHTML = Object.keys(groups).filter((k) => k === '전체' || groups[k].length).map((k) => `<button class="chip${k === R.filter ? ' is-on' : ''}" type="button" data-f="${k}" aria-pressed="${k === R.filter}">${k} ${groups[k].length}</button>`).join('');
-  const rb = $('#refRetryAll'); if (rb) { const n = groups['실패'].length; rb.hidden = !n; rb.textContent = `↻ 실패한 것 한번에 다시 시도 (${n})`; }
+  const rb = $('#refRetryAll'); if (rb) { const n = all.filter((x) => x.status !== '정리완료').length; rb.textContent = n ? `↻ 안 끝난 것 전부 다시 시도 (${n})` : '↻ 전부 다시 시도'; }
   const list = groups[R.filter] || all;
   if (!list.length) { box.innerHTML = `<div class="empty"><b>📼</b>${all.length ? '여기엔 아직 없어요' : '좋았던 릴스 링크를 위에 붙여넣고 스택에 쌓아 보세요'}</div>`; }
   else box.innerHTML = list.map((x) => {
