@@ -3,6 +3,7 @@
  * Claude 호출: 대본·다듬기 = Claude Fable 5.1, 후킹 후보 = Claude Sonnet 5.5, 메모→주제 = Claude Haiku 4.5
  * 완성 대본은 GitHub 비공개 저장소의 <아이디어뇌>/대본/<YYYY-MM>.json 에 쌓는다(아이디어와 같은 열쇠).
  * Claude 열쇠는 이 기기의 localStorage 에만 둔다. api.anthropic.com 외에는 보내지 않는다.
+ * 열쇠가 없으면(1.6.0부터 기본) 요청을 <아이디어뇌>/맥북요청/<id>.json 에 넣고 맥북 도구/소원_맥북답변.py 가 claude(구독)로 답을 써 준다.
  * 이 파일은 _design/script_src.js 에서 만들어진다 — 고칠 때는 그 파일을 고치고 _design/build_script.py 를 돌린다. */
 import Anthropic from './vendor/anthropic-sdk.mjs';
 
@@ -460,6 +461,81 @@ function parseStackScript(text, x){
 // ── Claude 호출 ───────────────────────────────────────────
 const claudeKey = () => LS.get('mb.claudeKey', '');
 function client() { return new Anthropic({ apiKey: claudeKey(), dangerouslyAllowBrowser: true, maxRetries: 1 }); }
+
+// ── 열쇠 없이: 맥북 Claude에 맡기기 (1.6.0 기본) ─────────────
+// 앱이 <아이디어뇌>/맥북요청/<id>.json 을 '대기'로 올리면, 맥북(launchd com.newlywedtech.sowonclaude → 도구/소원_맥북답변.py)이
+// 10초 안에 집어 '처리중' → claude(구독)로 답을 써서 '완료'(text)로 바꾼다. 앱은 폴더 목록의 sha 만 보다가 바뀌면 읽고, 받은 파일은 지운다.
+// 맥북 Claude 사용량 한도에 걸리면 '한도대기'(retryAt) → 그 시각 뒤 맥북이 다시 시도한다.
+const macDir = () => SW.cfg().dir.split('/').filter(Boolean)[0] + '/맥북요청';
+const macPoll = () => LS.get('mb.macPoll', 8000);
+const KIND_LABEL = { 대본: '대본을', 다듬기: '대본을 다듬어', 후킹: '후킹 후보를', 주제: '주제를', 블로그: '블로그 글과 전자책을', 정리: '대본 칸을' };
+const fmtSec = (s) => (s < 60 ? `${s}초` : `${Math.floor(s / 60)}분 ${pad(s % 60)}초`);
+function macErr(m) { const e = new Error(m); e.code = 'mac'; return e; }
+function abortErr() { const e = new Error('aborted'); e.name = 'AbortError'; return e; }
+function phaseToast() { let last = ''; return (m, phase) => { if (phase && phase !== last) { last = phase; toast(m); } }; }   // 토스트는 단계가 바뀔 때만
+async function macRead(path) {
+  const meta = await SW.gh(`${repoFile(path)}?ref=${encodeURIComponent(SW.cfg().branch)}&t=${Date.now()}`);
+  let raw = meta.content; if (!raw && meta.size > 0) raw = (await SW.gh(`${SW.repoPath()}/git/blobs/${meta.sha}`)).content;
+  return { sha: meta.sha, data: JSON.parse(SW.b64decode(raw || '') || '{}') };
+}
+async function macWrite(path, data, sha, message) {
+  return SW.gh(repoFile(path), { method: 'PUT', body: { message, branch: SW.cfg().branch, content: SW.b64encode(JSON.stringify(data, null, 2) + '\n'), ...(sha ? { sha } : {}) } });
+}
+async function macAsk(kind, prompt, model, effort, { signal, say, resume, onSent } = {}) {
+  if (!SW.cfg().token) throw macErr('설정 ①에 GitHub 열쇠가 있어야 맥북에 보낼 수 있어요');
+  if (!navigator.onLine) throw macErr('인터넷이 연결돼야 맥북에 보낼 수 있어요');
+  const tell = (m, phase) => { if (say) say(m, phase); };
+  let id, path, knownSha = null;
+  if (resume && resume.id) { id = resume.id; path = resume.path || `${macDir()}/${id}.json`; }
+  else {
+    id = SW.makeId(new Date()); path = `${macDir()}/${id}.json`;
+    tell('맥북에 보내는 중…', 'sent');
+    const req = { version: 1, id, at: localISO(), kind, model, effort, status: '대기', prompt,
+      note: '소원저장소 앱이 Claude 열쇠 없이 보낸 요청. 맥북 도구/소원_맥북답변.py 가 답을 쓰고, 앱이 읽은 뒤 지운다' };
+    if (onSent) onSent({ id, path, kind });   // 보내는 도중에 앱이 꺼져도 이어받을 수 있게 먼저 남긴다
+    let res;
+    try { res = await macWrite(path, req, null, `소원저장소: ${kind} 요청 ${id}`); }
+    catch (e) { const err = macErr(`맥북에 보내지 못했어요: ${e.message || e}`); err.keep = true; throw err; }   // keep: 화면이 닫히며 끊긴 걸 수도 있으니 이어받기 표시는 남긴다
+    knownSha = res && res.content ? res.content.sha : null;
+  }
+  const t0 = resume && resume.at ? resume.at : Date.now();
+  const sleep = (ms) => new Promise((res, rej) => {
+    if (signal && signal.aborted) { rej(abortErr()); return; }
+    const t = setTimeout(res, ms);
+    if (signal) signal.addEventListener('abort', () => { clearTimeout(t); rej(abortErr()); }, { once: true });
+  });
+  let last = { status: '대기' };
+  tell('맥북이 받기를 기다리는 중…', 'wait');
+  try {
+    for (;;) {
+      await sleep(macPoll());
+      let r;
+      try {
+        const ls = await SW.gh(`${repoFile(macDir())}?ref=${encodeURIComponent(SW.cfg().branch)}&t=${Date.now()}`);   // 목록만(작다) — 내 파일 sha 가 바뀌었을 때만 읽는다
+        const f = (Array.isArray(ls) ? ls : []).find((x) => x.name === `${id}.json`);
+        if (!f) { const err = macErr('맥북에 보낸 요청 파일이 사라졌어요. 다시 눌러 주세요'); err.gone = true; throw err; }
+        if (f.sha !== knownSha) { r = await macRead(path); knownSha = r.sha; last = r.data || last; }
+      } catch (e) { if (e.code === 'mac') throw e; if (e.status === 404) { const err = macErr('맥북에 보낸 요청 파일이 사라졌어요. 다시 눌러 주세요'); err.gone = true; throw err; } continue; }   // 잠깐 끊긴 건 다음 폴링에
+      const d = last; const sec = Math.round((Date.now() - t0) / 1000);
+      if (d.status === '완료' && d.text) {
+        SW.gh(repoFile(path), { method: 'DELETE', body: { message: `소원저장소: ${kind} 받음 ${id}`, branch: SW.cfg().branch, sha: knownSha } }).catch(() => { /* 못 지우면 맥북이 2시간 뒤 치운다 */ });
+        return d.text;
+      }
+      if (d.status === '실패') throw macErr(d.error ? `맥북에서 실패했어요: ${d.error}` : '맥북에서 실패했어요. 다시 눌러 주세요');
+      if (d.status === '취소') throw abortErr();
+      if (d.status === '한도대기') tell(`맥북 Claude 사용량 한도예요. ${d.retryAt ? d.retryAt + '에' : '잠시 뒤'} 맥북이 다시 시도해요 (이 화면을 닫아도 돼요)`, 'limit');
+      else if (d.status === '처리중') tell(`맥북 Claude가 ${KIND_LABEL[kind] || '답을'} 쓰는 중… ${fmtSec(sec)}`, 'run');
+      else if (sec >= 150) tell(`맥북이 아직 안 받았어요 (${fmtSec(sec)}). 맥북이 켜져 있는지 확인해 주세요`, 'late');
+      else tell(`맥북이 받기를 기다리는 중… ${fmtSec(sec)}`, 'wait');
+      if (sec > 40 * 60) throw macErr('40분이 지나도 답이 안 왔어요. 맥북이 켜져 있는지 확인하고 다시 눌러 주세요');
+    }
+  } catch (e) {
+    if (isAbort(e)) {   // 그만 → 맥북이 아직 안 시작했으면 '취소'로 바꿔 둔다(시작했어도 결과는 버린다)
+      macRead(path).then((r) => (['대기', '한도대기'].includes(r.data.status) ? macWrite(path, { ...r.data, status: '취소' }, r.sha, `소원저장소: ${kind} 취소 ${id}`) : null)).catch(() => { /* 무시 */ });
+    }
+    throw e;
+  }
+}
 function parseJSON(text) {
   const t = String(text || '').trim();
   try { return JSON.parse(t); } catch { /* 아래로 */ }
@@ -475,7 +551,8 @@ function check(msg) {
   if (msg.stop_reason === 'max_tokens') { const e = new Error('cut'); e.code = 'cut'; throw e; }
 }
 // 대본·다듬기: Fable 5.1, 스트리밍(오래 생각함), 거절되면 서버가 다른 모델로 넘기도록 fallbacks
-async function askBest(prompt, { signal, onLen } = {}) {
+async function askBest(prompt, { signal, onLen, say, kind, resume, onSent } = {}) {
+  if (!claudeKey()) return macAsk(kind || '대본', prompt, M_BEST, 'high', { signal, say, resume, onSent });
   let n = 0;
   const stream = client().beta.messages.stream({
     model: M_BEST, max_tokens: 32000, output_config: { effort: 'high' },
@@ -492,7 +569,8 @@ function versionsFrom(text, inp) {
   if (!vs.length) { const e = new Error('형식'); e.code = 'invalid_json'; throw e; }
   return vs;
 }
-async function askMid(prompt) {
+async function askMid(prompt, o = {}) {
+  if (!claudeKey()) return parseJSON(await macAsk(o.kind || '후킹', prompt, M_MID, 'low', o));
   const msg = await client().beta.messages.create({
     model: M_MID, max_tokens: 4000, output_config: { effort: 'low' },
     betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
@@ -500,11 +578,13 @@ async function askMid(prompt) {
   });
   check(msg); return parseJSON(textOf(msg));
 }
-async function askQuick(prompt) {
+async function askQuick(prompt, o = {}) {
+  if (!claudeKey()) return parseJSON(await macAsk(o.kind || '주제', prompt, M_QUICK, 'low', o));
   const msg = await client().messages.create({ model: M_QUICK, max_tokens: 1024, messages: [{ role: 'user', content: prompt }] });
   check(msg); return parseJSON(textOf(msg));
 }
-async function askText(prompt, model, effort) {
+async function askText(prompt, model, effort, o = {}) {
+  if (!claudeKey()) return macAsk(o.kind || '정리', prompt, model, effort, o);
   const msg = await client().beta.messages.create({
     model, max_tokens: 8000, output_config: { effort }, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
     messages: [{ role: 'user', content: prompt }],
@@ -512,6 +592,7 @@ async function askText(prompt, model, effort) {
   check(msg); return textOf(msg);
 }
 function errMsg(e) {
+  if (e && e.code === 'mac') return e.message;
   if (e && e.code === 'invalid_json') return '대본 형식이 깨져서 왔어요. 한 번만 다시 눌러 주세요.';
   if (e && e.code === 'refused') return '이 내용은 대본으로 못 만들었어요. 표현을 바꿔서 다시 시도해 주세요.';
   if (e && e.code === 'cut') return '대본이 너무 길어져서 잘렸어요. 대강 대본을 줄이거나 길이를 짧게 골라 주세요.';
@@ -618,7 +699,6 @@ async function ghWriteText(path, text, message) {
 // ── 녹화한 대본 → 블로그 초안 + 노션 전자책 → 확장 ──────────
 let expandCtl = null;
 async function expandScript(x) {
-  if (!claudeKey()) { toast('설정 ④에 Claude 열쇠를 넣어 주세요'); SW.openSettings(); return; }
   if (!SW.cfg().token) { toast('설정 ①에 GitHub 열쇠를 넣어 주세요'); SW.openSettings(); return; }
   if (!navigator.onLine) { toast('인터넷이 연결돼야 만들 수 있어요'); return; }
   S.expandBusy = x.id; S.expandMsg = '블로그 규칙 문서 읽는 중…'; renderSheet();
@@ -629,8 +709,9 @@ async function expandScript(x) {
       try { const t = await ghReadText(path); docs.push({ name, text: heads ? pickSections(t, heads) : t }); }
       catch (e) { if (e.status !== 404) throw e; }
     }
-    S.expandMsg = 'Fable이 블로그 글과 전자책을 쓰는 중… 2~4분'; renderSheet();
-    const text = await askBest(buildExpandPrompt(x, docs), { signal: expandCtl.signal, onLen: (n) => { S.expandMsg = `쓰는 중… ${n}자`; const el = $('#expandMsg'); if (el) el.textContent = S.expandMsg; } });
+    S.expandMsg = claudeKey() ? 'Fable이 블로그 글과 전자책을 쓰는 중… 2~4분' : '맥북에 보내는 중…'; renderSheet();
+    const sayX = (m) => { S.expandMsg = m; const el = $('#expandMsg'); if (el) el.textContent = m; };
+    const text = await askBest(buildExpandPrompt(x, docs), { signal: expandCtl.signal, kind: '블로그', say: sayX, onLen: (n) => sayX(`쓰는 중… ${n}자`) });
     const r = parseExpand(text);
     S.expandMsg = '저장소에 넣는 중…'; renderSheet();
     const day = today(); const slug = slugOf(x.topic || x.title);
@@ -801,7 +882,7 @@ function renderRefs() {
       ${sc.structure ? `<span class="chips"><span class="tag">${esc(sc.structure)}</span>${sc.hookType ? `<span class="tag used">${esc(sc.hookType)}</span>` : ''}</span>` : ''}
       ${x._wait ? '<span class="tag wait">⏳ 올리는 중</span>' : ''}</span></button>`;
   }).join('');
-  if (R.openId) renderRefSheet();
+  if (R.openId && $('#refSheet').open) renderRefSheet();
 }
 function renderRefSheet() {
   const x = rView().find((r) => r.id === R.openId); const dlg = $('#refSheet');
@@ -846,7 +927,7 @@ const S = {
   current: LS.get('sw.current', null), editing: false,
   attached: new Set(LS.get('sw.attached', [])),
   scFilter: '전체', scQ: '', openId: null, sheetEditing: false, sheetConfirm: false,
-  hooks: null, hooksBusy: false, revBusy: false, sugg: {}, alts: LS.get('sw.alts', []),
+  hooks: null, hooksBusy: false, hooksMsg: '', revBusy: false, sugg: {}, alts: LS.get('sw.alts', []),
 };
 if (S.alts.length) S.current = S.alts[LS.get('sw.altIdx', 0)] || S.alts[0];
 function persistCur() {
@@ -877,14 +958,14 @@ function renderAttach() {
 }
 function renderKeyHint() {
   const has = !!claudeKey();
-  $('#genBtn').innerHTML = has ? '대본 뽑기 <span class="tier">Fable 5.1</span>' : '대본 뽑기 <span class="tier">열쇠 필요</span>';
+  $('#genBtn').innerHTML = has ? '대본 뽑기 <span class="tier">Fable 5.1</span>' : '대본 뽑기 <span class="tier">Fable · 맥북</span>';
 }
 function setBusy(on, text) { $('#genBusy').hidden = !on; $('#genBtn').disabled = on; if (text) $('#genBusyText').textContent = text; }
 function showErr(msg, withCopy) {
   const b = $('#genErr');
   if (!msg) { b.hidden = true; b.innerHTML = ''; return; }
   b.hidden = false;
-  b.innerHTML = `<b>잠깐</b><div>${esc(msg)}</div>${withCopy ? '<div class="sc-btns"><button class="ghost-btn" type="button" data-act="openKey">설정 ④ 열기</button><button class="ghost-btn" type="button" data-act="copyPrompt">프롬프트 복사</button></div>' : ''}`;
+  b.innerHTML = `<b>잠깐</b><div>${esc(msg)}</div>${withCopy ? '<div class="sc-btns"><button class="ghost-btn" type="button" data-act="openKey">설정 열기</button><button class="ghost-btn" type="button" data-act="copyPrompt">프롬프트 복사</button></div>' : ''}`;
 }
 let genCtl = null;
 async function generate() {
@@ -892,17 +973,29 @@ async function generate() {
   if (!inp.topic && !inp.rough) { toast('주제나 대강 대본 중 하나는 적어 주세요'); return; }
   const att = ideas().filter((x) => S.attached.has(x.id));
   showErr('');
-  if (!claudeKey()) { showErr('Claude 열쇠가 아직 없어요. 설정 ④에 열쇠를 넣거나, "프롬프트 복사"로 Claude 앱에 붙여 넣고 답을 아래 "답 붙여넣기"에 넣어 주세요.', true); return; }
-  genCtl = new AbortController();
-  setBusy(true, 'Fable이 대본을 생각하는 중… 1~3분쯤 걸려요');
+  if (!claudeKey() && !SW.cfg().token) { showErr('설정 ①에 GitHub 열쇠가 있어야 맥북에 보낼 수 있어요. 아니면 아래 "프롬프트 복사"로 Claude 앱에 붙여 넣고 답을 "답 붙여넣기"에 넣어 주세요.', true); return; }
+  await runGen(buildPrompt(inp, att), inp, att.map((x) => x.id));
+}
+// 대본 뽑기 실행. 열쇠 없이 맥북에 보낸 요청은 sw.macGen 에 남겨, 앱을 닫았다 열어도 이어서 기다린다(resume).
+async function runGen(prompt, inp, ideaIds, resume) {
+  genCtl = new AbortController(); let keep = false;
+  const mac = !claudeKey();
+  setBusy(true, mac ? (resume ? '맥북에 보낸 대본을 이어서 기다리는 중…' : '맥북에 보내는 중…') : 'Fable이 대본을 생각하는 중… 1~3분쯤 걸려요');
   try {
-    const text = await askBest(buildPrompt(inp, att), { signal: genCtl.signal, onLen: (n) => { $('#genBusyText').textContent = `두 버전 쓰는 중… ${n}자`; } });
+    const text = await askBest(prompt, { signal: genCtl.signal, kind: '대본', resume,
+      onLen: (n) => { $('#genBusyText').textContent = `두 버전 쓰는 중… ${n}자`; },
+      say: (m) => { $('#genBusyText').textContent = m; },
+      onSent: (req) => LS.set('sw.macGen', { ...req, inp, ideaIds, at: Date.now() }) });
     const vs = versionsFrom(text, inp);
-    vs.forEach((v) => { v.ideaIds = att.map((x) => x.id); });
+    vs.forEach((v) => { v.ideaIds = ideaIds; });
     setCurrent(vs[0], vs);
     $('#resultWin').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } catch (e) { if (!isAbort(e)) showErr(errMsg(e)); }
-  finally { setBusy(false); genCtl = null; }
+  } catch (e) {
+    keep = !!(e && e.keep);
+    if (resume && e && e.gone) { /* 이어받을 요청이 이미 없어졌으면 조용히 */ }
+    else if (!isAbort(e)) showErr(errMsg(e));
+  }
+  finally { setBusy(false); genCtl = null; if (!keep) LS.set('sw.macGen', null); }
 }
 function setCurrent(sc, alts) {
   S.current = sc; S.editing = false; S.hooks = null;
@@ -957,7 +1050,7 @@ function renderResult() {
     ${alts ? `<div class="chips sc-alts" role="group" aria-label="버전">${alts.map((v, i) => `<button class="chip${v === sc ? ' is-on' : ''}" type="button" data-act="alt" data-i="${i}" aria-pressed="${v === sc}">${esc(v.label || '버전 ' + (i + 1))}</button>`).join('')}</div>` : ''}
     ${headHtml(sc, sc.why)}
     ${checksHtml(sc)}
-    ${S.hooksBusy ? '<div class="sc-busy"><div class="pbar"><i></i></div><p>후킹 후보 뽑는 중…</p></div>' : ''}
+    ${S.hooksBusy ? `<div class="sc-busy"><div class="pbar"><i></i></div><p id="hooksMsg">${esc(S.hooksMsg || '후킹 후보 뽑는 중…')}</p></div>` : ''}
     ${S.hooks ? `<div class="sc-box"><b>후킹 후보 · 누르면 바뀌어요</b><div class="sc-hooks">${S.hooks.map((h, i) => `<button type="button" data-act="useHook" data-i="${i}"><em>${esc(h.hookType)}</em>${esc(h.text)}</button>`).join('')}</div></div>` : ''}
     ${slotsHtml(sc, ed, !ed && !sc.example)}
     ${extrasHtml(sc)}
@@ -992,10 +1085,10 @@ async function onResultClick(e) {
   }
   else if (act === 'save') saveCurrent();
   else if (act === 'hooks') {
-    if (!claudeKey()) { toast('설정 ④에 Claude 열쇠를 넣어 주세요'); return; }
-    S.hooksBusy = true; S.hooks = null; renderResult();
+    S.hooksBusy = true; S.hooksMsg = ''; S.hooks = null; renderResult();
+    const sayH = (m) => { S.hooksMsg = m; const el = $('#hooksMsg'); if (el) el.textContent = m; };
     try {
-      const res = await askMid(`${RULES}\n\n[주문] 아래 대본의 후킹 슬롯만 다시 써. 서로 다른 후킹 유형으로 6개. 각 공백 빼고 16~20자, 요체, 대본 속 숫자만 쓰고 새 숫자는 만들지 마. 다음 줄(베네핏)과 이어져야 한다.\nJSON 배열만: [{"hookType":"유형","text":"후킹 문장"}]\n\n[대본]\n${scriptText(sc)}`);
+      const res = await askMid(`${RULES}\n\n[주문] 아래 대본의 후킹 슬롯만 다시 써. 서로 다른 후킹 유형으로 6개. 각 공백 빼고 16~20자, 요체, 대본 속 숫자만 쓰고 새 숫자는 만들지 마. 다음 줄(베네핏)과 이어져야 한다.\nJSON 배열만: [{"hookType":"유형","text":"후킹 문장"}]\n\n[대본]\n${scriptText(sc)}`, { kind: '후킹', say: sayH });
       S.hooks = (Array.isArray(res) ? res : []).map((h) => ({ hookType: String(h.hookType || ''), text: String(h.text || '') })).filter((h) => h.text).slice(0, 6);
     } catch (err) { toast(errMsg(err)); }
     S.hooksBusy = false; renderResult();
@@ -1009,11 +1102,11 @@ async function onResultClick(e) {
   else if (act === 'revStop') { if (revCtl) revCtl.abort(); }
   else if (act === 'revise') {
     const ins = ($('#revText').value || '').trim(); if (!ins) { toast('어떻게 고칠지 적어 주세요'); return; }
-    if (!claudeKey()) { toast('설정 ④에 Claude 열쇠를 넣어 주세요'); return; }
     revCtl = new AbortController(); S.revBusy = true; renderResult();
     try {
+      const sayR = (m) => { const t = $('#revBusyText'); if (t) t.textContent = m; };
       const text = await askBest(buildRevisePrompt(sc, ins),
-        { signal: revCtl.signal, onLen: (n) => { const t = $('#revBusyText'); if (t) t.textContent = `고치는 중… ${n}자`; } });
+        { signal: revCtl.signal, kind: '다듬기', say: sayR, onLen: (n) => sayR(`고치는 중… ${n}자`) });
       const nsc = versionsFrom(text, sc.input || {})[0];
       nsc.label = '다듬은 버전'; nsc.ideaIds = sc.ideaIds || []; nsc.savedId = sc.savedId; nsc.createdAt = sc.createdAt;
       const alts = (S.alts && S.alts.includes(sc) ? S.alts : [sc]).concat([nsc]);
@@ -1085,7 +1178,7 @@ function renderScripts() {
       </button>`;
     }).join('');
   }
-  if (S.openId) renderSheet();
+  if (S.openId && $('#scriptSheet').open) renderSheet();   // 닫힌 직후(close 이벤트 전) 올리기가 끝나도 시트가 되살아나지 않게
 }
 function renderSheet() {
   const x = allScripts().find((s) => s.id === S.openId);
@@ -1202,10 +1295,9 @@ function init() {
   });
   document.addEventListener('sowon:topic', async (e) => {   // 스택의 "주제 3개" (Haiku)
     const x = e.detail;
-    if (!claudeKey()) { toast('설정 ④에 Claude 열쇠를 넣어 주세요'); return; }
-    toast('Haiku가 주제를 뽑는 중…');
+    toast(claudeKey() ? 'Haiku가 주제를 뽑는 중…' : '맥북에 주제 뽑기를 보내요. 보통 30초~1분이에요');
     try {
-      const res = await askQuick(`재테크 인스타 릴스 채널 "신혼테크"(2030 초보 대상)의 아이디어 메모야. 이 메모로 찍을 수 있는 릴스 주제 3개를 골라. 소구점은 하나씩, 초보 눈높이, 메모에 없는 숫자는 만들지 마.\n후킹 유형은 다음 중에서: ${HOOKS.map((h) => h[0]).join(', ')}.\nJSON 배열만 답해: [{"topic":"주제 한 줄(25자 안팎)","hookType":"후킹 유형"}]\n\n메모:\n${String(x.text).slice(0, 1500)}`);
+      const res = await askQuick(`재테크 인스타 릴스 채널 "신혼테크"(2030 초보 대상)의 아이디어 메모야. 이 메모로 찍을 수 있는 릴스 주제 3개를 골라. 소구점은 하나씩, 초보 눈높이, 메모에 없는 숫자는 만들지 마.\n후킹 유형은 다음 중에서: ${HOOKS.map((h) => h[0]).join(', ')}.\nJSON 배열만 답해: [{"topic":"주제 한 줄(25자 안팎)","hookType":"후킹 유형"}]\n\n메모:\n${String(x.text).slice(0, 1500)}`, { kind: '주제', say: phaseToast() });
       const list = (Array.isArray(res) ? res : []).slice(0, 3).map((s) => ({ topic: String(s.topic || ''), hookType: String(s.hookType || '') })).filter((s) => s.topic);
       if (!list.length) { toast('주제가 안 나왔어요. 다시 눌러 주세요'); return; }
       $('#topicList').innerHTML = list.map((s, i) => `<button type="button" data-i="${i}"><em>${esc(s.hookType)}</em>${esc(s.topic)}</button>`).join('');
@@ -1234,6 +1326,9 @@ function init() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) sFlush(); });
 
   renderKeyState(); renderAttach(); renderResult(); renderScripts(); renderRefs();
+  const pend = LS.get('sw.macGen', null);   // 앱을 닫았다 열어도 맥북에 보낸 대본은 이어서 기다린다 (40분까지)
+  if (pend && pend.id && !claudeKey() && Date.now() - (pend.at || 0) < 40 * 60 * 1000) { SW.switchTab('make'); runGen(null, pend.inp || {}, pend.ideaIds || [], pend); }
+  else if (pend) LS.set('sw.macGen', null);
   rRefresh();
   sFlush(); sRefresh();
 }
