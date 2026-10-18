@@ -4,7 +4,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.6.1';
+  const VERSION = '1.7.0';
   const DEFAULT_CFG = { owner: 'sein9507-max', repo: 'newlywed_tech', branch: 'main', dir: '아이디어뇌/스택', token: '' };
   const KINDS = ['블로그', '카드뉴스', '대본', '경험', '기타'];
   const FIRST_MONTH = '2026-09';
@@ -446,7 +446,7 @@
 
   // ── 시작 ────────────────────────────────────────────────
   // 아래 큰 탭 4개 → 그 안의 작은 탭. 큰 탭을 누르면 그 묶음에서 마지막에 보던 작은 탭으로 간다 (1.5.0)
-  const GROUPS = { memo: ['talk', 'stack'], script: ['make', 'scripts'], ref: ['refs', 'trend'], blog: ['blog'] };
+  const GROUPS = { memo: ['talk', 'stack'], script: ['make', 'scripts'], topic: ['react', 'topics'], ref: ['refs', 'trend'], blog: ['blog'] };   // 1.7.0 주제 탭(내 반응·뜨는 주제)
   const groupOf = (name) => Object.keys(GROUPS).find((g) => GROUPS[g].includes(name)) || 'memo';
   function switchGroup(g) { const last = store.get('mb.sub.' + g, GROUPS[g][0]); switchTab(GROUPS[g].includes(last) ? last : GROUPS[g][0]); }
   function switchTab(name) {

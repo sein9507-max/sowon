@@ -314,3 +314,45 @@ select.field { background-image: linear-gradient(45deg, transparent 50%, var(--n
 .rs-대기 { background: var(--lemon); } .rs-전사완료 { background: var(--sky-2); } .rs-정리완료 { background: #DDFB5A; color: #000; } .rs-실패 { background: #FFD6E7; color: #C2255C; }
 .ref-raw { white-space: pre-wrap; font-size: 14px; line-height: 1.7; background: var(--ice); border: 2px solid #D8EEFC; border-radius: 12px; padding: 10px 12px; word-break: keep-all; overflow-wrap: anywhere; }
 .sc-box details summary { cursor: pointer; font-family: var(--pix); font-size: 12px; color: var(--blue-deep); }
+
+/* ── 1.7.0 주제 탭: 내 반응 ── */
+.rc-sort { margin-top: 6px; }
+.rc-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.rc-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: #fff; border: 3px solid #fff; border-radius: 18px; box-shadow: var(--shadow); padding: 10px; }
+.rc-stat { display: flex; flex-direction: column; min-width: 0; }
+.rc-stat small { font-family: var(--pix); font-size: 11px; color: var(--navy-soft); }
+.rc-stat b { font-family: var(--pix); font-size: 16px; color: var(--blue-deep); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc-stat.up b { color: #E8542F; }
+.rc-ig { background: var(--ice); border: 2px dashed #A9D5F7; border-radius: 14px; padding: 8px 12px; }
+.rc-ig summary { cursor: pointer; font-family: var(--pix); font-size: 13px; color: var(--blue-deep); }
+.rc-card { background: #fff; border: 3px solid #fff; border-radius: 18px; box-shadow: var(--shadow); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.rc-card.is-stale { opacity: .6; }
+.rc-head { display: flex; align-items: center; gap: 8px; }
+.rc-rank { font-family: var(--pix); font-size: 15px; color: var(--blue-deep); width: 26px; }
+.rc-kind { font-family: var(--pix); font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--lemon); color: #6B5200; }
+.rc-kind.k-long { background: var(--lilac); color: var(--navy); }
+.rc-date { font-size: 12px; color: var(--navy-soft); margin-left: auto; }
+.rc-title { font-size: 14px; line-height: 1.45; color: var(--navy); text-decoration: none; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.rc-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.rc-spark { display: flex; align-items: flex-end; gap: 2px; height: 26px; }
+.rc-spark i { flex: 1; background: linear-gradient(180deg, #9AD6FF, #3F97F0); border-radius: 3px 3px 0 0; min-height: 3px; }
+
+/* ── 1.7.0 주제 탭: 뜨는 주제 ── */
+.tp-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.tp-trend { background: #fff; border: 3px solid #fff; border-radius: 18px; box-shadow: var(--shadow); padding: 10px 12px; }
+.tp-trend b { display: block; font-family: var(--pix); font-size: 13px; color: var(--blue-deep); margin-bottom: 6px; }
+.tp-card { display: flex; gap: 10px; background: #fff; border: 3px solid #fff; border-radius: 22px 22px 22px 6px; box-shadow: var(--shadow); padding: 12px; }
+.tp-card.is-done { background: #F2F8FD; }
+.tp-card.is-done .tp-title { text-decoration: line-through; color: var(--navy-soft); }
+.tp-check { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: none; }
+.tp-check input { width: 26px; height: 26px; accent-color: var(--blue-deep); }
+.tp-rank { font-family: var(--pix); font-size: 13px; color: var(--blue-deep); }
+.tp-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.tp-title { margin: 0; font-size: 15px; line-height: 1.45; font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
+.tp-why { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--navy-soft); }
+.tp-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tp-tag { font-family: var(--pix); font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--sky-1); color: var(--navy-soft); }
+.tp-tag.kw { background: var(--lemon); color: #6B5200; }
+.tp-src { font-size: 11px; color: #8FAED6; align-self: center; }
+.tp-row { display: flex; justify-content: flex-end; }
+.tp-row .ghost-btn { width: auto; margin-top: 0; padding: 7px 12px; font-size: 13px; }
