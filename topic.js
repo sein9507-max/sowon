@@ -183,7 +183,8 @@
     body.append(tags);
     [['longform', '🎬 롱폼 초안'], ['insta', '📱 인스타 초안']].forEach(([k, label]) => {
       const lines = Array.isArray(item[k]) ? item[k] : []; if (!lines.length) return;
-      const d = el('details', 'rec-draft'); d.append(el('summary', null, `${label} ${lines.length}문장`));
+      const cc = k === 'insta' && item.corpusCheck;   // 1.8.1 통합 코퍼스 --검사 결과(맥북 주제선정_갱신.py)
+      const d = el('details', 'rec-draft'); d.append(el('summary', null, `${label} ${lines.length}문장${cc ? (cc.pass ? ' · 표절검사 통과' : ` · ⚠️ 레퍼런스와 비슷한 줄 ${cc.over}`) : ''}`));
       const ol = el('ol', 'rec-lines'); lines.forEach((l) => ol.append(el('li', null, String(l)))); d.append(ol);
       const cp = el('button', 'text-btn', '복사'); cp.type = 'button';
       cp.addEventListener('click', async () => { try { await navigator.clipboard.writeText(draftText(lines)); SW.toast('복사했어요'); } catch { SW.toast('길게 눌러 복사해 주세요'); } });

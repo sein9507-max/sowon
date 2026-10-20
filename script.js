@@ -80,6 +80,61 @@ function refsText(struct){
   return pick.map(r => `## ${r.n}. ${r.title} (${r.structure})\n${r.text}`).join("\n\n");
 }
 
+// ── 통합 대본 코퍼스 (2026-10-20, 아이디어뇌/대본스택/통합코퍼스.json — 보보스·민팀장·1분미만·내 메모 대본·승인 대본 264편)
+// 설치 앱이 저장소에서 읽어 CORPUS_REFS 에 담는다(아티팩트판은 빈 채). 프롬프트엔 전부 넣지 않고
+// 주제(topic)·후킹유형 가까운 6편의 structure 칸만 넣는다. 주제 분류 규칙은 도구/대본코퍼스_통합.py TOPICS 와 같다.
+let CORPUS_REFS = [];
+const CORPUS_TOPICS = [
+  ["청년지원금·정부혜택", /청년 ?혜택|지원금|월세|자취|청년통장|장려금|민생|보증금|복지|운전면허|여행지원|지원통장|기본소득|나라에서|정부|희망저축|내일저축|도약계좌|미래적금|휴가지원|운동비|냉방비|난방비|병원비|실수령|거주지 조사|소상공인|교통카드|K-패스|문화소비/g],
+  ["주식·ETF·투자", /주식|ETF|S&P|나스닥|배당|코스피|삼성전자|삼전|하이닉스|금리 ?인하|환율|ISA|증권|종목|QQQ|SPMO|SMH|투자|셧다운|관세|다우|스페이스X|달러|채권|반도체|테마|포트폴리오|물렸/g],
+  ["통장·적금·파킹", /파킹|적금|통장|예금|금리|이자|예금자|카뱅|토스|카카오뱅크/g],
+  ["카드·마일리지", /체크카드|신용카드|마일리지|카드값|연회비/g],
+  ["세금·연말정산", /연말정산|세금|절세|환급|증여|소득공제|세액공제|국세청|경정청구/g],
+  ["육아·출산", /아기|아이|손주|육아|어린이집|임산부|임신|분유|조리원|출산|기저귀|돌봄|행복카드|엄마들|아빠/g],
+  ["신혼·결혼", /신혼|결혼|웨딩|혼수|예비부부|혼인신고|커플|신혼집|스드메|신혼여행|배우자|용돈제/g],
+  ["생활절약·꿀팁", /에어컨|전기세|배달|주유|쿠팡|다이소|인터넷|통신|절약|할인|쿠폰|기프티콘|생일|명절|헌옷|굿윌|요금|렌탈|정수기|집밥|레시피/g],
+  ["N잡·부업·SNS", /부업|N잡|n잡|엔 ?잡|CPA|체험단|수익화|인스타|블로그|월천|팔로워|유튜브|입찰|쇼핑몰|클립/g],
+  ["AI·자기계발", /\bAI\b|Ai|GPT|프롬프트|루틴|독서|자기계발|영어|습관|경제 공부|책 /g],
+  ["뷰티·건강·다이어트", /다이어트|붓기|혈당|수면|피부|청순|얼굴|살 ?빠|체중|운동|저속노화|애교살|복코/g],
+  ["생활안전·폰 꿀팁", /피싱|해킹|카톡|갤럭시|삼성페이|와이파이|고속도로|블랙박스|버스|지하철|줄자|사인|약통|전화/g],
+];
+function corpusTopic(text){
+  let best = ["기타", 0];
+  for (const [name, re] of CORPUS_TOPICS){ const n = (String(text || "").match(re) || []).length; if (n > best[1]) best = [name, n]; }
+  return best[0];
+}
+function corpusSlim(d){
+  // 통합코퍼스.json → 앱에 필요한 칸만(중복판·대본스택 출처 빼고 — 스택은 STACK_REFS 로 따로 들어간다)
+  return ((d && d.entries) || []).filter(e => !e.dup_of && e.source !== "대본스택" && e.structure && (e.structure["후킹"] || (e.structure["본문_나열"] || []).length))
+    .map(e => ({ id: e.id, source: e.source, title: e.title || "", topic: e.topic || "기타", hook: e.hook_type || "", hooks: e.hook_types || [], st: e.structure_type || "", s: e.structure, k: String(e.text || "").slice(0, 300) }));
+}
+function bigrams(t){ const s = String(t || "").replace(/[^가-힣0-9a-zA-Z%]/g, ""); const o = new Set(); for (let i = 0; i < s.length - 1; i++) o.add(s.slice(i, i + 2)); return o; }
+const CORPUS_BONUS = { "승인대본": 0.06, "1분미만": 0.03, "보보스": 0.02, "민팀장": 0.02, "메모:대본": 0.01 };
+function corpusPick(query, hook, n){
+  n = n || 6;
+  if (!CORPUS_REFS.length || !String(query || "").trim()) return [];
+  const topic = corpusTopic(query), q = bigrams(query);
+  const scored = CORPUS_REFS.map(e => {
+    let sc = 0;
+    if (topic !== "기타" && e.topic === topic) sc += 2;
+    if (hook && hook !== "자동" && (e.hook === hook || e.hooks.includes(hook))) sc += 1;
+    const b = bigrams(e.title + " " + e.k);
+    if (q.size && b.size){ let c = 0; q.forEach(x => { if (b.has(x)) c++; }); sc += c / Math.sqrt(q.size * b.size); }
+    return [sc + (CORPUS_BONUS[e.source] || 0), e];
+  }).sort((a, b) => b[0] - a[0]);
+  const out = [], per = {};
+  for (const [, e] of scored){ if ((per[e.source] || 0) >= 3) continue; per[e.source] = (per[e.source] || 0) + 1; out.push(e); if (out.length >= n) break; }
+  return out;
+}
+const CORPUS_SLOTS = [["후킹", "후킹"], ["주제_베네핏", "베네핏 - 주제"], ["공감_문제", "공감·문제"], ["본문_나열", "본문"], ["강조", "강조"], ["CTA", "CTA"]];
+function corpusText(picked){
+  return picked.map(e => {
+    const rows = [`## [통합 ${e.id}·${e.source}] ${e.title} — ${e.st} · 후킹 ${e.hook} · ${e.topic}`];
+    for (const [k, name] of CORPUS_SLOTS){ const v = e.s[k]; (Array.isArray(v) ? v.slice(0, 4) : (v ? [v] : [])).forEach(x => rows.push(`${name}) ${String(x).trim().slice(0, 120)}`)); }
+    return rows.join("\n");
+  }).join("\n\n");
+}
+
 const RULES = `너는 인스타 릴스 재테크 채널 "신혼테크"의 대본 작가야. 화자는 여성, 보는 사람은 재테크를 막 시작한 2030(신혼·사회초년생)이야.
 
 맨 아래 [레퍼런스 대본]은 실제로 조회수가 크게 나온 릴스 대본 원문이야. 먼저 이 대본들을 소리 내어 읽듯이 읽고 리듬을 익혀:
@@ -189,6 +244,10 @@ ${TAIL_FORMAT}
 
 [레퍼런스 대본]
 ${refsText(inp.struct)}`);
+  const cp = corpusPick(`${inp.topic || ""} ${inp.rough || ""} ${(ideas || []).map(i => String(i.text || "").slice(0, 200)).join(" ")}`, inp.hook, 6);
+  if (cp.length) s.push(`
+[통합 대본 코퍼스 — 주제·후킹유형 가까운 ${cp.length}편의 구조 칸(보보스·민팀장·1분미만·내 메모 대본). 문장은 베끼지 말고 구조·터진 키워드만, 같은 편에서 2줄 넘게 가져오지 않는다]
+${corpusText(cp)}`);
   return s.join("\n");
 }
 
@@ -694,6 +753,19 @@ async function ghReadText(path) {
   if (!raw && meta.size > 0) raw = (await SW.gh(`${SW.repoPath()}/git/blobs/${meta.sha}`)).content;
   return SW.b64decode(raw || '');
 }
+// 통합 대본 코퍼스: 하루 한 번 저장소에서 읽어 필요한 칸만 휴대폰에 담는다(실패해도 대본 만들기는 그대로).
+const CORPUS_PATH = '아이디어뇌/대본스택/통합코퍼스.json';
+function corpusFromCache() { const c = LS.get('mb.corpus', null); if (c && Array.isArray(c.refs) && !CORPUS_REFS.length) CORPUS_REFS = c.refs; return c; }
+async function loadCorpus() {
+  const c = corpusFromCache();
+  if (c && c.day === today() && CORPUS_REFS.length) return CORPUS_REFS.length;
+  if (!SW.cfg().token || !navigator.onLine) return CORPUS_REFS.length;
+  try {
+    const refs = corpusSlim(JSON.parse(await Promise.race([ghReadText(CORPUS_PATH), new Promise((_, rej) => setTimeout(() => rej(new Error('시간 초과')), 15000))])));
+    if (refs.length) { CORPUS_REFS = refs; LS.set('mb.corpus', { day: today(), refs }); }
+  } catch (e) { /* 404·시간 초과 → 34편+스택만 */ }
+  return CORPUS_REFS.length;
+}
 async function ghWriteText(path, text, message) {
   for (let attempt = 0; attempt < 3; attempt++) {
     let sha = null;
@@ -980,6 +1052,7 @@ async function generate() {
   if (!inp.topic && !inp.rough) { toast('주제나 대강 대본 중 하나는 적어 주세요'); return; }
   const att = ideas().filter((x) => S.attached.has(x.id));
   showErr('');
+  corpusFromCache(); loadCorpus();   // 기다리지 않는다 — 이미 담긴 것으로 바로 프롬프트(다음 번엔 새것)
   if (!claudeKey() && !SW.cfg().token) { showErr('설정 ①에 GitHub 열쇠가 있어야 맥북에 보낼 수 있어요. 아니면 아래 "프롬프트 복사"로 Claude 앱에 붙여 넣고 답을 "답 붙여넣기"에 넣어 주세요.', true); return; }
   await runGen(buildPrompt(inp, att), inp, att.map((x) => x.id));
 }
@@ -1352,5 +1425,6 @@ function init() {
   else if (pend) LS.set('sw.macGen', null);
   rRefresh();
   sFlush(); sRefresh();
+  corpusFromCache(); setTimeout(loadCorpus, 4000);   // 통합 대본 코퍼스는 첫 화면 뒤에 천천히
 }
 init();
