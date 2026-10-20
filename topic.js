@@ -1,8 +1,11 @@
-/* 소원저장소 — 주제 탭 (내 반응 · 뜨는 주제)  1.7.0 (2026-10-18)
+/* 소원저장소 — 주제 탭 (뜨는 주제 · 내 반응)  1.7.0 (2026-10-18) → 1.8.0 (2026-10-20)
  * 사용자: "대본 탭 옆에 컨텐츠 주제선정 탭 — 유튜브/클립 내 데이터 반응을 한번에 보는 페이지부터,
  *          롱폼 TOP10~20 / 인스타 숏폼 10~20 / 블로그 10~20을 보기 좋게 나열, 내가 만들었으면 체크".
+ * 10/20: "내 유튜브 성과 1-20순위 나열은 불필요. 내 영상 성과는 네가 확인해서 개선점을 리스트업, 추천 주제 3~5개, 대략적인 롱폼/인스타 대본.
+ *         주제 탭 안에서 뜨는 주제가 먼저, 그다음 내 반응." → '내 반응' = 개선점 + 추천 주제(+대본 초안), 숫자 목록은 접힘.
  * 자료는 맥북 도구/주제선정_갱신.py 가 <아이디어뇌>/주제선정/ 에 올린다:
- *   반응.json(내 유튜브 공개 성과 추이) · 주제.json(TOP 20 × 3) · 블로그트렌드.json(크롬 확장 어드바이저 수집) · 체크.json(여기서 쓴다) */
+ *   반응.json(내 유튜브 공개 성과 추이) · 주제.json(TOP 20 × 3) · 블로그트렌드.json(크롬 확장 어드바이저 수집) · 체크.json(여기서 쓴다)
+ *   추천.json(개선점 리스트 + 추천 주제 3~5개 + 롱폼/인스타 대본 초안, 하루 1번 맥북 Claude) */
 (() => {
   'use strict';
   const SW = window.sowon;
@@ -17,7 +20,7 @@
   const enc = (p) => p.split('/').map(encodeURIComponent).join('/');
   const url = (p) => `${SW.repoPath()}/contents/${enc(p)}?ref=${encodeURIComponent(SW.cfg().branch)}&t=${Date.now()}`;
 
-  let react = null, topics = null, trend = null, checks = {}, checksSha = null, loading = false, loadedAt = 0;
+  let react = null, topics = null, trend = null, rec = null, checks = {}, checksSha = null, loading = false, loadedAt = 0;
   let rcKind = LS.get('mb.rcKind', 'all'), rcSort = LS.get('mb.rcSort', 'views');
   let tpList = LS.get('mb.tpList', 'longform'), tpHideDone = LS.get('mb.tpHideDone', false);
   const LISTS = [['longform', '🎬 유튜브 롱폼'], ['shorts', '📱 인스타 숏폼'], ['blog', '✍️ 블로그']];
@@ -45,8 +48,9 @@
     if (!force && Date.now() - loadedAt < 60000) { renderAll(); return; }
     loading = true; renderAll();
     try {
-      const [r, t, b, c] = await Promise.all([readJSON(`${DIR()}/반응.json`), readJSON(`${DIR()}/주제.json`), readJSON(`${DIR()}/블로그트렌드.json`), readJSON(`${DIR()}/체크.json`)]);
+      const [r, t, b, c, q] = await Promise.all([readJSON(`${DIR()}/반응.json`), readJSON(`${DIR()}/주제.json`), readJSON(`${DIR()}/블로그트렌드.json`), readJSON(`${DIR()}/체크.json`), readJSON(`${DIR()}/추천.json`)]);
       react = r.data && r.data.videos ? r.data : null;
+      rec = q.data && (Array.isArray(q.data.topics) || Array.isArray(q.data.improvements)) ? q.data : null;
       topics = t.data && t.data.lists ? t.data : null;
       trend = b.data && b.data.rows ? b.data : null;
       checks = (c.data && c.data.entries) || {}; checksSha = c.sha;
@@ -90,31 +94,109 @@
   }
   function renderReact() {
     const box = $('#rcList'); if (!box) return;
-    const fb = $('#rcFilter'); fb.textContent = '';
-    [['all', '전체'], ['short', '쇼츠'], ['long', '롱폼']].forEach(([k, label]) => {
-      const b = el('button', 'chip' + (rcKind === k ? ' is-on' : ''), label); b.type = 'button'; b.addEventListener('click', () => { rcKind = k; LS.set('mb.rcKind', k); renderReact(); }); fb.append(b);
-    });
-    const sb = $('#rcSort'); sb.textContent = '';
-    [['views', '조회수'], ['d1', '어제 대비'], ['like', '좋아요율'], ['new', '최신']].forEach(([k, label]) => {
-      const b = el('button', 'chip' + (rcSort === k ? ' is-on' : ''), label); b.type = 'button'; b.addEventListener('click', () => { rcSort = k; LS.set('mb.rcSort', k); renderReact(); }); sb.append(b);
-    });
+    const up = $('#rcUpdated');
+    if (up) up.textContent = rec ? `추천 ${rec.topicsDate || (rec.updatedAt || '').slice(0, 10)}${rec.noteDate ? ` · 개선점 ${rec.noteDate} 검토 기준` : ''}${rec.model ? ` · ${rec.model.replace('claude-', '')}` : ''}` : '';
     box.replaceChildren();
-    if (!SW.cfg().token) { box.append(el('p', 'hint', '설정 ①에서 저장소 열쇠를 넣으면 내 채널 반응이 보여요.')); return; }
-    if (loading && !react) { box.append(el('p', 'hint', '불러오는 중…')); return; }
-    if (!react) { box.append(el('p', 'hint', '아직 자료가 없어요. 맥북이 켜져 있으면 20분 안에 유튜브 성과를 정리해 올려요.')); return; }
-    const s = react.summary || {};
-    const sum = el('div', 'rc-sum');
-    sum.append(stat('최근 7일 쇼츠 평균', n(s.recent7 && s.recent7.shorts)), stat('최근 7일 롱폼 평균', n(s.recent7 && s.recent7.long)), stat('기준', `${s.today || ''} ${(s.at || '').slice(11, 16)}`));
-    box.append(sum);
-    const ig = react.instagram;
-    if (ig && Array.isArray(ig.manual) && ig.manual.length) {
-      const d = el('details', 'rc-ig'); d.append(el('summary', null, `인스타 릴스 기록 ${ig.manual.length}개 (수기)`));
-      ig.manual.forEach((m) => { const p = el('p', 'hint small', `${m.title} — ${n(m.views)}${m.note ? ` · ${m.note}` : ''}`); d.append(p); });
-      d.append(el('p', 'hint small', ig.note || '')); box.append(d);
+    if (!SW.cfg().token) { box.append(el('p', 'hint', '설정 ①에서 저장소 열쇠를 넣으면 개선점·추천 주제가 보여요.')); return; }
+    if (loading && !rec && !react) { box.append(el('p', 'hint', '불러오는 중…')); return; }
+    if (react && react.summary) {
+      const s = react.summary;
+      const sum = el('div', 'rc-sum');
+      sum.append(stat('최근 7일 쇼츠 평균', n(s.recent7 && s.recent7.shorts)), stat('최근 7일 롱폼 평균', n(s.recent7 && s.recent7.long)), stat('기준', `${s.today || ''} ${(s.at || '').slice(11, 16)}`));
+      box.append(sum);
     }
-    const list = sortedVideos();
-    if (!list.length) { box.append(el('p', 'hint', '여기엔 아직 없어요.')); return; }
-    list.slice(0, 60).forEach((v, i) => box.append(rcRow(v, i + 1)));
+    if (!rec) { box.append(el('p', 'hint', '아직 개선점·추천 자료가 없어요. 맥북이 켜져 있으면 아침 6시 이후 첫 동기화 때 올려요.')); return; }
+    if (rec.error) box.append(el('p', 'hint small rc-err', `⚠️ ${rec.error}`));
+    // ① 개선점 — 내 영상 반응에서 (맥북이 개선_체크리스트·개선노트를 요약)
+    const imps = Array.isArray(rec.improvements) ? rec.improvements : [];
+    const impBox = el('section', 'rc-imp');
+    impBox.append(el('h3', 'rc-h', `✅ 개선점 ${imps.length} · 내 영상 반응에서`));
+    if (!imps.length) impBox.append(el('p', 'hint small', '아직 체크리스트가 없어요.'));
+    imps.forEach((it) => {
+      const row = el('div', 'rc-imp-item' + (it.status === '지금 지킬 것' ? ' is-keep' : ''));
+      const head = el('div', 'tp-tags');
+      head.append(el('span', 'tp-tag kw', it.id || ''), el('span', 'tp-tag', it.target || ''));
+      if (it.status && it.status !== '지금 지킬 것') head.append(el('span', 'tp-tag new', it.status));
+      row.append(head, el('p', 'rc-imp-text', it.text || ''));
+      if (it.basis) row.append(el('p', 'rc-imp-basis', `근거 · ${it.basis}`));
+      impBox.append(row);
+    });
+    if (Array.isArray(rec.notes) && rec.notes.length) {
+      const d = el('details', 'rc-notes'); d.append(el('summary', null, `내일 기획에 바로 쓸 것 ${rec.notes.length} (개선노트 ${rec.noteDate || ''})`));
+      rec.notes.forEach((x) => d.append(el('p', 'hint small', `· ${x}`)));
+      impBox.append(d);
+    }
+    box.append(impBox);
+    // ② 추천 주제 3~5 — 남들이 터뜨린 것에서 (+ 롱폼/인스타 대본 초안)
+    const tops = Array.isArray(rec.topics) ? rec.topics : [];
+    const recBox = el('section', 'rc-rec');
+    recBox.append(el('h3', 'rc-h', `🔥 추천 주제 ${tops.length} · 남들이 터뜨린 것에서`));
+    if (!tops.length) recBox.append(el('p', 'hint small', '오늘 추천이 아직 없어요.'));
+    tops.forEach((item, i) => recBox.append(recCard(item, i + 1)));
+    box.append(recBox);
+    // ③ 내 영상 숫자는 접어 둔다 (사용자 10/20: 순위 나열은 불필요)
+    if (react && Array.isArray(react.videos)) {
+      const d = el('details', 'rc-videos'); d.append(el('summary', null, `내 영상 숫자 ${react.videos.filter((v) => !v.stale).length}개 (접힘)`));
+      const fb = el('div', 'chips'); fb.id = 'rcFilter';
+      [['all', '전체'], ['short', '쇼츠'], ['long', '롱폼']].forEach(([k, label]) => {
+        const b = el('button', 'chip' + (rcKind === k ? ' is-on' : ''), label); b.type = 'button'; b.addEventListener('click', () => { rcKind = k; LS.set('mb.rcKind', k); renderReact(); $('#rcList .rc-videos').open = true; }); fb.append(b);
+      });
+      const sb = el('div', 'chips rc-sort'); sb.id = 'rcSort';
+      [['views', '조회수'], ['d1', '어제 대비'], ['like', '좋아요율'], ['new', '최신']].forEach(([k, label]) => {
+        const b = el('button', 'chip' + (rcSort === k ? ' is-on' : ''), label); b.type = 'button'; b.addEventListener('click', () => { rcSort = k; LS.set('mb.rcSort', k); renderReact(); $('#rcList .rc-videos').open = true; }); sb.append(b);
+      });
+      d.append(fb, sb);
+      const ig = react.instagram;
+      if (ig && Array.isArray(ig.manual) && ig.manual.length) {
+        const g = el('details', 'rc-ig'); g.append(el('summary', null, `인스타 릴스 기록 ${ig.manual.length}개 (수기)`));
+        ig.manual.forEach((m) => g.append(el('p', 'hint small', `${m.title} — ${n(m.views)}${m.note ? ` · ${m.note}` : ''}`)));
+        g.append(el('p', 'hint small', ig.note || '')); d.append(g);
+      }
+      const list = sortedVideos();
+      if (!list.length) d.append(el('p', 'hint', '여기엔 아직 없어요.'));
+      list.slice(0, 20).forEach((v, k) => d.append(rcRow(v, k + 1)));
+      box.append(d);
+    }
+  }
+  function draftText(lines) { return (lines || []).map((l) => String(l)).join('\n'); }
+  function toScriptRec(item) {
+    const t = $('#mTopic'); if (t) { t.value = item.title; t.dispatchEvent(new Event('input', { bubbles: true })); }
+    const r = $('#mRough'); if (r && Array.isArray(item.insta) && item.insta.length) { r.value = draftText(item.insta); r.dispatchEvent(new Event('input', { bubbles: true })); }
+    const c = $('#mCta'); if (c && item.keyword) { c.value = item.keyword; c.dispatchEvent(new Event('input', { bubbles: true })); }
+    SW.switchTab('make'); SW.toast('대본 탭에 주제와 인스타 초안을 넣었어요');
+  }
+  function recCard(item, rank) {
+    const done = !!checks[item.id];
+    const c = el('article', 'rec-card' + (done ? ' is-done' : ''));
+    const lab = el('label', 'tp-check');
+    const cb = el('input'); cb.type = 'checkbox'; cb.checked = done; cb.setAttribute('aria-label', '만들었음');
+    cb.addEventListener('change', () => toggle(item, cb.checked));
+    lab.append(cb, el('b', 'tp-rank', `${rank}`));
+    const body = el('div', 'tp-body');
+    body.append(el('p', 'tp-title', item.title));
+    if (item.why) body.append(el('p', 'tp-why', `근거 · ${item.why}`));
+    const tags = el('div', 'tp-tags');
+    (item.tags || []).forEach((t) => tags.append(el('span', 'tp-tag', t)));
+    if (item.keyword) tags.append(el('span', 'tp-tag kw', `댓글 '${item.keyword}'`));
+    if (item.source) tags.append(el('span', 'tp-src', item.source));
+    if (done && checks[item.id].at) tags.append(el('span', 'tp-src', `✔ ${checks[item.id].at}`));
+    body.append(tags);
+    [['longform', '🎬 롱폼 초안'], ['insta', '📱 인스타 초안']].forEach(([k, label]) => {
+      const lines = Array.isArray(item[k]) ? item[k] : []; if (!lines.length) return;
+      const d = el('details', 'rec-draft'); d.append(el('summary', null, `${label} ${lines.length}문장`));
+      const ol = el('ol', 'rec-lines'); lines.forEach((l) => ol.append(el('li', null, String(l)))); d.append(ol);
+      const cp = el('button', 'text-btn', '복사'); cp.type = 'button';
+      cp.addEventListener('click', async () => { try { await navigator.clipboard.writeText(draftText(lines)); SW.toast('복사했어요'); } catch { SW.toast('길게 눌러 복사해 주세요'); } });
+      d.append(cp); body.append(d);
+    });
+    const row = el('div', 'tp-row');
+    const memo = el('button', 'ghost-btn', '✍️ 글감으로 메모'); memo.type = 'button';
+    memo.addEventListener('click', () => { SW.addNote(`🔥 추천 주제: ${item.title}${item.why ? ` (근거 ${item.why})` : ''}`, '블로그'); SW.toast('메모에 쌓았어요'); });
+    const go = el('button', 'ghost-btn', '✎ 대본 탭에 넣기'); go.type = 'button';
+    go.addEventListener('click', () => toScriptRec(item));
+    row.append(memo, go); body.append(row);
+    c.append(lab, body);
+    return c;
   }
 
   // ── 뜨는 주제 ──────────────────────────────────────────

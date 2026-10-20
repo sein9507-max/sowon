@@ -4,7 +4,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.7.0';
+  const VERSION = '1.8.0';
   const DEFAULT_CFG = { owner: 'sein9507-max', repo: 'newlywed_tech', branch: 'main', dir: '아이디어뇌/스택', token: '' };
   const KINDS = ['블로그', '카드뉴스', '대본', '경험', '기타'];
   const FIRST_MONTH = '2026-09';
@@ -445,9 +445,11 @@
   }
 
   // ── 시작 ────────────────────────────────────────────────
-  // 아래 큰 탭 4개 → 그 안의 작은 탭. 큰 탭을 누르면 그 묶음에서 마지막에 보던 작은 탭으로 간다 (1.5.0)
-  const GROUPS = { memo: ['talk', 'stack'], script: ['make', 'scripts'], topic: ['react', 'topics'], ref: ['refs', 'trend'], blog: ['blog'] };   // 1.7.0 주제 탭(내 반응·뜨는 주제)
-  const groupOf = (name) => Object.keys(GROUPS).find((g) => GROUPS[g].includes(name)) || 'memo';
+  // 아래 큰 탭 5개 → 그 안의 작은 탭. 큰 탭을 누르면 그 묶음에서 마지막에 보던 작은 탭으로 간다 (1.5.0)
+  // 1.8.0 순서(사용자 10/20): 레퍼런스 → 주제(뜨는 주제 먼저) → 대본 → 메모 → 블로그. 첫 화면은 레퍼런스.
+  const GROUPS = { ref: ['refs', 'trend'], topic: ['topics', 'react'], script: ['make', 'scripts'], memo: ['talk', 'stack'], blog: ['blog'] };
+  const DEFAULT_GROUP = 'ref';
+  const groupOf = (name) => Object.keys(GROUPS).find((g) => GROUPS[g].includes(name)) || DEFAULT_GROUP;
   function switchGroup(g) { const last = store.get('mb.sub.' + g, GROUPS[g][0]); switchTab(GROUPS[g].includes(last) ? last : GROUPS[g][0]); }
   function switchTab(name) {
     const g = groupOf(name); store.set('mb.sub.' + g, name);
@@ -513,6 +515,7 @@
     });
 
     if (prevMonth(loadedMonths[0]) < FIRST_MONTH) noMoreMonths = true;
+    switchGroup(DEFAULT_GROUP);   // 첫 화면은 레퍼런스(그 묶음에서 마지막에 보던 작은 탭)
     applyLogo(); renderTokenHelp(); renderAll();
     refreshMonth(loadedMonths[0]).then(flush);
     if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});

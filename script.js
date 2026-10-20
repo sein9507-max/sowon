@@ -1043,6 +1043,17 @@ function extrasHtml(sc) {
   if (sc.caption) h += `<div class="sc-box"><b>캡션</b><div class="cap">${esc(sc.caption)}</div>${sc.hashtags && sc.hashtags.length ? `<div class="tags">${esc(sc.hashtags.join(' '))}</div>` : ''}</div>`;
   return h;
 }
+// 1.8.0 맥북 도구/대본_매일하나.py 가 매일 1편 뽑은 대본: 어느 레퍼런스/트렌드에서 왔는지 + 줄별 출처표 + 유사도
+function sourceHtml(x) {
+  const s = x.source; if (!x.auto || !s) return '';
+  const where = s.kind === '레퍼런스'
+    ? `레퍼런스 ${s.refUrl ? `<a href="${esc(s.refUrl)}" target="_blank" rel="noopener noreferrer">${esc(s.refCode || '링크')}</a>` : esc(s.refCode || '')} ${esc(s.refTitle || '')}${s.refViews ? ` · 조회 ${esc(s.refViews)}` : ''}`
+    : `오늘 이슈 ⭐${esc(String(s.trendRank || '?'))}위 ${esc(s.trendTitle || '')}${s.trendAt ? ` (${esc(s.trendAt)} 수집)` : ''}`;
+  const sim = x.sim ? `유사도 최고 ${Math.round((x.sim.max || 0) * 100)}% · 50%↑ ${Math.round((x.sim.share50 || 0) * 100)}% → ${x.sim.pass ? '통과' : '⚠️ 미달'}` : '';
+  const rows = Array.isArray(x.sourceTable) && x.sourceTable.length
+    ? `<details class="sc-srctable"><summary>줄별 출처표 ${x.sourceTable.length}</summary><table>${x.sourceTable.map((r) => `<tr><td>${esc(r.slot || '')}</td><td>${esc(r.line || '')}</td><td>${esc(r.ref || '')}</td><td>${esc(r.how || '')}</td></tr>`).join('')}</table></details>` : '';
+  return `<div class="sc-box sc-src"><b>🤖 맥북이 오늘 뽑은 대본 · 어디서 왔나</b><div>${where}</div>${x.basis ? `<div class="hint small">근거 · ${esc(x.basis)}</div>` : ''}${sim ? `<div class="hint small">${sim}</div>` : ''}${x.readPath ? `<div class="hint small">읽기판 · ${esc(x.readPath)}</div>` : ''}${rows}</div>`;
+}
 function headHtml(sc, sub) {
   return `<div class="sc-head">${phoneHtml(sc)}<div class="sc-head-main">
     <div class="chips"><span class="tag">${esc(sc.structure || '구조')}</span><span class="tag used">${esc(sc.hookType || '후킹')}</span>${sc.ctaKeyword ? `<span class="tag">댓글 '${esc(sc.ctaKeyword)}'</span>` : ''}${sc.example ? '<span class="tag wait">예시</span>' : ''}</div>
@@ -1164,6 +1175,8 @@ function hookOf(x) { return x.slots && x.slots[0] ? x.slots[0].lines.map((l) => 
 function renderScripts() {
   const all = allScripts();
   const cnt = $('#scriptCount'); if (cnt) cnt.textContent = all.length ? String(all.length) : '';
+  const todo = all.filter((x) => x.auto && (x.status || '초안') === '초안').length;   // 1.8.0 맥북이 매일 뽑은 대본 중 아직 안 찍은 것
+  const nb = $('#scriptNavCount'); if (nb) nb.textContent = todo ? String(todo) : '';
   $('#scFilter').innerHTML = ['전체'].concat(STATUSES).map((k) => {
     const n = k === '전체' ? all.length : all.filter((x) => (x.status || '초안') === k).length;
     return `<button class="chip${k === S.scFilter ? ' is-on' : ''}" type="button" data-f="${k}" aria-pressed="${k === S.scFilter}">${k} ${n}</button>`;
@@ -1181,7 +1194,7 @@ function renderScripts() {
       return `<button class="sc-card" type="button" data-id="${esc(x.id)}">
         <span class="bar"><span>${fmtDate(x.createdAt)} · ${esc(x.structure || '')}</span><span class="st st-${esc(st)}">${esc(st)}</span></span>
         <span class="in"><span class="hk">${esc(hookOf(x))}</span><span class="ti">${esc(x.title)}</span>
-        <span class="chips"><span class="tag used">${esc(x.hookType || '후킹')}</span><span class="tag">${len}자</span>${x.ctaKeyword ? `<span class="tag">'${esc(x.ctaKeyword)}'</span>` : ''}${x._wait ? '<span class="tag wait">⏳ 올리는 중</span>' : ''}</span></span>
+        <span class="chips">${x.auto ? '<span class="tag auto">🤖 자동</span>' : ''}<span class="tag used">${esc(x.hookType || '후킹')}</span><span class="tag">${len}자</span>${x.ctaKeyword ? `<span class="tag">'${esc(x.ctaKeyword)}'</span>` : ''}${x._wait ? '<span class="tag wait">⏳ 올리는 중</span>' : ''}</span></span>
       </button>`;
     }).join('');
   }
@@ -1197,6 +1210,7 @@ function renderSheet() {
     ${headHtml(x, `${x.createdAt.slice(0, 10)} 저장${x.updatedAt && x.updatedAt !== x.createdAt ? ` · ${x.updatedAt.slice(0, 10)} 고침` : ''}`)}
     <div class="chips" role="group" aria-label="상태">${STATUSES.map((k) => `<button class="chip${k === st ? ' is-on' : ''}" type="button" data-st="${k}" aria-pressed="${k === st}">${k}</button>`).join('')}</div>
     ${checksHtml(x)}
+    ${sourceHtml(x)}
     ${expandHtml(x)}
     ${slotsHtml(x, S.sheetEditing, false)}
     ${extrasHtml(x)}

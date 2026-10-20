@@ -32,7 +32,7 @@
       <img id="brandIcon" class="brand-icon" src="icons/B/icon-192.png" alt="" width="44" height="44">
       <div class="brand-text">
         <h1>소원저장소</h1>
-        <p>아이디어 ✦ 대본 ✦ 주제 ✦ 블로그</p>
+        <p>레퍼런스 ✦ 주제 ✦ 대본 ✦ 메모 ✦ 블로그</p>
       </div>
     </div>
     <div class="top-right">
@@ -45,17 +45,17 @@
 
   <div id="banner" class="banner" hidden></div>
 
-  <!-- 아래 큰 탭 4개 안의 작은 탭 (지금 고른 큰 탭 것만 보인다) -->
+  <!-- 아래 큰 탭 5개 안의 작은 탭 (지금 고른 큰 탭 것만 보인다). 1.8.0: 레퍼런스 → 주제(뜨는 주제·내 반응) → 대본 → 메모 → 블로그 순, 첫 화면은 레퍼런스 -->
   <div id="subnav" class="subnav" role="tablist" aria-label="세부 화면">
-    <div class="seg" data-group="memo"><button class="tab-btn seg-btn is-active" data-tab="talk" type="button">말하기</button><button class="tab-btn seg-btn" data-tab="stack" type="button">쌓인 메모 <em id="stackCount"></em></button></div>
+    <div class="seg" data-group="ref"><button class="tab-btn seg-btn is-active" data-tab="refs" type="button">대본 스택 <em id="refCount"></em></button><button class="tab-btn seg-btn" data-tab="trend" type="button">급상승 <em id="trendCount"></em></button></div>
+    <div class="seg" data-group="topic" hidden><button class="tab-btn seg-btn" data-tab="topics" type="button">뜨는 주제 <em id="topicCount"></em></button><button class="tab-btn seg-btn" data-tab="react" type="button">내 반응</button></div>
     <div class="seg" data-group="script" hidden><button class="tab-btn seg-btn" data-tab="make" type="button">만들기</button><button class="tab-btn seg-btn" data-tab="scripts" type="button">완성대본 <em id="scriptCount"></em></button></div>
-    <div class="seg" data-group="topic" hidden><button class="tab-btn seg-btn" data-tab="react" type="button">내 반응</button><button class="tab-btn seg-btn" data-tab="topics" type="button">뜨는 주제 <em id="topicCount"></em></button></div>
-    <div class="seg" data-group="ref" hidden><button class="tab-btn seg-btn" data-tab="refs" type="button">대본 스택 <em id="refCount"></em></button><button class="tab-btn seg-btn" data-tab="trend" type="button">급상승 <em id="trendCount"></em></button></div>
+    <div class="seg" data-group="memo" hidden><button class="tab-btn seg-btn" data-tab="talk" type="button">말하기</button><button class="tab-btn seg-btn" data-tab="stack" type="button">쌓인 메모 <em id="stackCount"></em></button></div>
   </div>
 
   <main>
     <!-- 말하기 -->
-    <section id="tab-talk" class="tab is-active" aria-label="말하기">
+    <section id="tab-talk" class="tab" aria-label="말하기">
       <div id="micWrap" class="mic-wrap">
         <button id="micBtn" class="heart-btn" type="button" aria-pressed="false" aria-label="하트를 누르고 말하기">
           <span class="ring r1"></span><span class="ring r2"></span>
@@ -177,14 +177,13 @@
       </div>
       <div id="blList" class="list bl-list"></div>
     </section>
-    <!-- 주제: 내 반응 (유튜브 공개 성과 추이) -->
+    <!-- 주제: 내 반응 → 1.8.0: 내 영상 성과에서 뽑은 개선점 + 남들이 터뜨린 것에서 고른 추천 주제 3~5개 + 롱폼/인스타 대본 초안 (숫자 나열은 접힘) -->
     <section id="tab-react" class="tab" aria-label="내 반응">
       <div class="win">
         <div class="win-bar"><span class="win-title">📊 my_reaction.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
         <div class="win-body">
-          <p class="hint">내 유튜브 쇼츠·롱폼의 <b>조회수·어제 대비·좋아요</b>를 한눈에 봐요. 맥북이 저녁마다 공개 페이지 숫자를 모아 올려요.</p>
-          <div id="rcFilter" class="chips" role="group" aria-label="종류"></div>
-          <div id="rcSort" class="chips rc-sort" role="group" aria-label="정렬"></div>
+          <p class="hint">맥북이 내 영상 반응을 보고 뽑은 <b>개선점</b>, 남들이 터뜨린 주제에서 고른 <b>추천 주제 3~5개</b>와 <b>롱폼·인스타 대본 초안</b>이에요. 바로 찍을 건 <b>대본 탭에 넣기</b>.</p>
+          <p id="rcUpdated" class="hint small"></p>
           <button id="rcRefresh" class="ghost-btn" type="button">새로 불러오기</button>
         </div>
       </div>
@@ -205,7 +204,7 @@
     </section>
 
     <!-- 대본 스택 (좋은 릴스 링크 → 맥북이 받아쓰기 → 대본 칸으로 정리) -->
-    <section id="tab-refs" class="tab" aria-label="대본 스택">
+    <section id="tab-refs" class="tab is-active" aria-label="대본 스택">
       <div class="win">
         <div class="win-bar"><span class="win-title">◎ script_stack.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
         <div class="win-body">
@@ -239,10 +238,10 @@
   </main>
 
   <nav class="tabbar" aria-label="화면 전환">
-    <button class="nav-btn is-active" data-group="memo" type="button"><span class="tab-ico">♡</span>메모</button>
-    <button class="nav-btn" data-group="script" type="button"><span class="tab-ico">✎</span>대본</button>
+    <button class="nav-btn is-active" data-group="ref" type="button"><span class="tab-ico">◎</span>레퍼런스</button>
     <button class="nav-btn" data-group="topic" type="button"><span class="tab-ico">🔥</span><span>주제 <em id="topicNavCount"></em></span></button>
-    <button class="nav-btn" data-group="ref" type="button"><span class="tab-ico">◎</span>레퍼런스</button>
+    <button class="nav-btn" data-group="script" type="button"><span class="tab-ico">✎</span><span>대본 <em id="scriptNavCount"></em></span></button>
+    <button class="nav-btn" data-group="memo" type="button"><span class="tab-ico">♡</span>메모</button>
     <button class="nav-btn" data-group="blog" type="button"><span class="tab-ico">✿</span><span>블로그 <em id="blogCount"></em></span></button>
   </nav>
 </div>
