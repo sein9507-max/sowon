@@ -43,12 +43,12 @@
     </div>
   </header>
 
+  <div id="keyBanner" class="banner key" hidden></div>
   <div id="banner" class="banner" hidden></div>
 
-  <!-- 아래 큰 탭 5개 안의 작은 탭 (지금 고른 큰 탭 것만 보인다). 1.8.0: 레퍼런스 → 주제(뜨는 주제·내 반응) → 대본 → 메모 → 블로그 순, 첫 화면은 레퍼런스 -->
+  <!-- 아래 큰 탭 4개 안의 작은 탭 (지금 고른 큰 탭 것만 보인다). 1.9.0(사용자 10/21 "밑에 메뉴가 너무 많다"): 레퍼런스(대본 스택·급상승=주제 통째로) → 대본 → 메모 → 블로그, 첫 화면은 레퍼런스 -->
   <div id="subnav" class="subnav" role="tablist" aria-label="세부 화면">
     <div class="seg" data-group="ref"><button class="tab-btn seg-btn is-active" data-tab="refs" type="button">대본 스택 <em id="refCount"></em></button><button class="tab-btn seg-btn" data-tab="trend" type="button">급상승 <em id="trendCount"></em></button></div>
-    <div class="seg" data-group="topic" hidden><button class="tab-btn seg-btn" data-tab="topics" type="button">뜨는 주제 <em id="topicCount"></em></button><button class="tab-btn seg-btn" data-tab="react" type="button">내 반응</button></div>
     <div class="seg" data-group="script" hidden><button class="tab-btn seg-btn" data-tab="make" type="button">만들기</button><button class="tab-btn seg-btn" data-tab="scripts" type="button">완성대본 <em id="scriptCount"></em></button></div>
     <div class="seg" data-group="memo" hidden><button class="tab-btn seg-btn" data-tab="talk" type="button">말하기</button><button class="tab-btn seg-btn" data-tab="stack" type="button">쌓인 메모 <em id="stackCount"></em></button></div>
   </div>
@@ -167,7 +167,7 @@
       <div class="win">
         <div class="win-bar"><span class="win-title">✿ daily_blog.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
         <div class="win-body">
-          <p class="hint">사진첩 사진을 시간대별로 묶었어요. 말풍선에 짧은 후기를 적고 <b>발행</b>을 누르면, 밤 10시에 그 후기로 일상 글을 써서 크롬 확장에 넣어둬요.</p>
+          <p class="hint">사진첩 사진을 시간대별로 묶었어요(예전 사진까지 거슬러 올라가 늘 <b>10묶음</b>쯤 준비해 둬요). 말풍선에 짧은 후기를 적고 <b>발행</b>을 누르면, 밤 10시에 그 후기로 일상 글을 써서 크롬 확장에 넣어둬요. <b>N장 모두 보기</b>로 어떤 사진이 묶였는지 펼쳐 봐요.</p>
           <p id="blUpdated" class="hint small"></p>
           <div class="row">
             <button id="blPull" class="ghost-btn" type="button">📷 지금 사진 가져오기</button>
@@ -177,32 +177,6 @@
       </div>
       <div id="blList" class="list bl-list"></div>
     </section>
-    <!-- 주제: 내 반응 → 1.8.0: 내 영상 성과에서 뽑은 개선점 + 남들이 터뜨린 것에서 고른 추천 주제 3~5개 + 롱폼/인스타 대본 초안 (숫자 나열은 접힘) -->
-    <section id="tab-react" class="tab" aria-label="내 반응">
-      <div class="win">
-        <div class="win-bar"><span class="win-title">📊 my_reaction.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
-        <div class="win-body">
-          <p class="hint">맥북이 내 영상 반응을 보고 뽑은 <b>개선점</b>, 남들이 터뜨린 주제에서 고른 <b>추천 주제 3~5개</b>와 <b>롱폼·인스타 대본 초안</b>이에요. 바로 찍을 건 <b>대본 탭에 넣기</b>.</p>
-          <p id="rcUpdated" class="hint small"></p>
-          <button id="rcRefresh" class="ghost-btn" type="button">새로 불러오기</button>
-        </div>
-      </div>
-      <div id="rcList" class="list rc-list"></div>
-    </section>
-
-    <!-- 주제: 뜨는 주제 (롱폼·숏폼·블로그 TOP 20, 만들면 체크) -->
-    <section id="tab-topics" class="tab" aria-label="뜨는 주제">
-      <div class="win">
-        <div class="win-bar"><span class="win-title">🔥 hot_topics.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
-        <div class="win-body">
-          <p class="hint">요즘 뜨는 주제 TOP 20을 <b>롱폼·숏폼·블로그</b>로 나눠 두었어요. 만들었으면 체크하고, 바로 만들 건 <b>대본 탭에 넣기</b>를 누르세요.</p>
-          <div id="tpFilter" class="chips" role="group" aria-label="목록"></div>
-          <button id="tpRefresh" class="ghost-btn" type="button">새로 불러오기</button>
-        </div>
-      </div>
-      <div id="tpList" class="list tp-list"></div>
-    </section>
-
     <!-- 대본 스택 (좋은 릴스 링크 → 맥북이 받아쓰기 → 대본 칸으로 정리) -->
     <section id="tab-refs" class="tab is-active" aria-label="대본 스택">
       <div class="win">
@@ -223,23 +197,35 @@
     </section>
 
     <!-- 급상승 (인스타 레퍼런스 아이디어 뱅크) -->
-    <section id="tab-trend" class="tab" aria-label="급상승">
+    <!-- 급상승 = 주제 탭 통째로 (1.9.0, 사용자 10/21): 맨 위 내 채널 구독자·총 조회수 합산 → 추천 주제 3~5(롱폼·인스타 초안) → 뜨는 주제 TOP 20 → 개선점(내 영상 반응) → 접힌 숫자 → 인스타 급상승 수집 -->
+    <section id="tab-trend" class="tab" aria-label="급상승·주제">
       <div class="win">
-        <div class="win-bar"><span class="win-title">🔥 trending_reels.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
+        <div class="win-bar"><span class="win-title">🔥 hot_topics.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
         <div class="win-body">
-          <p class="hint">크롬에서 인스타를 내리면 확장이 <b>어제오늘 올라온 댓글 많은 게시물</b>을 여기 쌓아요. 마음에 드는 걸 <b>대본에 붙이기</b>로 가져가세요.</p>
-          <div id="trFilter" class="chips" role="group" aria-label="보기"></div>
-          <button id="trRefresh" class="ghost-btn" type="button">새로 불러오기</button>
+          <div id="chStrip" class="ch-strip" aria-label="내 채널"></div>
+          <p class="hint">남들이 터뜨린 것에서 고른 <b>추천 주제 3~5개</b>(롱폼·인스타 초안), 요즘 뜨는 주제 <b>TOP 20</b>, 내 영상 반응에서 뽑은 <b>개선점</b>이에요. 바로 찍을 건 <b>대본 탭에 넣기</b>.</p>
+          <p id="rcUpdated" class="hint small"></p>
+          <button id="tpRefresh" class="ghost-btn" type="button">새로 불러오기</button>
         </div>
       </div>
-      <div id="trList" class="list tr-list"></div>
+      <div id="recList" class="list rc-list" aria-label="추천 주제"></div>
+      <h3 class="rc-h">📈 뜨는 주제 TOP 20</h3>
+      <div id="tpFilter" class="chips" role="group" aria-label="목록"></div>
+      <div id="tpList" class="list tp-list"></div>
+      <div id="impList" class="list rc-list" aria-label="개선점"></div>
+      <details id="trInsta" class="sc-opt tr-insta">
+        <summary>📸 인스타 급상승 수집 <em id="trInstaCount"></em></summary>
+        <p class="hint small">크롬에서 인스타를 내리면 확장이 <b>어제오늘 올라온 댓글 많은 게시물</b>을 여기 쌓아요. 마음에 드는 걸 <b>대본에 붙이기</b>로 가져가세요.</p>
+        <div id="trFilter" class="chips" role="group" aria-label="보기"></div>
+        <button id="trRefresh" class="ghost-btn" type="button">새로 불러오기</button>
+        <div id="trList" class="list tr-list"></div>
+      </details>
     </section>
 
   </main>
 
   <nav class="tabbar" aria-label="화면 전환">
-    <button class="nav-btn is-active" data-group="ref" type="button"><span class="tab-ico">◎</span>레퍼런스</button>
-    <button class="nav-btn" data-group="topic" type="button"><span class="tab-ico">🔥</span><span>주제 <em id="topicNavCount"></em></span></button>
+    <button class="nav-btn is-active" data-group="ref" type="button"><span class="tab-ico">◎</span><span>레퍼런스 <em id="refNavCount"></em></span></button>
     <button class="nav-btn" data-group="script" type="button"><span class="tab-ico">✎</span><span>대본 <em id="scriptNavCount"></em></span></button>
     <button class="nav-btn" data-group="memo" type="button"><span class="tab-ico">♡</span>메모</button>
     <button class="nav-btn" data-group="blog" type="button"><span class="tab-ico">✿</span><span>블로그 <em id="blogCount"></em></span></button>
@@ -252,15 +238,16 @@
   <div class="sheet-body">
     <div class="card">
       <h3>① 저장소 열쇠</h3>
-      <p class="hint">내 비공개 저장소(<b id="repoLabel"></b>)에 글자를 쌓으려면 GitHub 전용 열쇠가 한 번 필요해요. 열쇠는 이 휴대폰 안에만 저장돼요.</p>
+      <p class="hint">내 비공개 저장소(<b id="repoLabel"></b>)에 글자를 쌓으려면 GitHub 전용 열쇠가 한 번 필요해요. 열쇠는 이 휴대폰 안에만 저장돼요. <b>만료 없음(No expiration)</b>으로 만들면 다시 넣을 일이 없어요.</p>
+      <p id="tokenInfo" class="hint small"></p>
       <label class="sr-only" for="token">GitHub 열쇠</label>
-      <input id="token" class="field" type="password" inputmode="latin" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_… 붙여넣기">
+      <input id="token" class="field" type="password" inputmode="latin" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ghp_… 붙여넣기">
       <button id="connectBtn" class="aqua-btn small" type="button">저장하고 연결 확인</button>
       <p id="connectMsg" class="msg" role="status"></p>
       <details>
         <summary>열쇠 발급 방법 보기</summary>
         <ol class="steps" id="tokenSteps"></ol>
-        <a id="tokenLink" class="link-btn" target="_blank" rel="noopener noreferrer">열쇠 발급 페이지 열기 ↗</a>
+        <a id="tokenLink" class="link-btn" target="_blank" rel="noopener noreferrer">만료 없는 열쇠 발급 페이지 열기 ↗</a>
       </details>
     </div>
 

@@ -4,7 +4,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.8.1';
+  const VERSION = '1.9.0';
   const DEFAULT_CFG = { owner: 'sein9507-max', repo: 'newlywed_tech', branch: 'main', dir: '아이디어뇌/스택', token: '' };
   const KINDS = ['블로그', '카드뉴스', '대본', '경험', '기타'];
   const FIRST_MONTH = '2026-09';
@@ -29,6 +29,8 @@
   let noMoreMonths = false;
   let flushing = false;
   let lastError = '';
+  let authBad = false;                            // 1.9.0: 열쇠가 틀리거나 만료돼 401이 난 상태(띠로 알린다)
+  const TOKEN_URL = 'https://github.com/settings/tokens/new?scopes=repo&description=sowon-phone';   // 1.9.0: 만료 없음을 고를 수 있는 classic 열쇠 (fine-grained 는 최대 1년)
   let kind = '';
   let editing = null;
 
@@ -77,12 +79,17 @@
         body: opts.body ? JSON.stringify(opts.body) : undefined,
       });
     } catch { throw new ApiError(0, '인터넷 연결을 확인해 주세요'); }
-    if (res.ok) return res.status === 204 ? null : res.json();
+    try {   // 1.9.0: 만료가 있는 열쇠는 GitHub 가 만료 시각을 헤더로 준다(브라우저에 안 보일 수도 있음) → 미리 알림
+      const exp = res.headers.get('github-authentication-token-expiration');
+      if (exp) store.set('mb.tokenExp', exp);
+    } catch { /* 무시 */ }
+    if (res.ok) { if (authBad) { authBad = false; renderKeyBanner(); renderStatus(); } return res.status === 204 ? null : res.json(); }
+    if (res.status === 401 && !authBad) { authBad = true; renderKeyBanner(); renderStatus(); }
     let detail = ''; try { detail = (await res.json()).message || ''; } catch { /* 무시 */ }
     throw new ApiError(res.status, explain(res.status, detail));
   }
   function explain(status, detail) {
-    if (status === 401) return '열쇠가 틀렸거나 만료됐어요. 설정에서 새 열쇠를 넣어주세요';
+    if (status === 401) return '저장소 열쇠가 만료됐거나 틀려요. 맨 위 노란 띠에서 만료 없는 새 열쇠를 만들어 넣어주세요';
     if (status === 403 && /rate limit/i.test(detail)) return '요청이 잠시 몰렸어요. 조금 뒤에 다시 올릴게요';
     if (status === 403) return '이 열쇠에 쓰기 권한이 없어요. 열쇠의 Contents 권한을 확인해 주세요';
     if (status === 404) return '이 열쇠로는 저장소가 안 보여요. 열쇠를 만들 때 저장소를 골랐는지 확인해 주세요';
@@ -163,7 +170,12 @@
 
   // ── 화면: 공통 ──────────────────────────────────────────
   let toastTimer = 0;
-  function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('is-on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('is-on'), 2600); }
+  let lastToast = '', lastToastAt = 0;
+  function toast(msg) {
+    if (msg === lastToast && Date.now() - lastToastAt < 4000) return;   // 1.9.0: 같은 말 4초 안 반복 금지(열쇠 만료 때 탭마다 겹치던 토스트)
+    lastToast = msg; lastToastAt = Date.now();
+    const t = $('#toast'); t.textContent = msg; t.classList.add('is-on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('is-on'), 2600);
+  }
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const isAndroid = /Android/i.test(navigator.userAgent);
@@ -172,6 +184,7 @@
   function renderStatus() {
     const p = $('#syncPill'); p.className = 'pill';
     if (!cfg.token) { p.textContent = '열쇠 필요'; p.classList.add('is-wait'); }
+    else if (authBad) { p.textContent = '열쇠 만료'; p.classList.add('is-err'); }
     else if (flushing) { p.textContent = '올리는 중…'; p.classList.add('is-wait'); }
     else if (!navigator.onLine) { p.textContent = `오프라인${queue.length ? ' · 대기 ' + queue.length : ''}`; p.classList.add('is-wait'); }
     else if (queue.length && lastError) { p.textContent = `대기 ${queue.length} · 다시 시도`; p.classList.add('is-err'); }
@@ -182,7 +195,29 @@
     $('#errInfo').textContent = lastError || '없음';
   }
 
+  // 1.9.0 (사용자 10/21 "열쇠 만료됐다고 등록하라고만 뜨고 아무것도 안 뜬다, 매번 만료되면 불편"):
+  //  ① 만료 없는 classic 열쇠를 안내(링크가 권한·이름을 미리 채움) ② 401 이면 맨 위 띠로 바로 발급 페이지 + 붙여넣기 ③ 만료 2주 전부터 미리 띠 ④ 마지막으로 본 자료는 그대로 둔다
+  function tokenExpiry() {
+    const raw = store.get('mb.tokenExp', '');
+    if (!raw) return null;
+    const d = new Date(String(raw).replace(' UTC', 'Z').replace(' ', 'T'));
+    return isNaN(d) ? null : d;
+  }
+  function renderKeyBanner() {
+    const b = $('#keyBanner'); if (!b) return;
+    b.textContent = ''; b.hidden = true;
+    if (!cfg.token) return;
+    const exp = tokenExpiry(); const left = exp ? Math.ceil((exp - Date.now()) / 864e5) : null;
+    let msg = '';
+    if (authBad) msg = '🔑 저장소 열쇠가 만료됐거나 틀려요. 화면엔 마지막으로 본 것만 남아요. ';
+    else if (left != null && left <= 14) msg = left <= 0 ? '🔑 저장소 열쇠 만료일이 지났어요. ' : `🔑 저장소 열쇠가 ${left}일 뒤 만료돼요. 미리 만료 없는 열쇠로 바꿔 두세요. `;
+    if (!msg) return;
+    b.hidden = false; b.append(msg);
+    const a = el('a', '', '만료 없는 새 열쇠 만들기 ↗'); a.href = TOKEN_URL; a.target = '_blank'; a.rel = 'noopener noreferrer'; b.append(a, ' ');
+    const btn = el('button', '', '열쇠 붙여넣기'); btn.type = 'button'; btn.addEventListener('click', openSettings); b.append(btn);
+  }
   function renderBanner() {
+    renderKeyBanner();
     const b = $('#banner'); b.textContent = ''; b.hidden = true;
     if (isIOS && !isStandalone) {
       b.hidden = false; b.append('📌 Safari의 공유 버튼 → “홈 화면에 추가”를 누르면 하트 앱으로 쓸 수 있어요. 열쇠는 그 하트 앱 안에서 넣어주세요. ');
@@ -396,24 +431,29 @@
 
   // ── 설정 ────────────────────────────────────────────────
   // 홀수 번째 조각은 GitHub 화면에 실제로 보이는 영어 이름(공식 문서로 확인한 것만 적는다)
-  const TOKEN_STEPS = [
-    ['GitHub에 로그인한 상태에서 아래 “열쇠 발급 페이지 열기”를 눌러요. 이름·설명·권한은 링크가 미리 채워줘요.'],
-    ['', 'Expiration', ' 은 미리 366일로 들어가 있어요. 그대로 두거나 원하는 기간으로 바꿔요. (기간이 끝나면 새로 발급해서 다시 넣으면 돼요. 그동안 말한 메모는 휴대폰에 남아 있어요)'],
-    ['', 'Repository access', ' 에서 ', 'Only select repositories', ' 를 고르고, ', 'Selected repositories', ' 목록에서 ', 'newlywed_tech', ' 하나만 선택해요.'],
-    ['', 'Permissions', ' 에는 ', 'Contents', ' 가 이미 들어가 있어요. 그대로 두고 다른 권한은 추가하지 않아요.'],
-    ['맨 아래 ', 'Generate token', ' 을 누르고, 나온 ', 'github_pat_…', ' 글자를 복사해서 위 칸에 붙여넣어요. (그 화면을 벗어나면 다시 볼 수 없어요)'],
+  const TOKEN_STEPS = [   // 1.9.0: classic 열쇠 — 'No expiration' 을 고를 수 있는 건 이 종류뿐 (fine-grained 는 최대 1년이라 매번 만료됐다)
+    ['GitHub에 로그인한 상태에서 아래 “만료 없는 열쇠 발급 페이지 열기”를 눌러요. 이름(Note)과 권한은 링크가 미리 채워줘요.'],
+    ['', 'Expiration', ' 칸을 눌러 ', 'No expiration', ' 을 고르세요. 이걸 골라야 다시는 만료되지 않아요. (기본값 30 days 그대로 두면 한 달 뒤 또 막혀요)'],
+    ['', 'Select scopes', ' 에서 ', 'repo', ' 에 체크가 돼 있는지만 확인해요. 다른 권한은 추가하지 않아요.'],
+    ['맨 아래 ', 'Generate token', ' 을 누르고, 나온 ', 'ghp_…', ' 글자를 복사해서 위 칸에 붙여넣은 뒤 “저장하고 연결 확인”을 눌러요. (그 화면을 벗어나면 다시 볼 수 없어요)'],
   ];
   function renderTokenHelp() {
     const ol = $('#tokenSteps'); ol.textContent = '';
     TOKEN_STEPS.forEach((parts) => { const li = el('li'); parts.forEach((p, i) => li.append(i % 2 ? el('code', '', p) : p)); ol.append(li); });
-    const q = new URLSearchParams({ name: 'sowon-phone', description: '소원저장소 앱이 아이디어뇌 폴더에 쓰는 열쇠', target_name: cfg.owner, expires_in: '366', contents: 'write' });
-    $('#tokenLink').href = `https://github.com/settings/personal-access-tokens/new?${q}`;
+    $('#tokenLink').href = TOKEN_URL;
+  }
+  function renderTokenInfo() {
+    const p = $('#tokenInfo'); if (!p) return;
+    if (!cfg.token) { p.textContent = ''; return; }
+    const at = store.get('mb.tokenAt', ''); const exp = tokenExpiry();
+    const kind = cfg.token.startsWith('ghp_') ? 'classic' : cfg.token.startsWith('github_pat_') ? 'fine-grained(최대 1년)' : '';
+    p.textContent = [authBad ? '⚠️ 지금 열쇠는 만료됐거나 틀려요' : '열쇠 들어 있음', kind, at ? `넣은 날 ${String(at).slice(0, 10)}` : '', exp ? `만료 ${exp.toISOString().slice(0, 10)}` : (kind === 'classic' ? '만료 없음으로 만들었다면 끝' : '')].filter(Boolean).join(' · ');
   }
   function openSettings() {
     $('#repoLabel').textContent = `${cfg.owner}/${cfg.repo}`;
     $('#token').value = ''; $('#token').placeholder = cfg.token ? '열쇠가 들어 있어요 · 바꾸려면 새로 붙여넣기' : 'github_pat_… 붙여넣기';
     $('#cfgOwner').value = cfg.owner; $('#cfgRepo').value = cfg.repo; $('#cfgBranch').value = cfg.branch; $('#cfgDir').value = cfg.dir;
-    $('#verInfo').textContent = VERSION; setMsg('', ''); renderLogoPicker();
+    $('#verInfo').textContent = VERSION; setMsg('', ''); renderLogoPicker(); renderTokenInfo();
     renderStatus(); $('#settings').showModal();
   }
   function setMsg(text, cls) { const m = $('#connectMsg'); m.textContent = text; m.className = 'msg' + (cls ? ' ' + cls : ''); }
@@ -427,7 +467,9 @@
     try {
       await gh(repoPath());                                                                   // 저장소가 보이는지
       await gh(`${repoPath()}/git/blobs`, { method: 'POST', body: { content: 'ping', encoding: 'utf-8' } }); // 쓰기 권한(커밋은 생기지 않음)
-      store.set('mb.cfg', cfg); $('#token').value = ''; lastError = '';
+      store.set('mb.cfg', cfg); $('#token').value = ''; lastError = ''; authBad = false;
+      if (t) { store.set('mb.tokenAt', isoLocal(new Date())); store.del('mb.tokenExp'); }
+      renderTokenInfo(); renderKeyBanner();
       setMsg('연결됐어요 ✔ 이제 말하면 저장소에 쌓여요', 'ok');
       await refreshMonth(loadedMonths[0]); flush();
     } catch (e) { cfg = before; setMsg(e.message, 'err'); }
@@ -435,7 +477,7 @@
   }
   function forgetToken() {
     if (!confirm('이 휴대폰에서 열쇠를 지울까요? 쌓아둔 메모는 저장소에 그대로 있어요.')) return;
-    cfg.token = ''; store.set('mb.cfg', cfg); toast('열쇠를 지웠어요'); $('#settings').close(); renderAll();
+    cfg.token = ''; authBad = false; store.set('mb.cfg', cfg); store.del('mb.tokenExp'); toast('열쇠를 지웠어요'); $('#settings').close(); renderAll();
   }
   async function checkUpdate() {
     if (!('serviceWorker' in navigator)) { location.reload(); return; }
@@ -446,12 +488,13 @@
 
   // ── 시작 ────────────────────────────────────────────────
   // 아래 큰 탭 5개 → 그 안의 작은 탭. 큰 탭을 누르면 그 묶음에서 마지막에 보던 작은 탭으로 간다 (1.5.0)
-  // 1.8.0 순서(사용자 10/20): 레퍼런스 → 주제(뜨는 주제 먼저) → 대본 → 메모 → 블로그. 첫 화면은 레퍼런스.
-  const GROUPS = { ref: ['refs', 'trend'], topic: ['topics', 'react'], script: ['make', 'scripts'], memo: ['talk', 'stack'], blog: ['blog'] };
+  // 1.8.0 순서(사용자 10/20): 레퍼런스 → 주제 → 대본 → 메모 → 블로그. 1.9.0(10/21 "밑에 메뉴가 너무 많다"): 주제 탭을 통째로 레퍼런스 > 급상승 안으로 → 큰 탭 4개. 첫 화면은 레퍼런스.
+  const GROUPS = { ref: ['refs', 'trend'], script: ['make', 'scripts'], memo: ['talk', 'stack'], blog: ['blog'] };
   const DEFAULT_GROUP = 'ref';
   const groupOf = (name) => Object.keys(GROUPS).find((g) => GROUPS[g].includes(name)) || DEFAULT_GROUP;
   function switchGroup(g) { const last = store.get('mb.sub.' + g, GROUPS[g][0]); switchTab(GROUPS[g].includes(last) ? last : GROUPS[g][0]); }
   function switchTab(name) {
+    if (name === 'topics' || name === 'react') name = 'trend';   // 1.9.0: 예전 주제 탭 이름 → 급상승
     const g = groupOf(name); store.set('mb.sub.' + g, name);
     document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('is-active', t.id === `tab-${name}`));
     document.querySelectorAll('.tab-btn').forEach((b) => { const on = b.dataset.tab === name; b.classList.toggle('is-active', on); b.setAttribute('aria-selected', String(on)); });
@@ -475,7 +518,7 @@
   // script.js(모듈)와 나누는 다리
   window.sowon = {
     entries: () => visibleEntries(), markUsed, addNote, toast, isoLocal, makeId, switchTab, openSettings,
-    cfg: () => cfg, gh, repoPath, b64encode, b64decode,
+    cfg: () => cfg, gh, repoPath, b64encode, b64decode, authBad: () => authBad,
   };
 
   function init() {
@@ -497,7 +540,11 @@
     document.querySelectorAll('.tab-btn').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
     document.querySelectorAll('.nav-btn').forEach((b) => b.addEventListener('click', () => switchGroup(b.dataset.group)));
     $('#openSettings').addEventListener('click', openSettings);
-    $('#syncPill').addEventListener('click', () => { if (!cfg.token) openSettings(); else if (queue.length) { lastError = ''; flush(); } else refreshMonth(loadedMonths[0]).then(() => toast('최신 상태예요')); });
+    $('#syncPill').addEventListener('click', () => {
+      if (!cfg.token) { openSettings(); return; }
+      if (authBad) { lastError = ''; (queue.length ? flush() : refreshMonth(loadedMonths[0])).then(() => { if (authBad) openSettings(); }); return; }   // 1.9.0: 한 번 더 시도해 보고 그래도 401이면 설정으로
+      if (queue.length) { lastError = ''; flush(); } else refreshMonth(loadedMonths[0]).then(() => toast('최신 상태예요'));
+    });
     document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => b.closest('dialog').close()));
     document.querySelectorAll('dialog').forEach((d) => d.addEventListener('click', (ev) => { if (ev.target === d) d.close(); }));
     $('#connectBtn').addEventListener('click', connect);

@@ -54,7 +54,7 @@
       names = n.data.names || {};
       reviews = Array.isArray(r.data.entries) ? r.data.entries : []; reviewsSha = r.sha;
       loadedAt = Date.now();
-    } catch (e) { SW.toast(`블로그 불러오기 실패: ${e.message || e}`); }
+    } catch (e) { if (e.status !== 401) SW.toast(`블로그 불러오기 실패: ${e.message || e}`); }
     finally { loading = false; render(); }
   }
 
@@ -85,6 +85,14 @@
     const pick = g.photos.length <= 6 ? g.photos : [0, 1, 2, 3, 4, 5].map((k) => g.photos[Math.floor(k * (g.photos.length - 1) / 5)]);
     pick.forEach((f) => { const im = el('img'); im.alt = ''; im.loading = 'lazy'; strip.append(im); thumb(im, `${DIR()}/미리보기/${g.id}/${f}`); });
     card.append(strip);
+    // 1.9.0 (사용자 10/21 "18개 묶음이면 어떤 사진이 들어갔는지 모른다 — 펼쳐서 한눈에"): 전체 사진 격자 펼치기
+    const more = el('button', 'mini-btn bl-more', `📷 ${g.count}장 모두 보기`); more.type = 'button';
+    const grid = el('div', 'bl-grid'); grid.hidden = true;
+    more.addEventListener('click', () => {
+      if (!grid.childElementCount) g.photos.forEach((f) => { const im = el('img'); im.alt = ''; im.loading = 'lazy'; grid.append(im); thumb(im, `${DIR()}/미리보기/${g.id}/${f}`); });
+      grid.hidden = !grid.hidden; more.textContent = grid.hidden ? `📷 ${g.count}장 모두 보기` : '접기';
+    });
+    card.append(more, grid);
 
     if (rv && rv.status === '건너뜀') {
       card.classList.add('is-done');
@@ -98,6 +106,7 @@
     if (rv && rv.status === '완료') {
       card.classList.add('is-done');
       card.append(el('p', 'bl-status ok', `✔ 글로 만들었어요${rv.title ? ` · “${rv.title}”` : ''} — 크롬 확장에서 확인하고 발행하세요`));
+      card.append(el('p', 'hint small', '이 묶음 사진은 맥북이 사진 앱 앨범 “블로그에 쓴 사진 (지워도 됨)”에 모아 둬요. 앨범을 열어 전체 선택 → 삭제하면 사진첩에서 정리돼요.'));
       return card;
     }
     const say = el('div', 'bl-say');
@@ -211,6 +220,7 @@
     const done = sorted.filter((g) => st(g) === '완료');
     const skipped = sorted.filter((g) => st(g) === '건너뜀');
     if (!open.length) box.append(el('p', 'hint', '후기 쓸 묶음이 없어요. 새 사진이 오면 여기 떠요.'));
+    else box.append(el('p', 'hint small bl-count', `후기 쓸 묶음 ${open.length}개 · 맥북이 예전 사진까지 거슬러 올라가 10묶음쯤 채워 둬요`));
     open.forEach((g) => box.append(bubble(g)));
     [[done, '글로 만든 묶음'], [skipped, '건너뛴 묶음']].forEach(([list, title]) => {
       if (!list.length) return;

@@ -41,7 +41,7 @@
       [...b, ...a].forEach((x) => byCode.set(x.code, x));
       items = [...byCode.values()];
       loadedAt = Date.now();
-    } catch (e) { SW.toast(`급상승 불러오기 실패: ${e.message || e}`); }
+    } catch (e) { if (e.status !== 401) SW.toast(`급상승 불러오기 실패: ${e.message || e}`); }
     finally { loading = false; render(); }
   }
 
@@ -96,7 +96,8 @@
   function render() {
     const box = $('#trList'); if (!box) return;
     const hot = items.filter((x) => ageOf(x) <= 48 && !used[x.code]).length;
-    $('#trendCount').textContent = hot ? String(hot) : '';
+    const cnt = $('#trInstaCount'); if (cnt) cnt.textContent = hot ? String(hot) : '';   // 1.9.0: 급상승 세부 탭 배지는 주제(topic.js)가 쓰고, 인스타 수집 수는 접힘 제목에
+    const det = $('#trInsta'); if (det && items.length && !det.dataset.touched) det.open = true;
     const fb = $('#trFilter'); fb.textContent = '';
     VIEWS.forEach(([k, label]) => {
       const b = el('button', 'chip' + (view === k ? ' is-on' : ''), label); b.type = 'button'; b.setAttribute('aria-pressed', String(view === k));
@@ -115,6 +116,7 @@
 
   document.addEventListener('sowon:tab', (e) => { if (e.detail === 'trend') load(); });
   $('#trRefresh').addEventListener('click', () => load(true));
+  const det0 = $('#trInsta'); if (det0) det0.addEventListener('toggle', () => { det0.dataset.touched = '1'; });
   window.addEventListener('online', () => load(true));
   render();
   load(true);
