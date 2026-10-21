@@ -69,14 +69,17 @@
 
   // ── ① 내 채널 숫자 (맨 위) ────────────────────────────
   function stat(label, value, cls) { const s = el('div', 'rc-stat' + (cls ? ' ' + cls : '')); s.append(el('small', null, label), el('b', null, value)); return s; }
-  function chCard(name, subs, views, cls, note) {
-    const c = el('div', 'ch-card' + (cls ? ' ' + cls : ''));
-    c.append(el('small', 'ch-name', name));
+  // 1.9.2 (사용자 10/21 "총조회수가 아니라 최근 30일 조회수 — 스튜디오 인사이트 첫 페이지"): views30. 30일치가 아직 없으면 'N일' 로 정직하게
+  const vLabel = (c) => c.views30 == null ? '최근 30일 조회수' : `최근 ${c.viewsDays && c.viewsDays < 30 ? c.viewsDays : 30}일 조회수`;
+  function chCard(name, subs, c, cls, note) {
+    const box = el('div', 'ch-card' + (cls ? ' ' + cls : ''));
+    box.append(el('small', 'ch-name', name));
     const row = el('div', 'ch-nums');
-    row.append(stat('구독자', subs == null ? '-' : n(subs)), stat('총 조회수', views == null ? '-' : n(views)));
-    c.append(row);
-    if (note) c.append(el('small', 'ch-note', note));
-    return c;
+    row.append(stat('구독자', subs == null ? '-' : n(subs)), stat(vLabel(c), c.views30 == null ? '-' : n(c.views30)));
+    const c0 = box;
+    c0.append(row);
+    if (note) c0.append(el('small', 'ch-note', note));
+    return c0;
   }
   function renderChannel() {
     const box = $('#chStrip'); if (!box) return;
@@ -86,10 +89,14 @@
     const src = chan && chan.channels ? chan.channels : (s && Array.isArray(s.channels) ? s.channels : []);
     const chs = src.filter((c) => c && (c.subscribers != null || c.totalViews != null));
     if (!chs.length && !s) { box.append(el('p', 'hint small', loading ? '내 채널 숫자 불러오는 중…' : '내 채널 숫자는 맥북이 켜져 있으면 20분 안에 올라와요.')); return; }
-    chs.forEach((c) => box.append(chCard(`📺 ${c.name || c.handle || c.id}`, c.subscribers, c.totalViews, '', c.at ? `${String(c.at).slice(5, 16).replace('T', ' ')} 기준` : '')));
+    chs.forEach((c) => box.append(chCard(`📺 ${c.name || c.handle || c.id}`, c.subscribers, c, '',
+      [c.viewsSrc, c.viewsRange].filter(Boolean).join(' · ') || (c.at ? `${String(c.at).slice(5, 16).replace('T', ' ')} 기준` : ''))));
     if (chs.length >= 2) {
       const sum = (k) => chs.reduce((a, c) => a + (Number(c[k]) || 0), 0);
-      box.append(chCard('Σ 유튜브 합산', sum('subscribers'), sum('totalViews'), 'sum', `채널 ${chs.length}개`));
+      const have = chs.filter((c) => c.views30 != null);
+      const days = Math.min(...have.map((c) => c.viewsDays || 30));
+      box.append(chCard('Σ 유튜브 합산', sum('subscribers'), { views30: have.length ? sum('views30') : null, viewsDays: have.length ? days : null }, 'sum',
+        `채널 ${chs.length}개${have.length < chs.length ? ` · 조회수는 ${have.length}개 채널만` : ''}`));
     }
     if (s && s.recent7) {
       const c = el('div', 'ch-card' + (chs.length >= 2 ? '' : ' sum'));
