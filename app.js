@@ -4,7 +4,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.9.0';
+  const VERSION = '1.9.1';
   const DEFAULT_CFG = { owner: 'sein9507-max', repo: 'newlywed_tech', branch: 'main', dir: '아이디어뇌/스택', token: '' };
   const KINDS = ['블로그', '카드뉴스', '대본', '경험', '기타'];
   const FIRST_MONTH = '2026-09';
@@ -23,6 +23,33 @@
 
   // ── 상태 ────────────────────────────────────────────────
   let cfg = { ...DEFAULT_CFG, ...store.get('mb.cfg', {}) };
+
+  // 1.9.1 (사용자 10/21 "열쇠가 자꾸 없다는데"): 아이폰이 localStorage 를 비우거나, 사파리·홈 화면 앱·카톡 브라우저가 저장소를 따로 써서 열쇠가 사라진다.
+  //  ① 열쇠를 IndexedDB 에도 복사해 두고 localStorage 가 비면 거기서 되살린다 ② navigator.storage.persist() 로 지우지 말라고 요청
+  //  ③ 복구 링크(#k=…, 주소창 해시는 서버로 안 감) — 설정에서 복사해 아이폰 메모(잠금)에 저장해 두면 한 번 눌러 복구
+  const vault = {
+    db() { return new Promise((ok, no) => { try { const r = indexedDB.open('sowon-keys', 1); r.onupgradeneeded = () => r.result.createObjectStore('k'); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); } catch (e) { no(e); } }); },
+    async put(v) { try { const d = await this.db(); await new Promise((ok) => { const t = d.transaction('k', 'readwrite'); t.objectStore('k').put(v, 'token'); t.oncomplete = ok; t.onerror = ok; }); } catch { /* 무시 */ } },
+    async get() { try { const d = await this.db(); return await new Promise((ok) => { const r = d.transaction('k').objectStore('k').get('token'); r.onsuccess = () => ok(r.result || ''); r.onerror = () => ok(''); }); } catch { return ''; } },
+    async del() { try { const d = await this.db(); d.transaction('k', 'readwrite').objectStore('k').delete('token'); } catch { /* 무시 */ } },
+  };
+  function askPersist() { try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch { /* 무시 */ } }
+  const RESCUE_PREFIX = '#k=';
+  function rescueLink(tok) { return location.origin + location.pathname + RESCUE_PREFIX + encodeURIComponent(btoa(tok)); }
+  function takeRescueHash() {
+    if (!location.hash.startsWith(RESCUE_PREFIX)) return '';
+    let t = ''; try { t = atob(decodeURIComponent(location.hash.slice(RESCUE_PREFIX.length))); } catch { t = ''; }
+    try { history.replaceState(null, '', location.pathname + location.search); } catch { location.hash = ''; }
+    return /^(gh[pousr]_|github_pat_)[A-Za-z0-9_]{20,}$/.test(t) ? t : '';
+  }
+  async function restoreToken() {
+    const fromLink = takeRescueHash();
+    if (fromLink) { cfg.token = fromLink; store.set('mb.cfg', cfg); store.set('mb.tokenAt', isoLocal(new Date())); vault.put(fromLink); askPersist(); return 'link'; }
+    if (cfg.token) { vault.put(cfg.token); return ''; }
+    const saved = await vault.get();
+    if (saved) { cfg.token = saved; store.set('mb.cfg', cfg); return 'vault'; }
+    return '';
+  }
   let queue = store.get('mb.queue', []);           // 아직 못 올린 작업
   let cache = store.get('mb.cache', {});           // { 'YYYY-MM': { entries, sha } }
   let loadedMonths = [monthOf(new Date())];
@@ -222,7 +249,7 @@
     if (isIOS && !isStandalone) {
       b.hidden = false; b.append('📌 Safari의 공유 버튼 → “홈 화면에 추가”를 누르면 하트 앱으로 쓸 수 있어요. 열쇠는 그 하트 앱 안에서 넣어주세요. ');
     } else if (!cfg.token) {
-      b.hidden = false; b.append('💙 처음이시죠? 열쇠를 한 번 넣으면 말한 내용이 내 저장소에 쌓여요. ');
+      b.hidden = false; b.append(store.get('mb.tokenAt', '') ? '🔑 이 화면에서 열쇠가 지워졌어요. 메모에 저장해 둔 복구 링크를 누르면 바로 돌아와요. 없으면 설정에서 다시 붙여넣어 주세요. ' : '💙 처음이시죠? 열쇠를 한 번 넣으면 말한 내용이 내 저장소에 쌓여요. ');
       const btn = el('button', '', '설정 열기'); btn.type = 'button'; btn.addEventListener('click', openSettings); b.append(btn);
     }
   }
@@ -468,6 +495,7 @@
       await gh(repoPath());                                                                   // 저장소가 보이는지
       await gh(`${repoPath()}/git/blobs`, { method: 'POST', body: { content: 'ping', encoding: 'utf-8' } }); // 쓰기 권한(커밋은 생기지 않음)
       store.set('mb.cfg', cfg); $('#token').value = ''; lastError = ''; authBad = false;
+      vault.put(cfg.token); askPersist();
       if (t) { store.set('mb.tokenAt', isoLocal(new Date())); store.del('mb.tokenExp'); }
       renderTokenInfo(); renderKeyBanner();
       setMsg('연결됐어요 ✔ 이제 말하면 저장소에 쌓여요', 'ok');
@@ -477,7 +505,7 @@
   }
   function forgetToken() {
     if (!confirm('이 휴대폰에서 열쇠를 지울까요? 쌓아둔 메모는 저장소에 그대로 있어요.')) return;
-    cfg.token = ''; authBad = false; store.set('mb.cfg', cfg); store.del('mb.tokenExp'); toast('열쇠를 지웠어요'); $('#settings').close(); renderAll();
+    cfg.token = ''; authBad = false; store.set('mb.cfg', cfg); store.del('mb.tokenExp'); vault.del(); toast('열쇠를 지웠어요'); $('#settings').close(); renderAll();
   }
   async function checkUpdate() {
     if (!('serviceWorker' in navigator)) { location.reload(); return; }
@@ -522,6 +550,14 @@
   };
 
   function init() {
+    askPersist();
+    window.addEventListener('hashchange', () => { if (location.hash.startsWith(RESCUE_PREFIX)) restoreToken().then((how) => { if (how) { authBad = false; renderAll(); refreshMonth(loadedMonths[0]).then(() => flush()); toast('복구 링크로 열쇠를 되찾았어요 🔑'); document.dispatchEvent(new CustomEvent('sowon:entries')); } }); });
+    restoreToken().then((how) => {
+      if (!how) return;
+      renderAll(); refreshMonth(loadedMonths[0]).then(() => flush());
+      toast(how === 'link' ? '복구 링크로 열쇠를 되찾았어요 🔑' : '지워진 열쇠를 예비 저장소에서 되살렸어요 🔑');
+      document.dispatchEvent(new CustomEvent('sowon:entries'));
+    });
     const draft = store.get('mb.draft', null);
     if (draft && draft.text) { $('#note').value = draft.text; kind = draft.kind || ''; }
     if (!SR) micOff(); else if (store.get('mb.micOff', false) && isIOS && isStandalone) micOff();
@@ -549,6 +585,12 @@
     document.querySelectorAll('dialog').forEach((d) => d.addEventListener('click', (ev) => { if (ev.target === d) d.close(); }));
     $('#connectBtn').addEventListener('click', connect);
     $('#forgetBtn').addEventListener('click', forgetToken);
+    $('#rescueBtn').addEventListener('click', async () => {
+      if (!cfg.token) { toast('열쇠를 먼저 넣어 주세요'); return; }
+      const link = rescueLink(cfg.token);
+      try { await navigator.clipboard.writeText(link); toast('복구 링크를 복사했어요. 아이폰 메모에 붙여넣고 잠가 두세요 🔒'); }
+      catch { prompt('이 링크를 길게 눌러 복사해서 메모에 저장해 두세요', link); }
+    });
     $('#flushBtn').addEventListener('click', () => { lastError = ''; flush(); toast(queue.length ? '올리는 중…' : '올릴 메모가 없어요'); });
     $('#updateBtn').addEventListener('click', checkUpdate);
     $('#edSave').addEventListener('click', saveEdit);
