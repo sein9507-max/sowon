@@ -271,6 +271,7 @@ select.field { background-image: linear-gradient(45deg, transparent 50%, var(--n
 .bl-status.wait { color: var(--blue-deep); } .bl-status.ok { color: #1F8A4C; } .bl-status.bad { color: #C2416B; }
 .bl-skips { display: flex; align-items: center; justify-content: flex-end; gap: 6px; width: 100%; }
 .bl-skips .mini-btn { margin-left: 0; }
+.bl-merge { flex-wrap: wrap; border-top: 1.5px dashed #CFE6FA; padding-top: 8px; }
 .bl-more { align-self: flex-start; margin-left: 0; }
 .bl-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .bl-grid img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; background: var(--sky-1); }
