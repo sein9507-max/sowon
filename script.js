@@ -540,7 +540,7 @@ function client() { return new Anthropic({ apiKey: claudeKey(), dangerouslyAllow
 // 맥북 Claude 사용량 한도에 걸리면 '한도대기'(retryAt) → 그 시각 뒤 맥북이 다시 시도한다.
 const macDir = () => SW.cfg().dir.split('/').filter(Boolean)[0] + '/맥북요청';
 const macPoll = () => LS.get('mb.macPoll', 8000);
-const KIND_LABEL = { 대본: '대본을', 다듬기: '대본을 다듬어', 후킹: '후킹 후보를', 주제: '주제를', 블로그: '블로그 글과 전자책을', 정리: '대본 칸을' };
+const KIND_LABEL = { 대본: '대본을', 다듬기: '대본을 다듬어', 후킹: '후킹 후보를', 바꾸기: '이 칸의 후보를', 주제: '주제를', 블로그: '블로그 글과 전자책을', 정리: '대본 칸을' };
 const fmtSec = (s) => (s < 60 ? `${s}초` : `${Math.floor(s / 60)}분 ${pad(s % 60)}초`);
 function macErr(m) { const e = new Error(m); e.code = 'mac'; return e; }
 function abortErr() { const e = new Error('aborted'); e.name = 'AbortError'; return e; }
@@ -1084,7 +1084,7 @@ async function runGen(prompt, inp, ideaIds, resume) {
   finally { setBusy(false); genCtl = null; if (!keep) LS.set('sw.macGen', null); }
 }
 function setCurrent(sc, alts) {
-  S.current = sc; S.editing = false; S.hooks = null; S.altsOpen = false;
+  S.current = sc; S.editing = false; S.hooks = null; S.slotAlts = null;
   if (alts) S.alts = alts;
   persistCur(); renderResult();
 }
@@ -1105,10 +1105,14 @@ const EXAMPLE = {
   ctaKeyword: '500', caption: '', hashtags: [], needCheck: [], usedIdeaIds: [], topic: '', input: {},
 };
 function phoneHtml(sc) { return `<div class="sc-phone" aria-hidden="true"><div class="t">${(sc.cover || []).map((c) => `<span>${esc(c)}</span>`).join('')}</div><div class="ph">사진 자리</div><div class="b">신혼테크</div></div>`; }
-function slotsHtml(sc, editing, hookBtn) {
+function slotsHtml(sc, editing, swapBtn) {
   return `<div class="sc-slots">${sc.slots.map((s, si) => {
     const cls = si === 0 ? ' hook' : /cta/i.test(s.slot) ? ' cta' : '';
-    return `<div class="sc-slot${cls}"><div class="sc-slot-name">${esc(s.slot)})${si === 0 && hookBtn ? '<button class="mini-btn" type="button" data-act="hooks">후킹 바꾸기 <span class="tier">Sonnet</span></button>' : ''}</div>
+    const busy = S.slotBusy === si, open = S.slotAlts && S.slotAlts.si === si;
+    const btn = swapBtn ? `<button class="mini-btn" type="button" data-act="${open ? 'slotClose' : 'slotAlts'}" data-si="${si}" aria-expanded="${!!open}">${open ? '닫기' : `${si === 0 ? '후킹 ' : ''}바꾸기 <span class="tier">Sonnet</span>`}</button>` : '';
+    return `<div class="sc-slot${cls}${open ? ' is-open' : ''}"><div class="sc-slot-name">${esc(s.slot)})${btn}</div>
+      ${busy ? `<div class="sc-busy in-slot"><div class="pbar"><i></i></div><p id="slotMsg">${esc(S.slotMsg || '후보 뽑는 중…')}</p></div>` : ''}
+      ${open ? `<div class="sc-box in-slot"><b>${si === 0 ? '후킹' : '이 칸'} 후보 · 누르면 바뀌어요</b><div class="sc-hooks">${S.slotAlts.list.map((h, i) => `<button type="button" data-act="useSlotAlt" data-i="${i}"><em>${esc(h.label)}</em>${h.lines.map((l) => `<span class="alt-line">${esc(l.text)}${l.visual ? `<small>( ${esc(l.visual)} )</small>` : ''}</span>`).join('')}</button>`).join('')}</div></div>` : ''}
       ${s.lines.map((l, li) => (editing
         ? `<div class="sc-line"><textarea class="paper" data-si="${si}" data-li="${li}" data-f="text">${esc(l.text)}</textarea><textarea class="paper v" data-si="${si}" data-li="${li}" data-f="visual" placeholder="화면요소">${esc(l.visual)}</textarea></div>`
         : `<div class="sc-line"><div class="say">${esc(l.text)}</div>${l.visual ? `<div class="vis">( ${esc(l.visual)} )</div>` : ''}</div>`)).join('')}
@@ -1144,12 +1148,9 @@ function renderResult() {
   const ed = S.editing && !sc.example;
   const alts = !sc.example && S.alts && S.alts.length > 1 ? S.alts : null;
   $('#resultBody').innerHTML = `
-    ${alts ? `<div class="sc-switch"><span class="tag used">${esc(sc.label || '버전 ' + (alts.indexOf(sc) + 1))}</span><button class="mini-btn" type="button" data-act="alts" aria-expanded="${!!S.altsOpen}">${S.altsOpen ? '목록 닫기' : `대본 바꾸기 (${alts.length})`}</button></div>` : ''}
-    ${alts && S.altsOpen ? `<div class="sc-box"><b>다른 대본 · 누르면 바뀌어요</b><div class="sc-hooks sc-altlist">${alts.map((v, i) => { const say = (v.slots || []).map((x) => (x.lines || []).map((l) => l.text).join(' ')); return `<button type="button" data-act="alt" data-i="${i}"${v === sc ? ' class="is-on" aria-current="true"' : ''}><em>${esc(v.label || '버전 ' + (i + 1))}${v === sc ? ' · 지금 보는 대본' : ''}</em><strong>${esc(say[0] || v.title || '')}</strong><small>${esc(say.slice(1).join(' ').slice(0, 90))}…</small></button>`; }).join('')}</div></div>` : ''}
+    ${alts ? `<div class="chips sc-alts" role="group" aria-label="버전">${alts.map((v, i) => `<button class="chip${v === sc ? ' is-on' : ''}" type="button" data-act="alt" data-i="${i}" aria-pressed="${v === sc}">${esc(v.label || '버전 ' + (i + 1))}</button>`).join('')}</div>` : ''}
     ${headHtml(sc, sc.why)}
     ${checksHtml(sc)}
-    ${S.hooksBusy ? `<div class="sc-busy"><div class="pbar"><i></i></div><p id="hooksMsg">${esc(S.hooksMsg || '후킹 후보 뽑는 중…')}</p></div>` : ''}
-    ${S.hooks ? `<div class="sc-box"><b>후킹 후보 · 누르면 바뀌어요</b><div class="sc-hooks">${S.hooks.map((h, i) => `<button type="button" data-act="useHook" data-i="${i}"><em>${esc(h.hookType)}</em>${esc(h.text)}</button>`).join('')}</div></div>` : ''}
     ${slotsHtml(sc, ed, !ed && !sc.example)}
     ${extrasHtml(sc)}
     ${sc.example ? '' : `
@@ -1170,8 +1171,7 @@ async function onResultClick(e) {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const sc = S.current; if (!sc) return;
   const act = b.dataset.act;
-  if (act === 'alts') { S.altsOpen = !S.altsOpen; renderResult(); return; }
-  if (act === 'alt') { const v = S.alts[+b.dataset.i]; S.altsOpen = false; if (v) { S.current = v; S.editing = false; S.hooks = null; persistCur(); } renderResult(); if (v) toast('대본을 바꿨어요'); return; }
+  if (act === 'alt') { const v = S.alts[+b.dataset.i]; if (v) { S.current = v; S.editing = false; S.hooks = null; S.slotAlts = null; persistCur(); renderResult(); } return; }
   if (act === 'copyFull') copyText(scriptText(sc), '대본');
   else if (act === 'copySay') copyText(scriptText(sc, 'say'), '자막');
   else if (act === 'regen') generate();
@@ -1183,20 +1183,30 @@ async function onResultClick(e) {
     S.editing = false; persistCur(); renderResult(); toast('반영했어요');
   }
   else if (act === 'save') saveCurrent();
-  else if (act === 'hooks') {
-    S.hooksBusy = true; S.hooksMsg = ''; S.hooks = null; renderResult();
-    const sayH = (m) => { S.hooksMsg = m; const el = $('#hooksMsg'); if (el) el.textContent = m; };
+  else if (act === 'slotClose') { S.slotAlts = null; renderResult(); }
+  else if (act === 'slotAlts') {
+    const si = +b.dataset.si; const slot = sc.slots[si]; if (!slot) return;
+    S.slotBusy = si; S.slotMsg = ''; S.slotAlts = null; renderResult();
+    const sayH = (m) => { S.slotMsg = m; const el = $('#slotMsg'); if (el) el.textContent = m; };
     try {
-      const res = await askMid(`${RULES}\n\n[주문] 아래 대본의 후킹 슬롯만 다시 써. 서로 다른 후킹 유형으로 6개. 각 공백 빼고 16~20자, 요체, 대본 속 숫자만 쓰고 새 숫자는 만들지 마. 다음 줄(베네핏)과 이어져야 한다.\nJSON 배열만: [{"hookType":"유형","text":"후킹 문장"}]\n\n[대본]\n${scriptText(sc)}`, { kind: '후킹', say: sayH });
-      S.hooks = (Array.isArray(res) ? res : []).map((h) => ({ hookType: String(h.hookType || ''), text: String(h.text || '') })).filter((h) => h.text).slice(0, 6);
+      let list;
+      if (si === 0) {
+        const res = await askMid(`${RULES}\n\n[주문] 아래 대본의 후킹 슬롯만 다시 써. 서로 다른 후킹 유형으로 6개. 각 공백 빼고 16~20자, 요체, 대본 속 숫자만 쓰고 새 숫자는 만들지 마. 다음 줄(베네핏)과 이어져야 한다.\nJSON 배열만: [{"hookType":"유형","text":"후킹 문장"}]\n\n[대본]\n${scriptText(sc)}`, { kind: '후킹', say: sayH });
+        list = (Array.isArray(res) ? res : []).map((h) => ({ label: String(h.hookType || ''), hookType: String(h.hookType || ''), lines: [{ text: String(h.text || ''), visual: slot.lines[0] ? slot.lines[0].visual : '' }] })).filter((h) => h.lines[0].text).slice(0, 6);
+      } else {
+        const prev = sc.slots[si - 1], next = sc.slots[si + 1];
+        const res = await askMid(`${RULES}\n\n[주문] 아래 대본에서 "${slot.slot})" 칸만 다시 써. 서로 다른 방식(예: 숫자 앞세우기·질문·상황 묘사·비교·경고)으로 4개. 이 칸의 역할은 그대로, 앞 칸(${prev ? prev.slot : '없음'})에서 자연스럽게 이어지고 뒤 칸(${next ? next.slot : '없음'})으로 넘어가야 한다. 대본 속 숫자·사실만 쓰고 새 숫자는 만들지 마. 요체. 줄 수는 지금(${slot.lines.length}줄)과 같거나 ±1, 한 줄은 공백 빼고 40자 안쪽. 줄마다 화면요소도 적어.\nJSON 배열만: [{"label":"방식 이름(6자 안팎)","lines":[{"text":"문장","visual":"화면요소"}]}]\n\n[지금 이 칸]\n${slot.lines.map((l) => `${l.text} ( ${l.visual || ''} )`).join('\n')}\n\n[대본 전체]\n${scriptText(sc)}`, { kind: '바꾸기', say: sayH });
+        list = (Array.isArray(res) ? res : []).map((h) => ({ label: String(h.label || ''), lines: (Array.isArray(h.lines) ? h.lines : []).map((l) => ({ text: String((l && l.text) || '').trim(), visual: String((l && l.visual) || '').trim() })).filter((l) => l.text) })).filter((h) => h.lines.length).slice(0, 4);
+      }
+      if (list.length) S.slotAlts = { si, list }; else toast('후보를 못 받았어요');
     } catch (err) { toast(errMsg(err)); }
-    S.hooksBusy = false; renderResult();
+    S.slotBusy = null; renderResult();
   }
-  else if (act === 'useHook') {
-    const h = S.hooks && S.hooks[+b.dataset.i]; if (!h) return;
-    sc.slots[0].lines = [{ text: h.text, visual: sc.slots[0].lines[0] ? sc.slots[0].lines[0].visual : '' }];
-    if (h.hookType) sc.hookType = h.hookType;
-    S.hooks = null; persistCur(); renderResult(); toast('후킹을 바꿨어요');
+  else if (act === 'useSlotAlt') {
+    const a = S.slotAlts, h = a && a.list[+b.dataset.i], slot = a && sc.slots[a.si]; if (!h || !slot) return;
+    slot.lines = h.lines.map((l) => ({ text: l.text, visual: l.visual }));
+    if (a.si === 0 && h.hookType) sc.hookType = h.hookType;
+    S.slotAlts = null; persistCur(); renderResult(); toast(a.si === 0 ? '후킹을 바꿨어요' : `${slot.slot} 칸을 바꿨어요`);
   }
   else if (act === 'revStop') { if (revCtl) revCtl.abort(); }
   else if (act === 'revise') {
