@@ -1105,12 +1105,14 @@ async function runGen(prompt, inp, ideaIds, resume) {
 function setCurrent(sc, alts) {
   S.current = sc; S.editing = false; S.hooks = null; S.slotAlts = null;
   if (alts) S.alts = alts;
-  persistCur(); renderResult();
+  persistCur(); renderResult(); prefetchAll();
 }
 
 // ── 칸 후보 (10/25 사용자 "처음 제작할 때 여러 개를 만들어 — 목록 열면 기다리지 않고 바로") ──
 // 후보는 대본을 뽑는 답 안에 '후보)' 줄로 같이 와서 sc.slotAlts[si] 에 들어 있다(build_block parseScriptText). 버튼은 그걸 바로 연다.
-// 후보가 없는 옛 대본·완성대본에서 다시 연 것만, 눌렀을 때 Sonnet 한 번으로 모든 칸 후보를 만든다(열쇠 없으면 맥북).
+// 후보가 없는 대본(1.10.4 전에 만든 것·완성대본에서 다시 연 것·맥북 매일 대본·Fable 이 후보 줄을 빼먹은 것)은
+// 화면에 뜨는 순간 조용히 Sonnet 한 번으로 모든 칸 후보를 만들어 둔다(열쇠 없으면 맥북, 요청 id 를 대본에 남겨 앱을 닫았다 열어도 이어받음).
+// 10/25 사용자 "누르면 만드는 게 아니라 이미 만들어져 있어야" — 누를 때 기다리는 건 그 사이에 눌렀을 때뿐.
 const PREFETCH = new WeakMap();   // sc → 진행 중인 약속 (localStorage 에 안 남게 밖에 둠)
 function slotAltsReady(sc, si) { const l = sc && sc.slotAlts && sc.slotAlts[si]; return Array.isArray(l) && l.length > 0; }
 function parseAltList(raw, slot, n) {
@@ -1120,15 +1122,20 @@ function parseAltList(raw, slot, n) {
       .map((l) => ({ text: String((l && l.text) || '').trim(), visual: String((l && l.visual) || '').trim() || (slot.lines[0] ? slot.lines[0].visual : '') })).filter((l) => l.text),
   })).filter((h) => h.lines.length).slice(0, n);
 }
-function prefetchSlotAlts(sc) {
+function prefetchSlotAlts(sc, retry) {
   if (!sc || sc.example || !Array.isArray(sc.slots) || !sc.slots.length) return Promise.resolve();
   if (PREFETCH.has(sc)) return PREFETCH.get(sc);
   const need = sc.slots.map((_, i) => i).filter((i) => !slotAltsReady(sc, i));
   if (!need.length) return Promise.resolve();
   const say = (m) => { S.slotMsg = m; const el = $('#slotMsg'); if (el) el.textContent = m; };
+  const keep = () => { if (S.alts.includes(sc) || S.current === sc) persistCur(); };
+  const old = sc.slotAltsReq;   // 열쇠 없이 맥북에 보내 둔 요청 — 40분 안이면 이어받는다
+  const resume = old && old.id && !claudeKey() && Date.now() - (old.at || 0) < 40 * 60 * 1000 ? old : null;
+  if (!resume && old) { delete sc.slotAltsReq; keep(); }
   const pr = (async () => {
     try {
-      const res = await askMid(`${RULES}\n\n[주문] 아래 대본의 칸마다, 바꿔 넣을 후보를 만들어. 칸 순서대로 ${sc.slots.length}개 칸 전부.\n- 첫 칸(후킹): 서로 다른 후킹 유형으로 6개, 각 공백 빼고 16~20자, label 은 후킹 유형 이름. 다음 칸과 이어져야 한다.\n- 나머지 칸: 서로 다른 방식(숫자 앞세우기·질문·상황 묘사·비교·경고 등)으로 4개씩. 그 칸의 역할은 그대로, 앞 칸에서 자연스럽게 이어지고 뒤 칸으로 넘어가야 한다. 줄 수는 지금 그 칸과 같거나 ±1, 한 줄은 공백 빼고 40자 안쪽. 줄마다 화면요소도 적어.\n- 공통: 요체, 대본 속 숫자·사실만 쓰고 새 숫자는 만들지 마. 지금 문장을 그대로 베끼지 마.\nJSON 배열만, 칸 순서대로: [{"slot":"칸 이름","alts":[{"label":"방식·유형(6자 안팎)","lines":[{"text":"문장","visual":"화면요소"}]}]}]\n\n[대본]\n${scriptText(sc)}`, { kind: '바꾸기', say, maxTokens: 8000 });
+      const res = await askMid(`${RULES}\n\n[주문] 아래 대본의 칸마다, 바꿔 넣을 후보를 만들어. 칸 순서대로 ${sc.slots.length}개 칸 전부.\n- 첫 칸(후킹): 서로 다른 후킹 유형으로 6개, 각 공백 빼고 16~20자, label 은 후킹 유형 이름. 다음 칸과 이어져야 한다.\n- 나머지 칸: 서로 다른 방식(숫자 앞세우기·질문·상황 묘사·비교·경고 등)으로 4개씩. 그 칸의 역할은 그대로, 앞 칸에서 자연스럽게 이어지고 뒤 칸으로 넘어가야 한다. 줄 수는 지금 그 칸과 같거나 ±1, 한 줄은 공백 빼고 40자 안쪽. 줄마다 화면요소도 적어.\n- 공통: 요체, 대본 속 숫자·사실만 쓰고 새 숫자는 만들지 마. 지금 문장을 그대로 베끼지 마.\nJSON 배열만, 칸 순서대로: [{"slot":"칸 이름","alts":[{"label":"방식·유형(6자 안팎)","lines":[{"text":"문장","visual":"화면요소"}]}]}]\n\n[대본]\n${scriptText(sc)}`, { kind: '바꾸기', say, maxTokens: 8000, resume, onSent: (req) => { sc.slotAltsReq = { id: req.id, path: req.path, at: Date.now() }; keep(); } });
+      delete sc.slotAltsReq;
       const arr = Array.isArray(res) ? res : (res && Array.isArray(res.slots) ? res.slots : []);
       const byName = new Map(arr.map((x) => [String((x && x.slot) || '').replace(/\)$/, '').trim(), x]));
       const out = Object.assign({}, sc.slotAlts || {});
@@ -1137,11 +1144,20 @@ function prefetchSlotAlts(sc) {
         const list = parseAltList(hit && hit.alts, slot, i === 0 ? 6 : 4);
         if (list.length) out[i] = list;
       });
-      sc.slotAlts = out; if (S.alts.includes(sc) || S.current === sc) persistCur();
-    } catch (err) { sc.slotAltsErr = errMsg(err); }
+      sc.slotAlts = out; keep();
+    } catch (err) {
+      if (err && err.gone && resume && !retry) { delete sc.slotAltsReq; keep(); PREFETCH.delete(sc); return prefetchSlotAlts(sc, true); }   // 이어받을 파일이 없어졌으면 새로 한 번
+      if (!isAbort(err)) sc.slotAltsErr = errMsg(err);
+      if (!(err && err.keep)) { delete sc.slotAltsReq; keep(); }
+    }
     finally { PREFETCH.delete(sc); if (S.current === sc && !S.editing) renderResult(); }
   })();
-  PREFETCH.set(sc, pr); return pr;
+  PREFETCH.set(sc, pr); if (S.current === sc && !S.editing) renderResult();   // 버튼에 ⏳
+  return pr;
+}
+async function prefetchAll() {   // 지금 보는 버전 먼저, 그다음 다른 버전 차례로(맥북은 한 번에 하나씩). 후보가 이미 있으면 아무것도 안 한다
+  const list = [S.current].concat(S.alts.filter((v) => v !== S.current)).filter(Boolean);
+  for (const v of list) { try { await prefetchSlotAlts(v); } catch { /* 각자 기록 */ } }
 }
 
 // ── 결과 화면 ────────────────────────────────────────────
@@ -1243,7 +1259,7 @@ async function onResultClick(e) {
   else if (act === 'slotAlts') {
     const si = +b.dataset.si; const slot = sc.slots[si]; if (!slot) return;
     if (!slotAltsReady(sc, si)) {
-      S.slotBusy = si; S.slotMsg = '이 대본엔 후보가 같이 안 와서 지금 뽑는 중…'; renderResult();
+      S.slotBusy = si; S.slotMsg = PREFETCH.has(sc) ? '후보 준비 중… 거의 다 됐어요' : '이 대본엔 후보가 같이 안 와서 지금 뽑는 중…'; renderResult();
       delete sc.slotAltsErr; await prefetchSlotAlts(sc);
       S.slotBusy = null;
       if (S.current !== sc) { renderResult(); return; }
@@ -1493,6 +1509,7 @@ function init() {
   const pend = LS.get('sw.macGen', null);   // 앱을 닫았다 열어도 맥북에 보낸 대본은 이어서 기다린다 (40분까지)
   if (pend && pend.id && !claudeKey() && Date.now() - (pend.at || 0) < 40 * 60 * 1000) { SW.switchTab('make'); runGen(null, pend.inp || {}, pend.ideaIds || [], pend); }
   else if (pend) LS.set('sw.macGen', null);
+  if (S.current && !S.current.example) prefetchAll();   // 후보 없는 대본은 켜자마자 조용히 준비(맥북에 보내 둔 게 있으면 이어받기)
   rRefresh();
   sFlush(); sRefresh();
   corpusFromCache(); setTimeout(loadCorpus, 4000);   // 통합 대본 코퍼스는 첫 화면 뒤에 천천히
