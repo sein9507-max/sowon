@@ -1084,7 +1084,7 @@ async function runGen(prompt, inp, ideaIds, resume) {
   finally { setBusy(false); genCtl = null; if (!keep) LS.set('sw.macGen', null); }
 }
 function setCurrent(sc, alts) {
-  S.current = sc; S.editing = false; S.hooks = null;
+  S.current = sc; S.editing = false; S.hooks = null; S.altsOpen = false;
   if (alts) S.alts = alts;
   persistCur(); renderResult();
 }
@@ -1144,7 +1144,8 @@ function renderResult() {
   const ed = S.editing && !sc.example;
   const alts = !sc.example && S.alts && S.alts.length > 1 ? S.alts : null;
   $('#resultBody').innerHTML = `
-    ${alts ? `<div class="chips sc-alts" role="group" aria-label="버전">${alts.map((v, i) => `<button class="chip${v === sc ? ' is-on' : ''}" type="button" data-act="alt" data-i="${i}" aria-pressed="${v === sc}">${esc(v.label || '버전 ' + (i + 1))}</button>`).join('')}</div>` : ''}
+    ${alts ? `<div class="sc-switch"><span class="tag used">${esc(sc.label || '버전 ' + (alts.indexOf(sc) + 1))}</span><button class="mini-btn" type="button" data-act="alts" aria-expanded="${!!S.altsOpen}">${S.altsOpen ? '목록 닫기' : `대본 바꾸기 (${alts.length})`}</button></div>` : ''}
+    ${alts && S.altsOpen ? `<div class="sc-box"><b>다른 대본 · 누르면 바뀌어요</b><div class="sc-hooks sc-altlist">${alts.map((v, i) => { const say = (v.slots || []).map((x) => (x.lines || []).map((l) => l.text).join(' ')); return `<button type="button" data-act="alt" data-i="${i}"${v === sc ? ' class="is-on" aria-current="true"' : ''}><em>${esc(v.label || '버전 ' + (i + 1))}${v === sc ? ' · 지금 보는 대본' : ''}</em><strong>${esc(say[0] || v.title || '')}</strong><small>${esc(say.slice(1).join(' ').slice(0, 90))}…</small></button>`; }).join('')}</div></div>` : ''}
     ${headHtml(sc, sc.why)}
     ${checksHtml(sc)}
     ${S.hooksBusy ? `<div class="sc-busy"><div class="pbar"><i></i></div><p id="hooksMsg">${esc(S.hooksMsg || '후킹 후보 뽑는 중…')}</p></div>` : ''}
@@ -1169,7 +1170,8 @@ async function onResultClick(e) {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const sc = S.current; if (!sc) return;
   const act = b.dataset.act;
-  if (act === 'alt') { const v = S.alts[+b.dataset.i]; if (v) { S.current = v; S.editing = false; S.hooks = null; persistCur(); renderResult(); } return; }
+  if (act === 'alts') { S.altsOpen = !S.altsOpen; renderResult(); return; }
+  if (act === 'alt') { const v = S.alts[+b.dataset.i]; S.altsOpen = false; if (v) { S.current = v; S.editing = false; S.hooks = null; persistCur(); } renderResult(); if (v) toast('대본을 바꿨어요'); return; }
   if (act === 'copyFull') copyText(scriptText(sc), '대본');
   else if (act === 'copySay') copyText(scriptText(sc, 'say'), '자막');
   else if (act === 'regen') generate();

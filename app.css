@@ -241,6 +241,10 @@ select.field { background-image: linear-gradient(45deg, transparent 50%, var(--n
 .sc-hooks { display: flex; flex-direction: column; gap: 6px; }
 .sc-hooks button { text-align: left; font-size: 15px; padding: 10px 12px; border-radius: 12px; background: var(--ice); border: 2px solid #BFE2FB; color: var(--navy); }
 .sc-hooks em { display: block; font-style: normal; font-family: var(--pix); font-size: 11px; color: var(--pink-deep); margin-bottom: 3px; }
+.sc-switch { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sc-altlist button strong { display: block; font-weight: 700; margin-bottom: 3px; }
+.sc-altlist button small { display: block; font-size: 12.5px; color: var(--blue-deep); opacity: .8; line-height: 1.4; }
+.sc-altlist button.is-on { border-color: #DDFB5A; background: #F7FFD6; }
 .sc-paste { margin-top: 18px; background: rgba(255,255,255,.7); border-radius: 16px; padding: 4px 12px 12px; }
 .sc-paste .paper { min-height: 70px; margin-top: 10px; font-size: 14px; line-height: 24px; background-color: #fff; border: 2px solid #BFE2FB; border-radius: 12px; }
 
