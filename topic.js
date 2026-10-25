@@ -4,9 +4,10 @@
  * 10/20: "내 유튜브 성과 1-20순위 나열은 불필요. 내 영상 성과는 네가 확인해서 개선점을 리스트업, 추천 주제 3~5개, 대략적인 롱폼/인스타 대본."
  * 10/21: "밑에 메뉴가 너무 많아졌으니 급상승 안에 주제 탭을 통째로 옮겨. 주제 맨 위에는 유튜브 구독자랑 현재 총조회수 합산 둘 다, 내 반응 탭을 따로 나누지 마."
  *   → 한 화면: 내 채널 숫자(채널별 구독자·총 조회수 + 합산) → 추천 주제 3~5(롱폼·인스타 초안) → 뜨는 주제 TOP 20 → 개선점 → 접힌 내 영상 숫자. (인스타 급상승 수집은 trend.js, 같은 화면 맨 아래)
+ * 10/26 1.11.0: "유튜브 추천주제 오늘의주제 10개 리스트. 촬영결정/패스 버튼 누르고 촬영결정 시안은 촬영대기 탭으로" → 추천 10개, 카드마다 🎬 촬영결정/패스(촬영.json), 세 번째 작은 탭 '촬영대기'(#tab-wait).
  * 자료는 맥북 도구/주제선정_갱신.py 가 <아이디어뇌>/주제선정/ 에 올린다:
  *   채널.json(채널별 구독자·총 조회수, 6시간마다 API 로 바로) · 반응.json(내 유튜브 공개 성과 추이; summary.channels 는 예비) · 주제.json(TOP 20 × 3) · 블로그트렌드.json(크롬 확장 어드바이저 수집) · 체크.json(여기서 쓴다)
- *   추천.json(개선점 리스트 + 추천 주제 3~5개 + 롱폼/인스타 대본 초안, 하루 1번 맥북 Claude) */
+ *   추천.json(개선점 리스트 + 오늘의 주제 10개 + 롱폼/인스타 대본 초안, 하루 1번 맥북 Claude) · 촬영.json(여기서 쓴다: 촬영결정·패스·촬영완료 + 주제 복사본) */
 (() => {
   'use strict';
   const SW = window.sowon;
@@ -21,7 +22,7 @@
   const enc = (p) => p.split('/').map(encodeURIComponent).join('/');
   const url = (p) => `${SW.repoPath()}/contents/${enc(p)}?ref=${encodeURIComponent(SW.cfg().branch)}&t=${Date.now()}`;
 
-  let react = null, topics = null, trend = null, rec = null, chan = null, checks = {}, checksSha = null, loading = false, loadedAt = 0;
+  let react = null, topics = null, trend = null, rec = null, chan = null, checks = {}, checksSha = null, shoot = {}, shootSha = null, loading = false, loadedAt = 0;
   let rcKind = LS.get('mb.rcKind', 'all'), rcSort = LS.get('mb.rcSort', 'views');
   let tpList = LS.get('mb.tpList', 'longform'), tpHideDone = LS.get('mb.tpHideDone', false);
   const LISTS = [['longform', '🎬 유튜브 롱폼'], ['shorts', '📱 인스타 숏폼'], ['blog', '✍️ 블로그']];
@@ -44,18 +45,32 @@
       } catch (e) { if ((e.status === 409 || e.status === 422) && attempt < 2) continue; throw e; }
     }
   }
+  // 1.11.0 촬영.json — 오늘의 주제에서 고른 것(촬영결정·패스·촬영완료). 체크.json 과 같은 방식(PUT, sha 충돌 3번 재시도)
+  async function writeShoot(mutate, message) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const f = await readJSON(`${DIR()}/촬영.json`);
+      const entries = (f.data && typeof f.data.entries === 'object' && f.data.entries) || {};
+      mutate(entries);
+      const body = { version: 1, note: '소원저장소 급상승 오늘의 주제에서 🎬 촬영결정/패스/촬영완료. id는 추천.json 의 id, 값은 그날 주제의 복사본 + status·at. 맥북 주제선정_갱신.py 가 제목을 읽어 같은 주제를 다시 추천하지 않는다', entries };
+      try {
+        const res = await SW.gh(`${SW.repoPath()}/contents/${enc(`${DIR()}/촬영.json`)}`, { method: 'PUT', body: { message, branch: SW.cfg().branch, content: SW.b64encode(JSON.stringify(body, null, 2) + '\n'), ...(f.sha ? { sha: f.sha } : {}) } });
+        shoot = entries; shootSha = res.content.sha; return;
+      } catch (e) { if ((e.status === 409 || e.status === 422) && attempt < 2) continue; throw e; }
+    }
+  }
   async function load(force) {
     if (loading || !SW.cfg().token || !navigator.onLine) { renderAll(); return; }
     if (!force && Date.now() - loadedAt < 60000) { renderAll(); return; }
     loading = true; renderAll();
     try {
-      const [r, t, b, c, q, h] = await Promise.all([readJSON(`${DIR()}/반응.json`), readJSON(`${DIR()}/주제.json`), readJSON(`${DIR()}/블로그트렌드.json`), readJSON(`${DIR()}/체크.json`), readJSON(`${DIR()}/추천.json`), readJSON(`${DIR()}/채널.json`)]);
+      const [r, t, b, c, q, h, s] = await Promise.all([readJSON(`${DIR()}/반응.json`), readJSON(`${DIR()}/주제.json`), readJSON(`${DIR()}/블로그트렌드.json`), readJSON(`${DIR()}/체크.json`), readJSON(`${DIR()}/추천.json`), readJSON(`${DIR()}/채널.json`), readJSON(`${DIR()}/촬영.json`)]);
       react = r.data && r.data.videos ? r.data : null;
       chan = h.data && Array.isArray(h.data.channels) ? h.data : null;
       rec = q.data && (Array.isArray(q.data.topics) || Array.isArray(q.data.improvements)) ? q.data : null;
       topics = t.data && t.data.lists ? t.data : null;
       trend = b.data && b.data.rows ? b.data : null;
       checks = (c.data && c.data.entries) || {}; checksSha = c.sha;
+      shoot = (s.data && s.data.entries) || {}; shootSha = s.sha;
       loadedAt = Date.now();
     } catch (e) { if (e.status !== 401) SW.toast(`주제 자료 불러오기 실패: ${e.message || e}`); }   // 401 은 app.js 가 맨 위 띠로 알린다 — 마지막으로 본 자료는 그대로
     finally { loading = false; renderAll(); }
@@ -108,7 +123,11 @@
     }
   }
 
-  // ── ② 추천 주제 3~5 (남들이 터뜨린 것에서) + 롱폼/인스타 초안 ─────────
+  // ── ② 오늘의 주제 10 (남들이 터뜨린 것에서) + 롱폼/인스타 초안 → 🎬 촬영결정 / 패스 ─────────
+  // 1.11.0 (사용자 10/26 "유튜브 추천주제 오늘의주제 10개 리스트, 촬영결정/패스 버튼 누르고 촬영결정 시안은 촬영대기 탭으로"):
+  //   추천.json 은 하루 10개(맥북 주제선정_갱신.py REC_COUNT). 카드의 '🎬 촬영결정'/'패스'는 촬영.json(entries[id] = 그날 주제 복사본 + status·at)에 남고,
+  //   촬영결정은 #tab-wait(촬영대기)로 옮겨 가 거기서 '대본 탭에 넣기'·'촬영완료'·'되돌리기'. 패스는 목록 아래 접힘에서 되돌리기.
+  //   추천이 다음 날 10개로 바뀌어도 촬영대기는 복사본이라 그대로 남는다. 맥북은 촬영.json 제목을 읽어 같은 주제를 다시 추천하지 않는다.
   function draftText(lines) { return (lines || []).map((l) => String(l)).join('\n'); }
   function toScriptRec(item) {
     const t = $('#mTopic'); if (t) { t.value = item.title; t.dispatchEvent(new Event('input', { bubbles: true })); }
@@ -116,22 +135,30 @@
     const c = $('#mCta'); if (c && item.keyword) { c.value = item.keyword; c.dispatchEvent(new Event('input', { bubbles: true })); }
     SW.switchTab('make'); SW.toast('대본 탭에 주제와 인스타 초안을 넣었어요');
   }
-  function recCard(item, rank) {
-    const done = !!checks[item.id];
-    const c = el('article', 'rec-card' + (done ? ' is-done' : ''));
-    const lab = el('label', 'tp-check');
-    const cb = el('input'); cb.type = 'checkbox'; cb.checked = done; cb.setAttribute('aria-label', '만들었음');
-    cb.addEventListener('change', () => toggle(item, cb.checked));
-    lab.append(cb, el('b', 'tp-rank', `${rank}`));
-    const body = el('div', 'tp-body');
-    body.append(el('p', 'tp-title', item.title));
-    if (item.why) body.append(el('p', 'tp-why', `근거 · ${item.why}`));
+  const today = () => SW.isoLocal(new Date()).slice(0, 10);
+  const snapshot = (item) => ({ title: item.title, why: item.why || '', source: item.source || '', tags: item.tags || [], keyword: item.keyword || '',
+    longform: item.longform || [], insta: item.insta || [], corpusCheck: item.corpusCheck || null, topicsDate: (rec && rec.topicsDate) || item.topicsDate || null });
+  async function setShoot(id, make, message, toastMsg) {
+    try {
+      await writeShoot((e) => { const v = make(e[id]); if (v) e[id] = v; else delete e[id]; }, message);
+      if (toastMsg) SW.toast(toastMsg);
+    } catch (e) { SW.toast(`저장 실패: ${e.message || e}`); }
+    renderAll();   // 목록·촬영대기·배지 같이 갱신
+  }
+  const decide = (item, status) => setShoot(item.id, () => ({ ...snapshot(item), status, at: today() }), `주제 ${status}: ${item.title.slice(0, 40)}`, status === '촬영결정' ? '촬영대기에 넣었어요 🎬' : '패스했어요');
+  const unshoot = (id, title) => setShoot(id, () => null, `주제 되돌리기: ${String(title || '').slice(0, 40)}`, '오늘의 주제로 되돌렸어요');
+  const finishShoot = (e) => setShoot(e.id, (cur) => ({ ...(cur || e), status: '촬영완료', doneAt: today() }), `주제 촬영완료: ${String(e.title || '').slice(0, 40)}`, '촬영완료 ✔');
+  const reopenShoot = (e) => setShoot(e.id, (cur) => { const v = { ...(cur || e), status: '촬영결정' }; delete v.doneAt; delete v.id; return v; }, `주제 다시 대기: ${String(e.title || '').slice(0, 40)}`, '촬영대기로 돌렸어요');
+
+  function tagsRow(item, extra) {
     const tags = el('div', 'tp-tags');
     (item.tags || []).forEach((t) => tags.append(el('span', 'tp-tag', t)));
     if (item.keyword) tags.append(el('span', 'tp-tag kw', `댓글 '${item.keyword}'`));
     if (item.source) tags.append(el('span', 'tp-src', item.source));
-    if (done && checks[item.id].at) tags.append(el('span', 'tp-src', `✔ ${checks[item.id].at}`));
-    body.append(tags);
+    (extra || []).forEach((n) => tags.append(n));
+    return tags;
+  }
+  function draftsInto(body, item) {
     [['longform', '🎬 롱폼 초안'], ['insta', '📱 인스타 초안']].forEach(([k, label]) => {
       const lines = Array.isArray(item[k]) ? item[k] : []; if (!lines.length) return;
       const cc = k === 'insta' && item.corpusCheck;   // 1.8.1 통합 코퍼스 --검사 결과(맥북 주제선정_갱신.py)
@@ -141,12 +168,25 @@
       cp.addEventListener('click', async () => { try { await navigator.clipboard.writeText(draftText(lines)); SW.toast('복사했어요'); } catch { SW.toast('길게 눌러 복사해 주세요'); } });
       d.append(cp); body.append(d);
     });
+  }
+  function actBtn(label, cls, act, fn) { const b = el('button', 'ghost-btn ' + cls, label); b.type = 'button'; b.dataset.act = act; b.addEventListener('click', fn); return b; }
+  function recCard(item, rank) {
+    const c = el('article', 'rec-card');
+    const lab = el('div', 'tp-check'); lab.append(el('b', 'tp-rank', `${rank}`));
+    const body = el('div', 'tp-body');
+    body.append(el('p', 'tp-title', item.title));
+    if (item.why) body.append(el('p', 'tp-why', `근거 · ${item.why}`));
+    body.append(tagsRow(item));
+    draftsInto(body, item);
     const row = el('div', 'tp-row');
     const memo = el('button', 'ghost-btn', '✍️ 글감으로 메모'); memo.type = 'button';
     memo.addEventListener('click', () => { SW.addNote(`🔥 추천 주제: ${item.title}${item.why ? ` (근거 ${item.why})` : ''}`, '블로그'); SW.toast('메모에 쌓았어요'); });
     const go = el('button', 'ghost-btn', '✎ 대본 탭에 넣기'); go.type = 'button';
     go.addEventListener('click', () => toScriptRec(item));
     row.append(memo, go); body.append(row);
+    const act = el('div', 'rec-act');
+    act.append(actBtn('🎬 촬영결정', 'go', 'shoot', () => decide(item, '촬영결정')), actBtn('패스', 'pass', 'pass', () => decide(item, '패스')));
+    body.append(act);
     c.append(lab, body);
     return c;
   }
@@ -155,16 +195,71 @@
     const up = $('#rcUpdated');
     if (up) up.textContent = rec ? `추천 ${rec.topicsDate || (rec.updatedAt || '').slice(0, 10)}${rec.noteDate ? ` · 개선점 ${rec.noteDate} 검토 기준` : ''}${rec.model ? ` · ${rec.model.replace('claude-', '')}` : ''}` : '';
     box.replaceChildren();
-    if (noKey()) { box.append(el('p', 'hint', '설정 ①에서 저장소 열쇠를 넣으면 추천 주제·뜨는 주제·개선점이 보여요.')); return; }
+    if (noKey()) { box.append(el('p', 'hint', '설정 ①에서 저장소 열쇠를 넣으면 오늘의 주제·뜨는 주제·개선점이 보여요.')); return; }
     if (loading && !rec && !react) { box.append(el('p', 'hint', '불러오는 중…')); return; }
-    if (!rec) { box.append(el('p', 'hint', '아직 추천 자료가 없어요. 맥북이 켜져 있으면 아침 6시 이후 첫 동기화 때 올려요.')); return; }
+    if (!rec) { box.append(el('p', 'hint', '아직 추천 자료가 없어요. 맥북이 켜져 있으면 아침 6시 이후 첫 동기화 때 10개 올려요.')); return; }
     if (rec.error) box.append(el('p', 'hint small rc-err', `⚠️ ${rec.error}`));
     const tops = Array.isArray(rec.topics) ? rec.topics : [];
+    const open = tops.filter((t) => !shoot[t.id] && !checks[t.id]);
+    const decided = tops.filter((t) => shoot[t.id] && shoot[t.id].status !== '패스');
+    const passed = tops.filter((t) => shoot[t.id] && shoot[t.id].status === '패스');
     const sec = el('section', 'rc-rec');
-    sec.append(el('h3', 'rc-h', `🔥 오늘 추천 주제 ${tops.length} · 남들이 터뜨린 것에서`));
-    if (!tops.length) sec.append(el('p', 'hint small', '오늘 추천이 아직 없어요.'));
-    tops.forEach((item, i) => sec.append(recCard(item, i + 1)));
+    sec.append(el('h3', 'rc-h', `🔥 오늘의 주제 ${tops.length} · 남들이 터뜨린 것에서`));
+    if (tops.length) {
+      const sub = el('div', 'rc-sub');
+      sub.append(el('p', 'hint small', `남은 ${open.length} · 촬영결정 ${decided.length} · 패스 ${passed.length}`));
+      const w = el('button', 'text-btn', '🎬 촬영대기 보기'); w.type = 'button'; w.addEventListener('click', () => SW.switchTab('wait')); sub.append(w);
+      sec.append(sub);
+    }
+    if (!tops.length) sec.append(el('p', 'hint small', '오늘 주제가 아직 없어요. 맥북이 아침 6시 이후 10개 올려요.'));
+    else if (!open.length) sec.append(el('p', 'hint small', '오늘 주제는 다 골랐어요. 내일 아침 6시 이후 새로 10개가 와요.'));
+    open.forEach((item) => sec.append(recCard(item, tops.indexOf(item) + 1)));
+    if (passed.length) {
+      const d = el('details', 'rc-passed'); d.append(el('summary', null, `패스한 주제 ${passed.length}`));
+      passed.forEach((item) => {
+        const r = el('div', 'rc-pass-item'); r.append(el('span', null, item.title));
+        const u = el('button', 'text-btn', '↩ 되돌리기'); u.type = 'button'; u.dataset.act = 'unpass'; u.addEventListener('click', () => unshoot(item.id, item.title)); r.append(u); d.append(r);
+      });
+      sec.append(d);
+    }
     box.append(sec);
+  }
+
+  // ── ②-b 촬영대기 탭 (#tab-wait): 촬영.json 의 촬영결정 → 카드, 촬영완료는 접힘 ─────────
+  function waitCard(e) {
+    const done = e.status === '촬영완료';
+    const c = el('article', 'wt-card' + (done ? ' is-done' : ''));
+    const lab = el('div', 'tp-check'); lab.append(el('b', 'tp-rank', done ? '✔' : '🎬'));
+    const body = el('div', 'tp-body');
+    body.append(el('p', 'tp-title', e.title));
+    if (e.why) body.append(el('p', 'tp-why', `근거 · ${e.why}`));
+    const extra = [el('span', 'wt-status', done ? `촬영완료 ${e.doneAt || ''}` : `촬영결정 ${e.at || ''}`)];
+    if (e.topicsDate) extra.push(el('span', 'tp-src', `추천 ${e.topicsDate}`));
+    body.append(tagsRow(e, extra));
+    draftsInto(body, e);
+    const row = el('div', 'tp-row');
+    const go = el('button', 'ghost-btn', '✎ 대본 탭에 넣기'); go.type = 'button'; go.addEventListener('click', () => toScriptRec(e)); row.append(go);
+    body.append(row);
+    const act = el('div', 'rec-act');
+    if (done) act.append(actBtn('↩ 다시 대기로', 'pass', 'undone', () => reopenShoot(e)));
+    else act.append(actBtn('✅ 촬영완료', 'go', 'done', () => finishShoot(e)), actBtn('↩ 되돌리기', 'pass', 'unshoot', () => unshoot(e.id, e.title)));
+    body.append(act);
+    c.append(lab, body);
+    return c;
+  }
+  function renderWait() {
+    const box = $('#waitList'); if (!box) return;
+    const up = $('#wtUpdated'), dl = $('#waitDoneList'), dc = $('#waitDoneCount');
+    box.replaceChildren(); if (dl) dl.replaceChildren();
+    if (noKey()) { box.append(el('p', 'hint', '설정 ①에서 저장소 열쇠를 넣으면 촬영대기가 보여요.')); if (up) up.textContent = ''; return; }
+    const all = Object.entries(shoot).map(([id, e]) => ({ ...e, id })).filter((e) => e && e.title);
+    const waiting = all.filter((e) => e.status === '촬영결정').sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+    const done = all.filter((e) => e.status === '촬영완료').sort((a, b) => String(b.doneAt || '').localeCompare(String(a.doneAt || '')));
+    if (up) up.textContent = `촬영대기 ${waiting.length} · 촬영완료 ${done.length}`;
+    if (!waiting.length) box.append(el('p', 'hint', loading && !all.length ? '불러오는 중…' : '아직 없어요. 급상승 탭 오늘의 주제에서 🎬 촬영결정을 누르면 여기 모여요.'));
+    waiting.forEach((e) => box.append(waitCard(e)));
+    if (dl) done.forEach((e) => dl.append(waitCard(e)));
+    if (dc) dc.textContent = done.length ? String(done.length) : '';
   }
 
   // ── ③ 뜨는 주제 TOP 20 × 3 ─────────────────────────────
@@ -311,17 +406,20 @@
   }
 
   function renderAll() {
-    renderChannel(); renderRec(); renderTopics(); renderImp();
-    // 배지 = 아직 안 만든 추천 주제 + 안 만든 TOP5 (세부 탭 '급상승'과 큰 탭 '레퍼런스'에 같이)
-    const recUndone = rec && Array.isArray(rec.topics) ? rec.topics.filter((x) => !checks[x.id]).length : 0;
+    renderChannel(); renderRec(); renderTopics(); renderImp(); renderWait();
+    // 배지 = 아직 안 고른(촬영결정·패스·만들었음 아닌) 오늘의 주제 + 안 만든 TOP5 (세부 탭 '급상승'), 촬영대기 수(세부 탭 '촬영대기'), 큰 탭 '레퍼런스' = 둘의 합
+    const recUndone = rec && Array.isArray(rec.topics) ? rec.topics.filter((x) => !checks[x.id] && !shoot[x.id]).length : 0;
     const topUndone = topics && topics.lists ? LISTS.reduce((a, [k]) => a + (Array.isArray(topics.lists[k]) ? topics.lists[k].filter((x) => !checks[x.id] && x.rank <= 5).length : 0), 0) : 0;
     const undone = recUndone + topUndone;
+    const waiting = Object.values(shoot).filter((e) => e && e.status === '촬영결정').length;
     const badge = $('#trendCount'); if (badge) badge.textContent = undone ? String(undone) : '';
-    const nb = $('#refNavCount'); if (nb) nb.textContent = undone ? String(undone) : '';
+    const wb = $('#waitCount'); if (wb) wb.textContent = waiting ? String(waiting) : '';
+    const nb = $('#refNavCount'); if (nb) nb.textContent = (undone + waiting) ? String(undone + waiting) : '';
   }
 
-  document.addEventListener('sowon:tab', (e) => { if (e.detail === 'trend') load(); });
+  document.addEventListener('sowon:tab', (e) => { if (e.detail === 'trend' || e.detail === 'wait') load(); });
   const rb = $('#tpRefresh'); if (rb) rb.addEventListener('click', () => load(true));
+  const wr = $('#wtRefresh'); if (wr) wr.addEventListener('click', () => load(true));
   window.addEventListener('online', () => load(true));
   renderAll();
   load(true);

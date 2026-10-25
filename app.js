@@ -4,7 +4,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.10.5';
+  const VERSION = '1.11.0';
   const DEFAULT_CFG = { owner: 'sein9507-max', repo: 'newlywed_tech', branch: 'main', dir: '아이디어뇌/스택', token: '' };
   const KINDS = ['블로그', '카드뉴스', '대본', '경험', '기타'];
   const FIRST_MONTH = '2026-09';
@@ -517,7 +517,8 @@
   // ── 시작 ────────────────────────────────────────────────
   // 아래 큰 탭 5개 → 그 안의 작은 탭. 큰 탭을 누르면 그 묶음에서 마지막에 보던 작은 탭으로 간다 (1.5.0)
   // 1.8.0 순서(사용자 10/20): 레퍼런스 → 주제 → 대본 → 메모 → 블로그. 1.9.0(10/21 "밑에 메뉴가 너무 많다"): 주제 탭을 통째로 레퍼런스 > 급상승 안으로 → 큰 탭 4개. 첫 화면은 레퍼런스.
-  const GROUPS = { ref: ['refs', 'trend'], script: ['make', 'scripts'], memo: ['talk', 'stack'], blog: ['blog'] };
+  // 1.11.0(10/26 사용자 "촬영결정 시안은 촬영대기 탭으로"): 레퍼런스 묶음에 세 번째 작은 탭 '촬영대기'(wait)
+  const GROUPS = { ref: ['refs', 'trend', 'wait'], script: ['make', 'scripts'], memo: ['talk', 'stack'], blog: ['blog'] };
   const DEFAULT_GROUP = 'ref';
   const groupOf = (name) => Object.keys(GROUPS).find((g) => GROUPS[g].includes(name)) || DEFAULT_GROUP;
   function switchGroup(g) { const last = store.get('mb.sub.' + g, GROUPS[g][0]); switchTab(GROUPS[g].includes(last) ? last : GROUPS[g][0]); }

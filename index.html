@@ -48,7 +48,7 @@
 
   <!-- 아래 큰 탭 4개 안의 작은 탭 (지금 고른 큰 탭 것만 보인다). 1.9.0(사용자 10/21 "밑에 메뉴가 너무 많다"): 레퍼런스(대본 스택·급상승=주제 통째로) → 대본 → 메모 → 블로그, 첫 화면은 레퍼런스 -->
   <div id="subnav" class="subnav" role="tablist" aria-label="세부 화면">
-    <div class="seg" data-group="ref"><button class="tab-btn seg-btn is-active" data-tab="refs" type="button">대본 스택 <em id="refCount"></em></button><button class="tab-btn seg-btn" data-tab="trend" type="button">급상승 <em id="trendCount"></em></button></div>
+    <div class="seg" data-group="ref"><button class="tab-btn seg-btn is-active" data-tab="refs" type="button">대본 스택 <em id="refCount"></em></button><button class="tab-btn seg-btn" data-tab="trend" type="button">급상승 <em id="trendCount"></em></button><button class="tab-btn seg-btn" data-tab="wait" type="button">촬영대기 <em id="waitCount"></em></button></div>
     <div class="seg" data-group="script" hidden><button class="tab-btn seg-btn" data-tab="make" type="button">만들기</button><button class="tab-btn seg-btn" data-tab="scripts" type="button">완성대본 <em id="scriptCount"></em></button></div>
     <div class="seg" data-group="memo" hidden><button class="tab-btn seg-btn" data-tab="talk" type="button">말하기</button><button class="tab-btn seg-btn" data-tab="stack" type="button">쌓인 메모 <em id="stackCount"></em></button></div>
   </div>
@@ -198,12 +198,13 @@
 
     <!-- 급상승 (인스타 레퍼런스 아이디어 뱅크) -->
     <!-- 급상승 = 주제 탭 통째로 (1.9.0, 사용자 10/21): 맨 위 내 채널 구독자·총 조회수 합산 → 추천 주제 3~5(롱폼·인스타 초안) → 뜨는 주제 TOP 20 → 개선점(내 영상 반응) → 접힌 숫자 → 인스타 급상승 수집 -->
+    <!-- 1.11.0 (사용자 10/26 "유튜브 추천주제 오늘의주제 10개 리스트, 촬영결정/패스 버튼, 촬영결정 시안은 촬영대기 탭으로"): 추천은 하루 10개, 카드마다 촬영결정/패스 → 촬영.json, 촬영결정은 #tab-wait -->
     <section id="tab-trend" class="tab" aria-label="급상승·주제">
       <div class="win">
         <div class="win-bar"><span class="win-title">🔥 hot_topics.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
         <div class="win-body">
           <div id="chStrip" class="ch-strip" aria-label="내 채널"></div>
-          <p class="hint">남들이 터뜨린 것에서 고른 <b>추천 주제 3~5개</b>(롱폼·인스타 초안), 요즘 뜨는 주제 <b>TOP 20</b>, 내 영상 반응에서 뽑은 <b>개선점</b>이에요. 바로 찍을 건 <b>대본 탭에 넣기</b>.</p>
+          <p class="hint">남들이 터뜨린 것에서 고른 <b>오늘의 주제 10개</b>(롱폼·인스타 초안) — 카드마다 <b>촬영결정</b> 또는 <b>패스</b>. 촬영결정한 건 <b>촬영대기</b> 탭에 모여요. 아래엔 뜨는 주제 <b>TOP 20</b>과 내 영상 반응에서 뽑은 <b>개선점</b>.</p>
           <p id="rcUpdated" class="hint small"></p>
           <button id="tpRefresh" class="ghost-btn" type="button">새로 불러오기</button>
         </div>
@@ -219,6 +220,23 @@
         <div id="trFilter" class="chips" role="group" aria-label="보기"></div>
         <button id="trRefresh" class="ghost-btn" type="button">새로 불러오기</button>
         <div id="trList" class="list tr-list"></div>
+      </details>
+    </section>
+
+    <!-- 촬영대기 (1.11.0, 사용자 10/26): 급상승 오늘의 주제에서 촬영결정한 시안이 모이는 곳. 자료 아이디어뇌/주제선정/촬영.json (topic.js) -->
+    <section id="tab-wait" class="tab" aria-label="촬영대기">
+      <div class="win">
+        <div class="win-bar"><span class="win-title">🎬 shoot_queue.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
+        <div class="win-body">
+          <p class="hint">급상승에서 <b>촬영결정</b>한 주제가 여기 모여요. 찍을 땐 <b>대본 탭에 넣기</b>, 다 찍었으면 <b>촬영완료</b>.</p>
+          <p id="wtUpdated" class="hint small"></p>
+          <button id="wtRefresh" class="ghost-btn" type="button">새로 불러오기</button>
+        </div>
+      </div>
+      <div id="waitList" class="list rc-list" aria-label="촬영대기"></div>
+      <details id="waitDone" class="sc-opt wt-done">
+        <summary>✔ 촬영완료 <em id="waitDoneCount"></em></summary>
+        <div id="waitDoneList" class="list rc-list"></div>
       </details>
     </section>
 

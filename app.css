@@ -352,9 +352,9 @@ select.field { background-image: linear-gradient(45deg, transparent 50%, var(--n
 .tp-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 .tp-trend { background: #fff; border: 3px solid #fff; border-radius: 18px; box-shadow: var(--shadow); padding: 10px 12px; }
 .tp-trend b { display: block; font-family: var(--pix); font-size: 13px; color: var(--blue-deep); margin-bottom: 6px; }
-.tp-card, .rec-card { display: flex; gap: 10px; background: #fff; border: 3px solid #fff; border-radius: 22px 22px 22px 6px; box-shadow: var(--shadow); padding: 12px; }
-.tp-card.is-done, .rec-card.is-done { background: #F2F8FD; }
-.tp-card.is-done .tp-title, .rec-card.is-done .tp-title { text-decoration: line-through; color: var(--navy-soft); }
+.tp-card, .rec-card, .wt-card { display: flex; gap: 10px; background: #fff; border: 3px solid #fff; border-radius: 22px 22px 22px 6px; box-shadow: var(--shadow); padding: 12px; }
+.tp-card.is-done, .rec-card.is-done, .wt-card.is-done { background: #F2F8FD; }
+.tp-card.is-done .tp-title, .rec-card.is-done .tp-title, .wt-card.is-done .tp-title { text-decoration: line-through; color: var(--navy-soft); }
 .tp-check { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: none; }
 .tp-check input { width: 26px; height: 26px; accent-color: var(--blue-deep); }
 .tp-rank { font-family: var(--pix); font-size: 13px; color: var(--blue-deep); }
@@ -409,3 +409,18 @@ select.field { background-image: linear-gradient(45deg, transparent 50%, var(--n
 .sc-srctable summary { cursor: pointer; font-family: var(--pix); font-size: 12px; color: var(--blue-deep); }
 .sc-srctable table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 4px; }
 .sc-srctable td { border-top: 1px dashed #A9D5F7; padding: 3px 4px; vertical-align: top; overflow-wrap: anywhere; }
+
+/* ── 1.11.0 오늘의 주제 촬영결정/패스 · 촬영대기 (사용자 10/26) ─────────── */
+.rec-act { display: flex; gap: 8px; margin-top: 8px; }
+.rec-act .ghost-btn { flex: 1; width: auto; margin-top: 0; padding: 11px 10px; font-size: 14px; border-style: solid; }
+.rec-act .go { color: #fff; background: linear-gradient(180deg, #9AD6FF, #3F97F0); border-color: #fff; box-shadow: 0 3px 0 #9CCDF5; text-shadow: 1px 1px 0 rgba(31,85,170,.45); }
+.rec-act .pass { color: var(--navy-soft); background: rgba(255,255,255,.6); border-color: #C9DDF0; }
+.rc-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 0 4px; }
+.rc-sub .text-btn { margin-top: 0; padding: 4px 6px; white-space: nowrap; }
+.rc-passed { margin-top: 4px; }
+.rc-pass-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px dashed #D6E8F7; font-size: 13px; color: var(--navy-soft); }
+.rc-pass-item span { flex: 1; }
+.rc-pass-item .text-btn { margin-top: 0; padding: 2px 4px; white-space: nowrap; }
+.wt-card .tp-rank { font-size: 16px; }
+.wt-status { font-family: var(--pix); font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--pink); color: var(--navy); }
+.wt-done { margin-top: 10px; }
