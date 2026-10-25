@@ -191,13 +191,16 @@ const SLOT_FORMAT = `후킹) 문장 ( 화면요소 )
 CTA) 문장 ( 화면요소 )`;
 
 
+// 10/25 사용자 "처음 제작할 때 여러 개를 만들어 — 목록 열면 기다리지 않고 바로": 슬롯 줄 바로 아래 '후보)' 줄로 바꿔 넣을 문장을 같이 받는다(앱의 칸 '바꾸기'가 바로 연다).
+const ALT_RULE = `각 슬롯 줄 바로 아래에, 그 칸만 바꿔 넣을 후보를 "  후보) 방식 | 문장 ( 화면요소 )" 줄로 붙여. 후킹은 서로 다른 후킹 유형으로 5개(방식 자리에 후킹 유형 이름, 공백 빼고 16~20자), 나머지 칸은 서로 다른 방식(숫자 앞세우기·질문·상황 묘사·비교·경고 등)으로 3개씩. 후보는 본 문장과 같은 사실·숫자만 쓰고(새 숫자 금지), 앞 칸에서 이어지고 뒤 칸으로 넘어가야 하며, 본 문장을 그대로 베끼지 않는다. 줄 수는 본 문장과 같거나 ±1, 문장마다 ( 화면요소 ).`;
+const SLOT_FORMAT_WITH_ALTS = SLOT_FORMAT.split("\n").map(l => `${l}\n  후보) 방식 | ${l.replace(/^[^)]*\)\s*/, "")}\n  후보) 방식 | …`).join("\n");
 function versionFormat(label){
   return `=== ${label} ===
 제목) 릴스 제목
 표지) 1줄 / 2줄
 구조) 문제해결형 | 혜택강조형 | n가지형 | 통념반전형
 후킹유형) 후킹 유형 이름
-${SLOT_FORMAT}
+${SLOT_FORMAT_WITH_ALTS}
 바꾼 점) 무엇을 왜 바꿨는지 한두 줄`;
 }
 const TAIL_FORMAT = `=== 공통 ===
@@ -247,6 +250,7 @@ ${versionFormat(hasRough ? "버전 B: 레퍼런스식" : "버전 B")}
 ${TAIL_FORMAT}
 
 슬롯 줄 하나에 문장이 여럿이면 문장마다 뒤에 ( 화면요소 )를 붙여. 슬롯 이름은 위 구조의 이름을 그대로 써.
+${ALT_RULE}
 
 [레퍼런스 대본]
 ${refsText(inp.struct)}`);
@@ -275,6 +279,8 @@ ${scriptText(sc)}
 ${versionFormat("고친 버전")}
 
 ${TAIL_FORMAT}
+
+${ALT_RULE}
 
 [레퍼런스 대본]
 ${refsText(sc.structure)}`;
@@ -308,6 +314,11 @@ function parseScriptText(raw, inp){
     const meta = {}; const slots = []; let lastKey = null;
     for(const line of sec.body.split("\n")){
       const l = line.trim().replace(/^cta\s*\([^)]*\)\)/i, "CTA)"); if(!l) continue;
+      const a = l.match(/^(?:[↳→\-•·]\s*)?후보\s*\d*\)\s*(.*)$/);
+      if(a){   // '후보) 방식 | 문장 ( 화면 )' → 바로 앞 슬롯의 바꿔 넣을 후보
+        if(slots.length){ const bar = a[1].indexOf("|"); const cur = slots[slots.length - 1]; (cur.alts || (cur.alts = [])).push({ label: bar >= 0 ? a[1].slice(0, bar).trim() : "", raw: bar >= 0 ? a[1].slice(bar + 1) : a[1] }); lastKey = "alt"; }
+        continue;
+      }
       const m = l.match(/^([^()]{1,30}?)\)\s*(.*)$/);
       if(m){
         const key = m[1].replace(/^대본\s*\+\s*영상기획\s*/, "").trim();
@@ -315,11 +326,19 @@ function parseScriptText(raw, inp){
         slots.push({ slot: key.replace(/^cta\s*\(.*$/i, "CTA"), raw: m[2] }); lastKey = "slot"; continue;
       }
       if(lastKey === "slot" && slots.length) slots[slots.length - 1].raw += " " + l;
+      else if(lastKey === "alt" && slots.length){ const al = slots[slots.length - 1].alts; al[al.length - 1].raw += " " + l; }
       else if(lastKey) meta[lastKey] = (meta[lastKey] ? meta[lastKey] + "\n" : "") + l;
     }
     if(/공통/.test(sec.label) && !slots.length){ common = meta; continue; }
     if(!slots.length) continue;
-    versions.push({ label: sec.label.replace(/^버전\s*/, ""), meta, slots: slots.map(s => ({ slot: s.slot, lines: splitLines(s.raw) })).filter(s => s.lines.length) });
+    const outSlots = [], slotAlts = {};
+    slots.forEach(s => {
+      const lines = splitLines(s.raw); if(!lines.length) return;
+      const alts = (s.alts || []).map(a => ({ label: a.label, lines: splitLines(a.raw) })).filter(a => a.lines.length && !(a.lines.length === 1 && /^…?$/.test(a.lines[0].text)));
+      if(alts.length) slotAlts[outSlots.length] = alts;
+      outSlots.push({ slot: s.slot, lines });
+    });
+    versions.push({ label: sec.label.replace(/^버전\s*/, ""), meta, slots: outSlots, slotAlts });
   }
   const split = (v, re) => String(v || "").split(re).map(x => x.trim()).filter(x => x && !/^\(?없음\)?$/.test(x));
   return versions.map(v => {
@@ -329,7 +348,7 @@ function parseScriptText(raw, inp){
       title: m.title || inp.topic || "제목 없음",
       cover: split(m.cover, /\s*\/\s*/).slice(0, 2),
       structure: (m.structure || "").replace(/\s*\|.*$/, ""), hookType: m.hookType || "", why: m.why || "",
-      slots: v.slots,
+      slots: v.slots, slotAlts: Object.keys(v.slotAlts || {}).length ? v.slotAlts : undefined,
       ctaKeyword: inp.cta || ((v.slots.find(s => /cta/i.test(s.slot)) || { lines: [] }).lines.map(l => l.text).join(" ").match(/'([^']{1,12})'/) || [])[1] || "",
       caption: m.caption || "", hashtags: split(m.hashtags, /\s+/).filter(t => t.startsWith("#")),
       needCheck: split(m.needCheck, /\s*\/\s*|\n/), usedIdeaIds: split(m.usedIdeaIds, /[\s,]+/),
@@ -1086,11 +1105,12 @@ async function runGen(prompt, inp, ideaIds, resume) {
 function setCurrent(sc, alts) {
   S.current = sc; S.editing = false; S.hooks = null; S.slotAlts = null;
   if (alts) S.alts = alts;
-  persistCur(); renderResult(); prefetchAll();
+  persistCur(); renderResult();
 }
 
-// ── 칸 후보 미리 만들기 (10/25 사용자 "버튼 누르면 받는 게 아니라 눌렀을 때 이미 셋팅돼 있어야") ──
-// 대본이 생기면 바로 Sonnet 한 번으로 모든 칸의 후보를 만들어 sc.slotAlts[si] 에 둔다(사용자 눈엔 조용히). 버튼은 그걸 바로 연다.
+// ── 칸 후보 (10/25 사용자 "처음 제작할 때 여러 개를 만들어 — 목록 열면 기다리지 않고 바로") ──
+// 후보는 대본을 뽑는 답 안에 '후보)' 줄로 같이 와서 sc.slotAlts[si] 에 들어 있다(build_block parseScriptText). 버튼은 그걸 바로 연다.
+// 후보가 없는 옛 대본·완성대본에서 다시 연 것만, 눌렀을 때 Sonnet 한 번으로 모든 칸 후보를 만든다(열쇠 없으면 맥북).
 const PREFETCH = new WeakMap();   // sc → 진행 중인 약속 (localStorage 에 안 남게 밖에 둠)
 function slotAltsReady(sc, si) { const l = sc && sc.slotAlts && sc.slotAlts[si]; return Array.isArray(l) && l.length > 0; }
 function parseAltList(raw, slot, n) {
@@ -1108,7 +1128,7 @@ function prefetchSlotAlts(sc) {
   const say = (m) => { S.slotMsg = m; const el = $('#slotMsg'); if (el) el.textContent = m; };
   const pr = (async () => {
     try {
-      const res = await askMid(`${RULES}\n\n[주문] 아래 대본의 칸마다, 나중에 바꿔 넣을 후보를 미리 만들어. 칸 순서대로 ${sc.slots.length}개 칸 전부.\n- 첫 칸(후킹): 서로 다른 후킹 유형으로 6개, 각 공백 빼고 16~20자, label 은 후킹 유형 이름. 다음 칸과 이어져야 한다.\n- 나머지 칸: 서로 다른 방식(숫자 앞세우기·질문·상황 묘사·비교·경고 등)으로 4개씩. 그 칸의 역할은 그대로, 앞 칸에서 자연스럽게 이어지고 뒤 칸으로 넘어가야 한다. 줄 수는 지금 그 칸과 같거나 ±1, 한 줄은 공백 빼고 40자 안쪽. 줄마다 화면요소도 적어.\n- 공통: 요체, 대본 속 숫자·사실만 쓰고 새 숫자는 만들지 마. 지금 문장을 그대로 베끼지 마.\nJSON 배열만, 칸 순서대로: [{"slot":"칸 이름","alts":[{"label":"방식·유형(6자 안팎)","lines":[{"text":"문장","visual":"화면요소"}]}]}]\n\n[대본]\n${scriptText(sc)}`, { kind: '바꾸기', say, maxTokens: 8000 });
+      const res = await askMid(`${RULES}\n\n[주문] 아래 대본의 칸마다, 바꿔 넣을 후보를 만들어. 칸 순서대로 ${sc.slots.length}개 칸 전부.\n- 첫 칸(후킹): 서로 다른 후킹 유형으로 6개, 각 공백 빼고 16~20자, label 은 후킹 유형 이름. 다음 칸과 이어져야 한다.\n- 나머지 칸: 서로 다른 방식(숫자 앞세우기·질문·상황 묘사·비교·경고 등)으로 4개씩. 그 칸의 역할은 그대로, 앞 칸에서 자연스럽게 이어지고 뒤 칸으로 넘어가야 한다. 줄 수는 지금 그 칸과 같거나 ±1, 한 줄은 공백 빼고 40자 안쪽. 줄마다 화면요소도 적어.\n- 공통: 요체, 대본 속 숫자·사실만 쓰고 새 숫자는 만들지 마. 지금 문장을 그대로 베끼지 마.\nJSON 배열만, 칸 순서대로: [{"slot":"칸 이름","alts":[{"label":"방식·유형(6자 안팎)","lines":[{"text":"문장","visual":"화면요소"}]}]}]\n\n[대본]\n${scriptText(sc)}`, { kind: '바꾸기', say, maxTokens: 8000 });
       const arr = Array.isArray(res) ? res : (res && Array.isArray(res.slots) ? res.slots : []);
       const byName = new Map(arr.map((x) => [String((x && x.slot) || '').replace(/\)$/, '').trim(), x]));
       const out = Object.assign({}, sc.slotAlts || {});
@@ -1122,10 +1142,6 @@ function prefetchSlotAlts(sc) {
     finally { PREFETCH.delete(sc); if (S.current === sc && !S.editing) renderResult(); }
   })();
   PREFETCH.set(sc, pr); return pr;
-}
-async function prefetchAll() {   // 지금 보는 버전 먼저, 그다음 다른 버전 차례로(맥북은 한 번에 하나씩)
-  const list = [S.current].concat(S.alts.filter((v) => v !== S.current)).filter(Boolean);
-  for (const v of list) { try { await prefetchSlotAlts(v); } catch { /* 각자 기록 */ } }
 }
 
 // ── 결과 화면 ────────────────────────────────────────────
@@ -1149,7 +1165,7 @@ function slotsHtml(sc, editing, swapBtn) {
     const cls = si === 0 ? ' hook' : /cta/i.test(s.slot) ? ' cta' : '';
     const busy = S.slotBusy === si, open = S.slotAlts && S.slotAlts.si === si;
     const ready = slotAltsReady(sc, si), waiting = !ready && PREFETCH.has(sc);
-    const btn = swapBtn ? `<button class="mini-btn" type="button" data-act="${open ? 'slotClose' : 'slotAlts'}" data-si="${si}" data-ready="${ready ? 1 : 0}" aria-expanded="${!!open}" title="${ready ? '후보가 준비돼 있어요' : waiting ? '후보 준비 중' : ''}">${open ? '닫기' : `${si === 0 ? '후킹 ' : ''}바꾸기 ${waiting ? '⏳' : '<span class="tier">Sonnet</span>'}`}</button>` : '';
+    const btn = swapBtn ? `<button class="mini-btn" type="button" data-act="${open ? 'slotClose' : 'slotAlts'}" data-si="${si}" data-ready="${ready ? 1 : 0}" aria-expanded="${!!open}" title="${ready ? '후보가 준비돼 있어요' : waiting ? '후보 준비 중' : ''}">${open ? '닫기' : `${si === 0 ? '후킹 ' : ''}바꾸기 ${waiting ? '⏳' : ready ? '' : '<span class="tier">Sonnet</span>'}`}</button>` : '';
     return `<div class="sc-slot${cls}${open ? ' is-open' : ''}"><div class="sc-slot-name">${esc(s.slot)})${btn}</div>
       ${busy ? `<div class="sc-busy in-slot"><div class="pbar"><i></i></div><p id="slotMsg">${esc(S.slotMsg || '후보 뽑는 중…')}</p></div>` : ''}
       ${open ? `<div class="sc-box in-slot"><b>${si === 0 ? '후킹' : '이 칸'} 후보 · 누르면 바뀌어요</b><div class="sc-hooks">${S.slotAlts.list.map((h, i) => `<button type="button" data-act="useSlotAlt" data-i="${i}"><em>${esc(h.label)}</em>${h.lines.map((l) => `<span class="alt-line">${esc(l.text)}${l.visual ? `<small>( ${esc(l.visual)} )</small>` : ''}</span>`).join('')}</button>`).join('')}</div></div>` : ''}
@@ -1227,7 +1243,7 @@ async function onResultClick(e) {
   else if (act === 'slotAlts') {
     const si = +b.dataset.si; const slot = sc.slots[si]; if (!slot) return;
     if (!slotAltsReady(sc, si)) {
-      S.slotBusy = si; S.slotMsg = PREFETCH.has(sc) ? '후보 준비 중… 거의 다 됐어요' : '후보 뽑는 중…'; renderResult();
+      S.slotBusy = si; S.slotMsg = '이 대본엔 후보가 같이 안 와서 지금 뽑는 중…'; renderResult();
       delete sc.slotAltsErr; await prefetchSlotAlts(sc);
       S.slotBusy = null;
       if (S.current !== sc) { renderResult(); return; }
@@ -1426,7 +1442,6 @@ function init() {
   $('#copyPromptBtn').addEventListener('click', () => { const inp = readForm(); if (!inp.topic && !inp.rough) { toast('주제나 대강 대본을 먼저 적어 주세요'); return; } copyText(buildPrompt(inp, ideas().filter((x) => S.attached.has(x.id))), '프롬프트'); });
   $('#pasteApply').addEventListener('click', applyPasted);
   $('#resultBody').addEventListener('click', onResultClick);
-  if (S.current && !S.current.example) prefetchAll();
   $('#scFilter').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; S.scFilter = b.dataset.f; renderScripts(); });
   $('#scQ').addEventListener('input', (e) => { S.scQ = e.target.value.trim(); renderScripts(); });
   $('#scList').addEventListener('click', (e) => { const c = e.target.closest('[data-id]'); if (!c) return; S.openId = c.dataset.id; S.sheetEditing = false; S.sheetConfirm = false; renderSheet(); });
