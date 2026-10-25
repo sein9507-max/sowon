@@ -128,7 +128,8 @@
     const label = names[g.id] || when(g);
     const card = el('article', 'bl-card');
     const head = el('div', 'bl-head');
-    head.append(el('b', 'bl-name', label), el('span', 'bl-sub', `${names[g.id] ? when(g) + ' · ' : ''}${g.count}장`));
+    // 1.11.1 (사용자 10/26 "지도·시간 보고 비슷한 장소끼리"): 맥북 일상사진_받기.py 가 묶음마다 동네 이름(place)·사진 퍼짐(spreadM)을 넣는다 → 어디 묶음인지 바로 보이게
+    head.append(el('b', 'bl-name', label), el('span', 'bl-sub', `${names[g.id] ? when(g) + ' · ' : ''}${g.count}장${g.place ? ` · 📍 ${g.place}` : ''}`));
     card.append(head);
     const strip = el('div', 'bl-strip');
     const pick = g.photos.length <= 6 ? g.photos : [0, 1, 2, 3, 4, 5].map((k) => g.photos[Math.floor(k * (g.photos.length - 1) / 5)]);
