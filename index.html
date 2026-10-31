@@ -49,7 +49,7 @@
   <!-- 아래 큰 탭 4개 안의 작은 탭 (지금 고른 큰 탭 것만 보인다). 1.9.0(사용자 10/21 "밑에 메뉴가 너무 많다"): 레퍼런스(대본 스택·급상승=주제 통째로) → 대본 → 메모 → 블로그, 첫 화면은 레퍼런스 -->
   <div id="subnav" class="subnav" role="tablist" aria-label="세부 화면">
     <div class="seg" data-group="ref"><button class="tab-btn seg-btn is-active" data-tab="refs" type="button">대본 스택 <em id="refCount"></em></button><button class="tab-btn seg-btn" data-tab="trend" type="button">급상승 <em id="trendCount"></em></button><button class="tab-btn seg-btn" data-tab="wait" type="button">촬영대기 <em id="waitCount"></em></button></div>
-    <div class="seg" data-group="script" hidden><button class="tab-btn seg-btn" data-tab="make" type="button">만들기</button><button class="tab-btn seg-btn" data-tab="scripts" type="button">완성대본 <em id="scriptCount"></em></button></div>
+    <div class="seg" data-group="script" hidden><button class="tab-btn seg-btn" data-tab="make" type="button">만들기</button><button class="tab-btn seg-btn" data-tab="scripts" type="button">완성대본(경제) <em id="scriptCount"></em></button><button class="tab-btn seg-btn" data-tab="beauty" type="button">완성대본(뷰티) <em id="beautyCount"></em></button></div>
     <div class="seg" data-group="memo" hidden><button class="tab-btn seg-btn" data-tab="talk" type="button">말하기</button><button class="tab-btn seg-btn" data-tab="stack" type="button">쌓인 메모 <em id="stackCount"></em></button></div>
   </div>
 
@@ -105,7 +105,26 @@
 
     <!-- 대본 만들기 -->
     <section id="tab-make" class="tab" aria-label="대본 만들기">
-      <div class="win">
+      <!-- 1.12.0 경제 / 뷰티(영어) 고르기 — 마지막 선택 기억 -->
+      <div id="genrePick" class="chips sc-genre" role="group" aria-label="대본 종류">
+        <button class="chip is-on" type="button" data-genre="econ" aria-pressed="true">💰 경제</button>
+        <button class="chip" type="button" data-genre="beauty" aria-pressed="false">💄 뷰티 (영어)</button>
+      </div>
+      <div id="beautyMake" class="win" hidden>
+        <div class="win-bar"><span class="win-title">✿ beauty_script.exe</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
+        <div class="win-body sc-form">
+          <p class="hint small">고른 영어 영상의 문장을 <b>거의 그대로</b> 두고, 이름·주제 같은 <b>키워드만</b> 내 정보로 바꿔 영어 대본을 만들어요. 줄마다 한국어 뜻도 같이 나와요.</p>
+          <span class="lab">영어 레퍼런스 고르기 <small>최신 먼저 · 하나만</small></span>
+          <div id="bRefList" class="sc-attach sc-bref" role="radiogroup" aria-label="영어 레퍼런스"></div>
+          <p id="bRefHint" class="hint small"></p>
+          <label class="lab" for="bTopic">바꿀 주제·키워드 <small>비우면 레퍼 주제를 K뷰티로만 바꿔요</small></label>
+          <input id="bTopic" class="field" type="text" autocomplete="off" placeholder="예: 얼굴 균형 맞추는 눈썹, step 1">
+          <label class="lab" for="bNote">더 넣을 말 <small>선택</small></label>
+          <textarea id="bNote" class="paper" rows="2" placeholder="꼭 넣고 싶은 말이 있으면 한국어로 적어도 돼요"></textarea>
+          <button id="bOpenMe" class="text-btn" type="button">내 정보 고치기 (설정 ⑤)</button>
+        </div>
+      </div>
+      <div id="econMake" class="win">
         <div class="win-bar"><span class="win-title">✎ make_script.exe</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
         <div class="win-body sc-form">
           <label class="lab" for="mTopic">주제·키워드</label>
@@ -154,13 +173,22 @@
     </section>
 
     <!-- 완성대본 -->
-    <section id="tab-scripts" class="tab" aria-label="완성대본">
+    <section id="tab-scripts" class="tab" aria-label="완성대본(경제)">
       <div class="search-row">
         <label class="sr-only" for="scQ">완성 대본 찾기</label>
         <input id="scQ" class="search" type="search" placeholder="완성 대본에서 찾기 (주제·후킹·제목)" autocomplete="off">
       </div>
       <div id="scFilter" class="chips sc-filter" role="group" aria-label="상태"></div>
       <div id="scList" class="list"></div>
+    </section>
+    <!-- 완성대본(뷰티) — genre 'beauty' 인 대본만 (1.12.0) -->
+    <section id="tab-beauty" class="tab" aria-label="완성대본(뷰티)">
+      <div class="search-row">
+        <label class="sr-only" for="bcQ">뷰티 대본 찾기</label>
+        <input id="bcQ" class="search" type="search" placeholder="뷰티 대본에서 찾기 (제목·후킹)" autocomplete="off">
+      </div>
+      <div id="bcFilter" class="chips sc-filter" role="group" aria-label="상태"></div>
+      <div id="bcList" class="list"></div>
     </section>
     <!-- 블로그 (일상 글) -->
     <section id="tab-blog" class="tab" aria-label="블로그">
@@ -308,6 +336,17 @@
       </details>
       <button id="claudeForget" class="danger-btn" type="button" hidden>이 휴대폰에서 Claude 열쇠 지우기</button>
       <p class="hint small">맥북까지 꺼져 있으면 대본 탭 맨 아래 “Claude 앱에 붙여넣기”로 만들 수 있어요.</p>
+    </div>
+
+    <div class="card">
+      <h3>⑤ 뷰티 대본 내 정보</h3>
+      <p class="hint">뷰티(영어) 대본은 레퍼 문장을 거의 그대로 두고, 사람·주제 키워드만 여기 적힌 내 정보로 바꿔요. <b>여기 없는 경험은 대본에 안 넣어요.</b> 이 휴대폰에만 저장돼요.</p>
+      <label class="sr-only" for="beautyMe">뷰티 내 정보</label>
+      <textarea id="beautyMe" class="paper" rows="9"></textarea>
+      <div class="row">
+        <button id="beautyMeSave" class="aqua-btn small" type="button">저장</button>
+        <button id="beautyMeReset" class="ghost-btn" type="button">기본값으로</button>
+      </div>
     </div>
 
     <div class="card">

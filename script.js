@@ -289,17 +289,23 @@ ${refsText(sc.structure)}`;
 // ── 글 형식 답 읽기 ─────────────────────────────────────
 const META_KEYS = { "제목": "title", "표지": "cover", "구조": "structure", "후킹유형": "hookType", "후킹 유형": "hookType", "바꾼 점": "why", "바꾼점": "why", "잘된점": "why", "잘된 점": "why", "대본구조": "structure",
   "캡션": "caption", "해시태그": "hashtags", "쓴 메모": "usedIdeaIds", "확인할 것": "needCheck" };
+// 1.12.0 뷰티(영어) 대본: 화면 칸 뒤 '| 뜻: 한국어' → line.ko (경제 대본엔 없으면 그대로)
+function visKo(v){
+  const m = String(v || "").match(/^(.*?)\s*(?:[|｜/·]\s*)?뜻\s*[:：]\s*(.*)$/);
+  return m ? { visual: m[1].trim().replace(/\s*[|｜]\s*$/, ""), ko: m[2].trim() } : { visual: String(v || "").trim() };
+}
 function splitLines(text){
-  // "문장 ( 화면 ) 문장 ( 화면 )" → [{text, visual}]
+  // "문장 ( 화면 ) 문장 ( 화면 | 뜻: 한국어 )" → [{text, visual, ko?}]
   const out = []; const re = /([^()]*?)\s*\(\s*([^()]*?)\s*\)/g; let m, last = 0;
+  const koOnly = (t) => { const k = t.match(/^뜻\s*[:：]\s*(.*)$/); if(k && out.length){ out[out.length - 1].ko = k[1].trim(); return true; } return false; };
   while((m = re.exec(text))){
-    const t = m[1].trim();
-    if(t) out.push({ text: t, visual: m[2].trim() });
-    else if(out.length && m[2].trim()) out[out.length - 1].visual = (out[out.length - 1].visual ? out[out.length - 1].visual + " · " : "") + m[2].trim();
+    const t = m[1].trim(); const vk = visKo(m[2].trim());
+    if(t && !koOnly(t)) out.push(Object.assign({ text: t }, vk));
+    else if(!t && out.length && (vk.visual || vk.ko)){ const p = out[out.length - 1]; if(vk.visual) p.visual = (p.visual ? p.visual + " · " : "") + vk.visual; if(vk.ko) p.ko = vk.ko; }
     last = re.lastIndex;
   }
   const rest = text.slice(last).trim();
-  if(rest) out.push({ text: rest, visual: "" });
+  if(rest && !koOnly(rest)) out.push({ text: rest, visual: "" });
   return out;
 }
 function parseScriptText(raw, inp){
@@ -419,7 +425,7 @@ function scriptText(sc, mode){
   if(mode === "say") return sc.slots.map(s => s.lines.map(l => l.text).join("\n")).join("\n");
   if(mode === "caption") return [sc.caption, "", (sc.hashtags || []).join(" ")].join("\n").trim();
   const head = [`제목) ${sc.title}`, `표지) ${(sc.cover || []).join(" / ")}`, `대본구조: ${sc.structure} · 후킹: ${sc.hookType}`, ""];
-  const body = sc.slots.map(s => `${s.slot}) ` + s.lines.map(l => `${l.text} ( ${l.visual || ""} )`).join(" "));
+  const body = sc.slots.map(s => `${s.slot}) ` + s.lines.map(l => `${l.text} ( ${l.visual || ""}${l.ko ? ` | 뜻: ${l.ko}` : ""} )`).join(" "));
   const tail = sc.needCheck && sc.needCheck.length ? ["", "확인할 것) " + sc.needCheck.join(" / ")] : [];
   return head.concat(body, tail).join("\n");
 }
@@ -546,6 +552,171 @@ function parseStackScript(text, x){
     text: v.slots.map(s => `${s.slot}) ${s.lines.map(l => l.text).join(" ")}`).join("\n"),
     hook: v.slots[0] ? v.slots[0].lines.map(l => l.text).join(" ") : ""
   };
+}
+
+
+// ── 뷰티(영어) 대본 — 1.12.0 (사용자 10/31 "영어대본 뽑아주는 뷰티탭… 레퍼를 거의 그대로 복붙하듯이 하고 키워드 몇 개만 바꾸면 돼") ──
+// 경제 대본 규칙(요체·2030 재테크·코퍼스·숫자 규칙)은 쓰지 않는다. 레퍼 영어 원문을 거의 그대로 두고 주제·사람 키워드만 [내 정보]로 바꾼다.
+// 줄마다 { text: 영어, visual: 한국어 화면, ko: 한국어 뜻 }. 답 글 형식은 경제와 같은 '슬롯) 문장 ( 화면 | 뜻: 한국어 )' → parseScriptText 가 읽는다.
+const BEAUTY_ME_DEFAULT = `- 이름: Korean Sein / K-Sein / K-jangnyeo (the oldest daughter in a Korean family)
+- 채널: K-beauty, face balance(얼굴 균형), real Korean beauty life(리얼 코리아 뷰티 라이프)
+- 권위(한 문장으로만): 원래 똥손(clumsy hands)이었는데 많이 배우고 좋아졌다 → 그래서 이제 내 꿀팁(honey tips)을 푼다
+- 예쁜 얼굴이 아니라 얼굴 균형(a balanced face)을 잡으려고 10년 넘게 연구했다
+- 꿀팁은 step 1, 2, 3… 시리즈로 푼다
+- 화면에 내 사진 비포 앤 애프터(before & after)를 넣는다
+- 금지: '메이크업 아티스트(makeup artist)'라는 말
+- CTA: 응원 댓글(cheering comment)을 남기면 나만 아는 뷰티 시크릿 편지(beauty secret letter 💌)를 보내 준다`;
+const beautyMe = () => String(LS.get('sw.beautyMe', '') || '').trim() || BEAUTY_ME_DEFAULT;
+
+// 대본 스택에서 영어 영상만: lang==='en', 또는 받아쓰기·대본 글자가 대부분 영문자
+function isEnglishRef(x) {
+  const t = [x && x.transcript, x && x.script && x.script.text].filter(Boolean).join(' ');
+  if (!t.trim()) return false;
+  if (x.lang === 'en') return true;
+  if (x.lang && x.lang !== 'en') return false;
+  const en = (t.match(/[A-Za-z]/g) || []).length, ko = (t.match(/[가-힣]/g) || []).length;
+  return en >= 40 && en > ko * 3;
+}
+const enWords = (s) => (String(s || '').match(/[A-Za-z0-9'’]+/g) || []).length;
+function beautyRefPack(x) {
+  const m = x.meta || {}, sc = x.script || {};
+  return { id: x.id, code: x.code || '', url: x.url || '', title: sc.title || '', views: m.views || '', duration: m.duration || '',
+    text: sc.text || '', transcript: x.transcript || '', caption: String(m.caption || '').replace(/\s*다운로드\s+MP4[\s\S]*$/, '').trim().slice(0, 1200) };
+}
+
+const BEAUTY_RULES = `[너의 일] 영어 인스타 릴스·쇼츠 대본을 쓴다. 채널은 한국 사람이 영어로 말하는 K-beauty 채널이다.
+방식(사용자 지시 그대로): "레퍼를 거의 그대로 복붙하듯이 하고 키워드 몇 개만 바꾸면 돼."
+1. 아래 [레퍼런스] 영어 원문의 문장 틀·길이·순서·말투·칸 수를 거의 그대로 둔다. 새로 짜지 않는다. 내 문장 하나하나가 레퍼 문장과 1:1로 맞아야 한다.
+2. 바꾸는 것은 주제·사람 정보 키워드뿐: 이름·나라·도시·정체성·좋아하는 것·꿈/경력 같은 말을 [내 정보]와 [이번 주제]의 말로 바꾼다.
+3. 키워드를 바꿔서 문장이 길어지면 두 문장을 합치거나 덜어서 원래 길이에 맞춘다. 영어 수준은 레퍼 그대로(쉬운 단어, 짧은 문장).
+4. 없는 사연 지어내기 금지: [내 정보]에 없는 경험·숫자·사실(나이·사는 곳·직업·결혼·돈·제품 이름 등)은 쓰지 않는다. 레퍼의 그런 문장은 내 정보로 바꿀 수 있으면 바꾸고, 못 바꾸면 뺀다.
+5. 권위 문장(원래 똥손 → 배워서 좋아짐 → 꿀팁 푼다)은 한 문장으로 한 번만. 'makeup artist'라는 말은 절대 쓰지 않는다.
+6. 레퍼가 목록·순서형이면 꿀팁 step 1, 2, 3…로 받는다. 레퍼에 순서가 없으면 억지로 만들지 않는다.
+7. 끝은 레퍼의 끝 인사·CTA 자리를 살리고, 그 안에 "Leave a cheering comment → my beauty secret letter 💌"를 넣는다.
+8. 화면요소는 한국어로 짧게. 비포 앤 애프터가 맞는 자리엔 "내 사진 비포 → 애프터"를 넣는다.
+9. 문장마다 한국어 뜻을 붙인다(쉬운 말, 자연스러운 존댓말).
+10. 영어 문장 안에도, ( ) 화면 칸 안에도 괄호를 또 쓰지 않는다(칸이 깨진다). 첫 칸 이름은 '후킹', 마지막 칸 이름은 'CTA'.`;
+
+const BEAUTY_ALT_RULE = `각 슬롯 줄 바로 아래에, 그 칸만 바꿔 넣을 후보를 "  후보) 방식 | English sentence. ( 화면요소 | 뜻: 한국어 뜻 )" 줄로 붙여. 후킹은 3개, 나머지 칸은 2개씩. 후보도 레퍼 문장 틀을 그대로 두고 단어·표현만 다르게(방식은 한국어 6자 안팎, 예: 더 짧게·질문형·감탄형), [내 정보] 밖의 사연은 금지.`;
+
+const BEAUTY_FORMAT = `=== 대본 ===
+제목) English title (레퍼 제목 틀 그대로)
+표지) 영어 1줄 / 영어 2줄
+구조) 문제해결형 | 혜택강조형 | n가지형 | 통념반전형 중 레퍼와 같은 것
+후킹유형) 후킹 유형 이름(한국어)
+후킹) English sentence. ( 화면요소 | 뜻: 한국어 뜻 )
+  후보) 방식 | English sentence. ( 화면요소 | 뜻: 한국어 뜻 )
+(레퍼 칸 이름 그대로)) English sentence. ( 화면요소 | 뜻: 한국어 뜻 ) English sentence. ( 화면요소 | 뜻: 한국어 뜻 )
+  후보) 방식 | …
+CTA) English sentence. ( 화면요소 | 뜻: 한국어 뜻 )
+  후보) 방식 | …
+바꾼 점) 레퍼의 어떤 말을 무엇으로 바꿨는지 한국어로 한두 줄
+
+=== 공통 ===
+캡션) English caption 3~5 lines (레퍼 캡션 틀 그대로, 이모지 OK)
+해시태그) #english #hashtags 5~8개
+확인할 것) 찍기 전에 준비할 것(한국어) / 로 구분 (없으면 비움)`;
+
+// 예시: 도쿄 UNA 첫 영상(DcQVJ9lyzaz) 레퍼 → 완성대본 20261031-142204-kbt (사용자가 좋은 예라고 한 것)
+const BEAUTY_EX_REF = "후킹) I will show you real life in Japan.\n베네핏 - 주제 + n가지) Hi, I'm Una. I'm not famous and I'm not rich. I'm just a normal woman in Tokyo who loves anime and traveling.\n문제점 제시) Sorry for reading the script. My English isn't perfect, and I'm super, super shy speaking English to the camera.\n첫 번째) To be honest, for 30 years I lived without any big dreams, but recently I found one.\n두 번째) My dream is to become a creator and share real Japanese culture with you.\n세 번째) This is my very first video, yay! I have no friends yet, but I feel happy if you become my friends.\nCTA) Thank you for watching. See you in the next video.";
+const BEAUTY_EX_OUT = "=== 대본 ===\n제목) I will show you real Korean beauty life\n표지) K-Sein's real / Korean beauty life 🇰🇷\n구조) n가지형\n후킹유형) 선언·단정\n후킹) I will show you real beauty life in Korea. ( 화장대 앞 민낯 클로즈업 + 🇰🇷 | 뜻: 한국의 진짜 뷰티 생활을 보여줄게요. )\n베네핏 - 주제) Hi, I'm Korean Sein, K-Sein. I'm not famous. I'm just a normal K-jangnyeo, the oldest daughter in Korea, who loves K-beauty and face balance. ( 손 흔드는 인사 + 'K-Sein' 큰 자막, 'K-jangnyeo = the oldest daughter' 작은 자막 | 뜻: 안녕하세요, 코리안 세인, K-Sein이에요. 유명하지 않아요. K뷰티와 얼굴 균형을 좋아하는 평범한 K장녀예요. )\n문제점 제시) Sorry for reading the script. My English isn't perfect, and I'm super, super shy speaking English to the camera. ( 대본 종이 들고 웃는 컷 + 🙈 | 뜻: 대본 읽어서 미안해요. 영어가 완벽하지 않고, 카메라 앞에서 영어로 말하는 게 너무너무 부끄러워요. )\n첫 번째) To be honest, I used to have clumsy hands, but I learned a lot and got so much better, so now I'll share all my honey tips with you. ( 내 사진 비포 → 애프터 나란히, BEFORE / AFTER 자막 + 🍯 | 뜻: 솔직히 원래 똥손이었는데, 많이 배우고 훨씬 좋아졌어요. 그래서 이제 제 꿀팁 다 풀어볼게요. )\n두 번째) For over 10 years, I've studied not a pretty face, but a balanced face. ( 얼굴 위 가는 비율 선 이마·코·턱 + '10+ years' 자막 | 뜻: 10년 넘게, 예쁜 얼굴이 아니라 균형 잡힌 얼굴을 연구했어요. )\n세 번째) This is my very first video, yay! I have no friends yet, but I feel happy if you become my friends. ( 카메라 보고 작게 박수 + 🫶 | 뜻: 제 첫 영상이에요, 야호! 아직 친구가 없지만 여러분이 친구가 돼 주면 행복할 거예요. )\nCTA) Leave a cheering comment, and I'll send you my beauty secret letter that only I know. 💌 Thank you for watching. See you in the next video. ( 편지 봉투 열리는 컷 + 댓글창 👇, 손 흔들며 끝 | 뜻: 응원 댓글 남겨 주면 나만 아는 뷰티 시크릿 편지 보내 줄게요. 봐 줘서 고마워요. 다음 영상에서 만나요. )\n바꾼 점) Japan→Korea, Una→Korean Sein(K-Sein), 애니 좋아하는 도쿄 평범한 여자→K뷰티·얼굴 균형 좋아하는 K장녀, 30년 꿈 없음→원래 똥손이었는데 배워서 꿀팁 푼다(권위 한 문장), 크리에이터 꿈→10년 넘게 얼굴 균형 연구, 끝 인사 앞에 응원 댓글→뷰티 시크릿 편지. 'not rich'는 내 정보에 없어서 뺌.\n\n=== 공통 ===\n캡션) Welcome to K-Sein's real beauty life in Korea! 🇰🇷💄\nThank you for watching my very first video. I was so nervous speaking English to the camera 🙈\nI used to have clumsy hands, but I learned a lot, and now I'll share all my honey tips 🍯\nLeave a cheering comment and I'll send you my beauty secret letter 💌\n해시태그) #kbeauty #koreanbeauty #facebalance #ksein #lifeinkorea #koreanmakeup\n확인할 것) 비포/애프터 내 사진 2장 준비 / 응원 댓글 단 분께 보낼 '뷰티 시크릿 편지' DM 내용 준비";
+
+function beautyRefBlock(ref) {
+  if (!ref) return '(레퍼 원문을 못 찾았어요 — 지금 대본의 틀을 그대로 지켜)';
+  return [`코드 ${ref.code || '?'}${ref.views ? ` · 조회 ${ref.views}` : ''}${ref.duration ? ` · ${Math.round(ref.duration)}초` : ''}${ref.title ? ` · ${ref.title}` : ''}`,
+    ref.text ? `[칸 정리된 원문]\n${ref.text}` : '',
+    ref.transcript ? `[받아쓰기 원문]\n${String(ref.transcript).slice(0, 4000)}` : '',
+    ref.caption ? `[원래 캡션]\n${ref.caption}` : ''].filter(Boolean).join('\n\n');
+}
+function buildBeautyPrompt(ref, inp) {
+  return `${BEAUTY_RULES}
+
+[내 정보 — 여기 있는 것만 내 이야기로 쓸 수 있다]
+${beautyMe()}
+
+[이번 주제·키워드]
+${inp.topic || '(따로 없음 — 레퍼 주제를 내 채널, K-beauty·얼굴 균형으로만 바꿔)'}
+
+[더 넣을 말]
+${inp.note || '(없음)'}
+
+[예시 — 레퍼(DcQVJ9lyzaz, 도쿄 UNA 첫 영상) 원문 → 키워드만 바꾼 대본. 바꾸는 정도와 형식만 참고해(예시엔 후보 줄을 뺐지만 너는 넣어)]
+레퍼:
+${BEAUTY_EX_REF}
+
+바꾼 대본:
+${BEAUTY_EX_OUT}
+
+[답 형식 — 아래 글 형식 그대로, 한 버전만. JSON·코드펜스·설명 없이]
+${BEAUTY_FORMAT}
+
+${BEAUTY_ALT_RULE}
+
+[레퍼런스 — 이 영상을 거의 그대로 따라 쓴다]
+${beautyRefBlock(ref)}`;
+}
+function buildBeautyRevisePrompt(sc, instruction, ref) {
+  return `${BEAUTY_RULES}
+
+[내 정보 — 여기 있는 것만 내 이야기로 쓸 수 있다]
+${beautyMe()}
+
+[할 일] 아래 영어 대본을 사용자 요청대로 고쳐. 요청하지 않은 부분은 그대로 두고, 레퍼 문장 틀은 계속 지킨다.
+사용자 요청: ${instruction}
+
+[지금 대본]
+${scriptText(sc)}
+
+[답 형식 — 아래 글 형식 그대로, 한 버전만. JSON·코드펜스·설명 없이]
+${BEAUTY_FORMAT}
+
+${BEAUTY_ALT_RULE}
+
+[레퍼런스]
+${beautyRefBlock(ref)}`;
+}
+function buildBeautyAltsPrompt(sc) {
+  return `${BEAUTY_RULES}
+
+[내 정보]
+${beautyMe()}
+
+[주문] 아래 영어 대본의 칸마다, 바꿔 넣을 후보를 만들어. 칸 순서대로 ${sc.slots.length}개 칸 전부.
+- 첫 칸(후킹): 서로 다른 방식으로 4개. 나머지 칸: 3개씩.
+- 레퍼 문장 틀은 그대로 두고 단어·표현만 다르게, 쉬운 영어. 앞 칸에서 이어지고 뒤 칸으로 넘어가야 한다. [내 정보] 밖의 사연·숫자 금지, 'makeup artist' 금지.
+- 줄마다 화면요소(한국어)와 ko(한국어 뜻)를 적어.
+JSON 배열만, 칸 순서대로: [{"slot":"칸 이름","alts":[{"label":"방식(한국어 6자 안팎)","lines":[{"text":"English sentence","visual":"화면요소","ko":"한국어 뜻"}]}]}]
+
+[대본]
+${scriptText(sc)}`;
+}
+function beautyChecks(sc) {
+  const said = sc.slots.map((s) => s.lines.map((l) => l.text).join(' ')).join(' ');
+  const words = enWords(said);
+  const sents = (said.match(/[^.!?]+[.!?]*/g) || []).filter((x) => x.trim()).length;
+  const hook = sc.slots[0] ? sc.slots[0].lines.map((l) => l.text).join(' ') : '';
+  const hookW = enWords(hook);
+  const noKo = sc.slots.reduce((n, s) => n + s.lines.filter((l) => !l.ko).length, 0);
+  const ma = /make-?up\s+artist/i.test(said);
+  const kor = /[가-힣]/.test(said);
+  const rw = sc.input && sc.input.refWords;
+  const near = rw ? Math.abs(words - rw) / rw : 0;
+  return [
+    { k: `영어 ${words}단어${rw ? ` · 레퍼 ${rw}` : ''}`, c: !rw ? 'ok' : near <= 0.25 ? 'ok' : near <= 0.5 ? 'warn' : 'bad', tip: '레퍼와 비슷한 길이' },
+    { k: `문장 ${sents}개`, c: 'ok' },
+    { k: `후킹 ${hookW}단어`, c: hookW >= 3 && hookW <= 14 ? 'ok' : 'warn', tip: '짧게 한 문장' },
+    { k: ma ? "'makeup artist' 금지" : '금지어 0', c: ma ? 'bad' : 'ok' },
+    { k: kor ? '영어 칸에 한글 있음' : '영어 ✔', c: kor ? 'warn' : 'ok' },
+    { k: noKo ? `뜻 빠짐 ${noKo}줄` : '한국어 뜻 ✔', c: noKo ? 'warn' : 'ok' },
+  ];
+}
+// 답을 읽은 뒤: 뷰티 표시·레퍼 출처·CTA 딱지
+function beautyDecorate(vs, inp) {
+  vs.forEach((v) => {
+    v.genre = 'beauty'; if (inp.source) v.source = inp.source;
+    v.ctaKeyword = '💌'; v.topic = inp.topic || v.topic || ''; v.input = inp;
+  });
+  return vs;
 }
 
 
@@ -987,6 +1158,7 @@ function renderRefs() {
       ${x._wait ? '<span class="tag wait">⏳ 올리는 중</span>' : ''}</span></button>`;
   }).join('');
   if (R.openId && $('#refSheet').open) renderRefSheet();
+  renderBeautyRefs();
 }
 function renderRefSheet() {
   const x = rView().find((r) => r.id === R.openId); const dlg = $('#refSheet');
@@ -1032,6 +1204,7 @@ const S = {
   attached: new Set(LS.get('sw.attached', [])),
   scFilter: '전체', scQ: '', openId: null, sheetEditing: false, sheetConfirm: false,
   hooks: null, hooksBusy: false, hooksMsg: '', revBusy: false, sugg: {}, alts: LS.get('sw.alts', []),
+  genre: LS.get('sw.genre', 'econ') === 'beauty' ? 'beauty' : 'econ', bRef: LS.get('sw.bRef', ''), bcFilter: '전체', bcQ: '',   // 1.12.0 경제 / 뷰티(영어)
 };
 if (S.alts.length) S.current = S.alts[LS.get('sw.altIdx', 0)] || S.alts[0];
 function persistCur() {
@@ -1061,10 +1234,53 @@ function renderAttach() {
   box.innerHTML = pool.map((x) => `<label><input type="checkbox" data-id="${esc(x.id)}"${S.attached.has(x.id) ? ' checked' : ''}><span>${x.kind ? `<span class="tag">${esc(x.kind)}</span> ` : ''}${esc(String(x.text).slice(0, 80))}${String(x.text).length > 80 ? '…' : ''}</span></label>`).join('');
 }
 function renderKeyHint() {
-  const has = !!claudeKey();
-  $('#genBtn').innerHTML = has ? '대본 뽑기 <span class="tier">Fable 5.1</span>' : '대본 뽑기 <span class="tier">Fable · 맥북</span>';
+  const has = !!claudeKey(); const beauty = S.genre === 'beauty';
+  $('#genBtn').innerHTML = `${beauty ? '영어 대본 뽑기' : '대본 뽑기'} <span class="tier">${has ? 'Fable 5.1' : 'Fable · 맥북'}</span>`;
+  $('#genBtn').disabled = !!genCtl || (beauty && !beautyRef());
 }
-function setBusy(on, text) { $('#genBusy').hidden = !on; $('#genBtn').disabled = on; if (text) $('#genBusyText').textContent = text; }
+function setBusy(on, text) { $('#genBusy').hidden = !on; $('#genBtn').disabled = on || (S.genre === 'beauty' && !beautyRef()); if (text) $('#genBusyText').textContent = text; }
+
+// ── 1.12.0 뷰티(영어) 대본 만들기: 영어 레퍼 하나 고르기 → 거의 그대로 + 키워드만 바꾸기 ──
+const beautyRefs = () => rView().filter(isEnglishRef);   // 최신 먼저
+const beautyRef = () => (S.bRef ? beautyRefs().find((x) => x.id === S.bRef) : null) || null;
+function readBeautyForm() {
+  const x = beautyRef(); const ref = x ? beautyRefPack(x) : null;
+  return { genre: 'beauty', topic: $('#bTopic').value.trim(), note: $('#bNote').value.trim(), refId: x ? x.id : '',
+    source: ref ? { code: ref.code, url: ref.url } : null, refWords: ref ? enWords(ref.transcript || ref.text.replace(/^[^)\n]{1,30}\)/gm, '')) : 0 };
+}
+function saveBeautyForm() { LS.set('sw.bform', { topic: $('#bTopic').value, note: $('#bNote').value }); }
+function renderBeautyRefs() {
+  const box = $('#bRefList'); if (!box) return;
+  const list = beautyRefs();
+  if (!list.length) box.innerHTML = '<p class="hint">영어 레퍼런스가 아직 없어요. 레퍼런스 › 대본 스택에 영어 영상 링크를 쌓으면 여기 떠요.</p>';
+  else box.innerHTML = list.map((x) => {
+    const sc = x.script || {}, m = x.meta || {};
+    const head = sc.hook || String(x.transcript || '').replace(/\s+/g, ' ').slice(0, 70);
+    const sub = [fmtDate(x.at), x.code, m.views ? `조회 ${m.views}` : '', m.duration ? `${Math.round(m.duration)}초` : ''].filter(Boolean).join(' · ');
+    return `<label><input type="radio" name="bRef" value="${esc(x.id)}"${x.id === S.bRef ? ' checked' : ''}><span><b lang="en">${esc(head)}</b><br><small>${esc(sub)}${sc.title ? ` · ${esc(sc.title)}` : ''}</small></span></label>`;
+  }).join('');
+  const h = $('#bRefHint'); if (h) h.textContent = beautyRef() ? '' : (list.length ? '레퍼런스를 하나 골라야 뽑을 수 있어요' : '');
+  renderKeyHint();
+}
+function renderGenre() {
+  const beauty = S.genre === 'beauty';
+  document.querySelectorAll('#genrePick [data-genre]').forEach((b) => { const on = b.dataset.genre === S.genre; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', String(on)); });
+  $('#econMake').hidden = beauty; $('#beautyMake').hidden = !beauty;
+  renderBeautyRefs();
+}
+function setGenre(g) { S.genre = g === 'beauty' ? 'beauty' : 'econ'; LS.set('sw.genre', S.genre); showErr(''); renderGenre(); }
+function currentPrompt() {   // 프롬프트 복사(맥북이 꺼져 있을 때)
+  if (S.genre === 'beauty') { const x = beautyRef(); return x ? buildBeautyPrompt(beautyRefPack(x), readBeautyForm()) : ''; }
+  return buildPrompt(readForm(), ideas().filter((y) => S.attached.has(y.id)));
+}
+async function generateBeauty() {
+  const x = beautyRef(); saveBeautyForm();
+  if (!x) { toast('영어 레퍼런스를 하나 골라 주세요'); return; }
+  showErr('');
+  if (!claudeKey() && !SW.cfg().token) { showErr('설정 ①에 GitHub 열쇠가 있어야 맥북에 보낼 수 있어요. 아니면 아래 "프롬프트 복사"로 Claude 앱에 붙여 넣고 답을 "답 붙여넣기"에 넣어 주세요.', true); return; }
+  const inp = readBeautyForm();
+  await runGen(buildBeautyPrompt(beautyRefPack(x), inp), inp, []);
+}
 function showErr(msg, withCopy) {
   const b = $('#genErr');
   if (!msg) { b.hidden = true; b.innerHTML = ''; return; }
@@ -1073,6 +1289,7 @@ function showErr(msg, withCopy) {
 }
 let genCtl = null;
 async function generate() {
+  if (S.genre === 'beauty') return generateBeauty();
   const inp = readForm(); saveForm();
   if (!inp.topic && !inp.rough) { toast('주제나 대강 대본 중 하나는 적어 주세요'); return; }
   const att = ideas().filter((x) => S.attached.has(x.id));
@@ -1085,13 +1302,15 @@ async function generate() {
 async function runGen(prompt, inp, ideaIds, resume) {
   genCtl = new AbortController(); let keep = false;
   const mac = !claudeKey();
-  setBusy(true, mac ? (resume ? '맥북에 보낸 대본을 이어서 기다리는 중…' : '맥북에 보내는 중…') : 'Fable이 대본을 생각하는 중… 1~3분쯤 걸려요');
+  const beauty = inp && inp.genre === 'beauty';
+  setBusy(true, mac ? (resume ? '맥북에 보낸 대본을 이어서 기다리는 중…' : '맥북에 보내는 중…') : beauty ? 'Fable이 영어 대본을 쓰는 중… 1~2분쯤 걸려요' : 'Fable이 대본을 생각하는 중… 1~3분쯤 걸려요');
   try {
     const text = await askBest(prompt, { signal: genCtl.signal, kind: '대본', resume,
-      onLen: (n) => { $('#genBusyText').textContent = `두 버전 쓰는 중… ${n}자`; },
+      onLen: (n) => { $('#genBusyText').textContent = beauty ? `영어 대본 쓰는 중… ${n}자` : `두 버전 쓰는 중… ${n}자`; },
       say: (m) => { $('#genBusyText').textContent = m; },
       onSent: (req) => LS.set('sw.macGen', { ...req, inp, ideaIds, at: Date.now() }) });
     const vs = versionsFrom(text, inp);
+    if (beauty) beautyDecorate(vs, inp);
     vs.forEach((v) => { v.ideaIds = ideaIds; });
     setCurrent(vs[0], vs);
     $('#resultWin').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1119,7 +1338,7 @@ function parseAltList(raw, slot, n) {
   return (Array.isArray(raw) ? raw : []).map((h) => ({
     label: String((h && (h.label || h.hookType)) || '').trim(),
     lines: (Array.isArray(h && h.lines) ? h.lines : (h && h.text ? [{ text: h.text, visual: '' }] : []))
-      .map((l) => ({ text: String((l && l.text) || '').trim(), visual: String((l && l.visual) || '').trim() || (slot.lines[0] ? slot.lines[0].visual : '') })).filter((l) => l.text),
+      .map((l) => Object.assign({ text: String((l && l.text) || '').trim(), visual: String((l && l.visual) || '').trim() || (slot.lines[0] ? slot.lines[0].visual : '') }, l && l.ko ? { ko: String(l.ko).trim() } : {})).filter((l) => l.text),
   })).filter((h) => h.lines.length).slice(0, n);
 }
 function prefetchSlotAlts(sc, retry) {
@@ -1134,7 +1353,7 @@ function prefetchSlotAlts(sc, retry) {
   if (!resume && old) { delete sc.slotAltsReq; keep(); }
   const pr = (async () => {
     try {
-      const res = await askMid(`${RULES}\n\n[주문] 아래 대본의 칸마다, 바꿔 넣을 후보를 만들어. 칸 순서대로 ${sc.slots.length}개 칸 전부.\n- 첫 칸(후킹): 서로 다른 후킹 유형으로 6개, 각 공백 빼고 16~20자, label 은 후킹 유형 이름. 다음 칸과 이어져야 한다.\n- 나머지 칸: 서로 다른 방식(숫자 앞세우기·질문·상황 묘사·비교·경고 등)으로 4개씩. 그 칸의 역할은 그대로, 앞 칸에서 자연스럽게 이어지고 뒤 칸으로 넘어가야 한다. 줄 수는 지금 그 칸과 같거나 ±1, 한 줄은 공백 빼고 40자 안쪽. 줄마다 화면요소도 적어.\n- 공통: 요체, 대본 속 숫자·사실만 쓰고 새 숫자는 만들지 마. 지금 문장을 그대로 베끼지 마.\nJSON 배열만, 칸 순서대로: [{"slot":"칸 이름","alts":[{"label":"방식·유형(6자 안팎)","lines":[{"text":"문장","visual":"화면요소"}]}]}]\n\n[대본]\n${scriptText(sc)}`, { kind: '바꾸기', say, maxTokens: 8000, resume, onSent: (req) => { sc.slotAltsReq = { id: req.id, path: req.path, at: Date.now() }; keep(); } });
+      const res = await askMid(sc.genre === 'beauty' ? buildBeautyAltsPrompt(sc) : `${RULES}\n\n[주문] 아래 대본의 칸마다, 바꿔 넣을 후보를 만들어. 칸 순서대로 ${sc.slots.length}개 칸 전부.\n- 첫 칸(후킹): 서로 다른 후킹 유형으로 6개, 각 공백 빼고 16~20자, label 은 후킹 유형 이름. 다음 칸과 이어져야 한다.\n- 나머지 칸: 서로 다른 방식(숫자 앞세우기·질문·상황 묘사·비교·경고 등)으로 4개씩. 그 칸의 역할은 그대로, 앞 칸에서 자연스럽게 이어지고 뒤 칸으로 넘어가야 한다. 줄 수는 지금 그 칸과 같거나 ±1, 한 줄은 공백 빼고 40자 안쪽. 줄마다 화면요소도 적어.\n- 공통: 요체, 대본 속 숫자·사실만 쓰고 새 숫자는 만들지 마. 지금 문장을 그대로 베끼지 마.\nJSON 배열만, 칸 순서대로: [{"slot":"칸 이름","alts":[{"label":"방식·유형(6자 안팎)","lines":[{"text":"문장","visual":"화면요소"}]}]}]\n\n[대본]\n${scriptText(sc)}`, { kind: '바꾸기', say, maxTokens: 8000, resume, onSent: (req) => { sc.slotAltsReq = { id: req.id, path: req.path, at: Date.now() }; keep(); } });
       delete sc.slotAltsReq;
       const arr = Array.isArray(res) ? res : (res && Array.isArray(res.slots) ? res.slots : []);
       const byName = new Map(arr.map((x) => [String((x && x.slot) || '').replace(/\)$/, '').trim(), x]));
@@ -1175,7 +1394,7 @@ const EXAMPLE = {
   ],
   ctaKeyword: '500', caption: '', hashtags: [], needCheck: [], usedIdeaIds: [], topic: '', input: {},
 };
-function phoneHtml(sc) { return `<div class="sc-phone" aria-hidden="true"><div class="t">${(sc.cover || []).map((c) => `<span>${esc(c)}</span>`).join('')}</div><div class="ph">사진 자리</div><div class="b">신혼테크</div></div>`; }
+function phoneHtml(sc) { return `<div class="sc-phone" aria-hidden="true"><div class="t">${(sc.cover || []).map((c) => `<span>${esc(c)}</span>`).join('')}</div><div class="ph">사진 자리</div><div class="b">${sc.genre === 'beauty' ? 'K-Sein' : '신혼테크'}</div></div>`; }
 function slotsHtml(sc, editing, swapBtn) {
   return `<div class="sc-slots">${sc.slots.map((s, si) => {
     const cls = si === 0 ? ' hook' : /cta/i.test(s.slot) ? ' cta' : '';
@@ -1184,14 +1403,14 @@ function slotsHtml(sc, editing, swapBtn) {
     const btn = swapBtn ? `<button class="mini-btn" type="button" data-act="${open ? 'slotClose' : 'slotAlts'}" data-si="${si}" data-ready="${ready ? 1 : 0}" aria-expanded="${!!open}" title="${ready ? '후보가 준비돼 있어요' : waiting ? '후보 준비 중' : ''}">${open ? '닫기' : `${si === 0 ? '후킹 ' : ''}바꾸기 ${waiting ? '⏳' : ready ? '' : '<span class="tier">Sonnet</span>'}`}</button>` : '';
     return `<div class="sc-slot${cls}${open ? ' is-open' : ''}"><div class="sc-slot-name">${esc(s.slot)})${btn}</div>
       ${busy ? `<div class="sc-busy in-slot"><div class="pbar"><i></i></div><p id="slotMsg">${esc(S.slotMsg || '후보 뽑는 중…')}</p></div>` : ''}
-      ${open ? `<div class="sc-box in-slot"><b>${si === 0 ? '후킹' : '이 칸'} 후보 · 누르면 바뀌어요</b><div class="sc-hooks">${S.slotAlts.list.map((h, i) => `<button type="button" data-act="useSlotAlt" data-i="${i}"><em>${esc(h.label)}</em>${h.lines.map((l) => `<span class="alt-line">${esc(l.text)}${l.visual ? `<small>( ${esc(l.visual)} )</small>` : ''}</span>`).join('')}</button>`).join('')}</div></div>` : ''}
+      ${open ? `<div class="sc-box in-slot"><b>${si === 0 ? '후킹' : '이 칸'} 후보 · 누르면 바뀌어요</b><div class="sc-hooks">${S.slotAlts.list.map((h, i) => `<button type="button" data-act="useSlotAlt" data-i="${i}"><em>${esc(h.label)}</em>${h.lines.map((l) => `<span class="alt-line">${esc(l.text)}${l.ko ? `<small class="ko">${esc(l.ko)}</small>` : ''}${l.visual ? `<small>( ${esc(l.visual)} )</small>` : ''}</span>`).join('')}</button>`).join('')}</div></div>` : ''}
       ${s.lines.map((l, li) => (editing
-        ? `<div class="sc-line"><textarea class="paper" data-si="${si}" data-li="${li}" data-f="text">${esc(l.text)}</textarea><textarea class="paper v" data-si="${si}" data-li="${li}" data-f="visual" placeholder="화면요소">${esc(l.visual)}</textarea></div>`
-        : `<div class="sc-line"><div class="say">${esc(l.text)}</div>${l.visual ? `<div class="vis">( ${esc(l.visual)} )</div>` : ''}</div>`)).join('')}
+        ? `<div class="sc-line"><textarea class="paper" data-si="${si}" data-li="${li}" data-f="text">${esc(l.text)}</textarea>${sc.genre === 'beauty' ? `<textarea class="paper v" data-si="${si}" data-li="${li}" data-f="ko" placeholder="한국어 뜻">${esc(l.ko || '')}</textarea>` : ''}<textarea class="paper v" data-si="${si}" data-li="${li}" data-f="visual" placeholder="화면요소">${esc(l.visual)}</textarea></div>`
+        : `<div class="sc-line"><div class="say"${sc.genre === 'beauty' ? ' lang="en"' : ''}>${esc(l.text)}</div>${l.ko ? `<div class="ko">${esc(l.ko)}</div>` : ''}${l.visual ? `<div class="vis">( ${esc(l.visual)} )</div>` : ''}</div>`)).join('')}
     </div>`;
   }).join('')}</div>`;
 }
-function checksHtml(sc) { return `<div class="sc-checks">${analyze(sc).map((c) => `<span class="ck ${c.c}"${c.tip ? ` title="${esc(c.tip)}"` : ''}>${esc(c.k)}</span>`).join('')}</div>`; }
+function checksHtml(sc) { return `<div class="sc-checks">${(sc.genre === 'beauty' ? beautyChecks(sc) : analyze(sc)).map((c) => `<span class="ck ${c.c}"${c.tip ? ` title="${esc(c.tip)}"` : ''}>${esc(c.k)}</span>`).join('')}</div>`; }
 function extrasHtml(sc) {
   let h = '';
   if (sc.needCheck && sc.needCheck.length) h += `<div class="sc-box warn"><b>올리기 전에 공식 원문으로 확인</b><ul>${sc.needCheck.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
@@ -1226,7 +1445,7 @@ function renderResult() {
     ${slotsHtml(sc, ed, !ed && !sc.example)}
     ${extrasHtml(sc)}
     ${sc.example ? '' : `
-    <label class="lab" for="revText">다듬기 <small>예: 더 짧게, 후킹을 조건 제시로, 숫자 줄여서</small></label>
+    <label class="lab" for="revText">다듬기 <small>${sc.genre === 'beauty' ? '예: 더 짧게, 2번째 칸은 레퍼 문장 그대로' : '예: 더 짧게, 후킹을 조건 제시로, 숫자 줄여서'}</small></label>
     <textarea id="revText" class="paper" rows="2" placeholder="고치고 싶은 점을 적어요">${esc(LS.get('sw.rev', ''))}</textarea>
     ${S.revBusy ? '<div class="sc-busy"><div class="pbar"><i></i></div><p id="revBusyText">Fable이 다듬는 중… 1~2분</p><button class="ghost-btn" type="button" data-act="revStop">그만</button></div>' : '<button class="ghost-btn" type="button" data-act="revise">다듬기 <span class="tier">Fable 5.1</span></button>'}
     <div class="sc-btns">
@@ -1269,8 +1488,8 @@ async function onResultClick(e) {
   }
   else if (act === 'useSlotAlt') {
     const a = S.slotAlts, h = a && a.list[+b.dataset.i], slot = a && sc.slots[a.si]; if (!h || !slot) return;
-    const before = { label: '전 문장', lines: slot.lines.map((l) => ({ text: l.text, visual: l.visual || '' })) };
-    slot.lines = h.lines.map((l) => ({ text: l.text, visual: l.visual }));
+    const before = { label: '전 문장', lines: slot.lines.map((l) => Object.assign({ text: l.text, visual: l.visual || '' }, l.ko ? { ko: l.ko } : {})) };
+    slot.lines = h.lines.map((l) => Object.assign({ text: l.text, visual: l.visual }, l.ko ? { ko: l.ko } : {}));
     if (a.si === 0 && h.label) sc.hookType = h.label;
     const rest = a.list.filter((x) => x !== h && x.label !== '전 문장');
     sc.slotAlts = Object.assign({}, sc.slotAlts || {}, { [a.si]: [before].concat(rest) });
@@ -1282,9 +1501,11 @@ async function onResultClick(e) {
     revCtl = new AbortController(); S.revBusy = true; renderResult();
     try {
       const sayR = (m) => { const t = $('#revBusyText'); if (t) t.textContent = m; };
-      const text = await askBest(buildRevisePrompt(sc, ins),
+      const bref = sc.genre === 'beauty' ? beautyRefs().find((r) => r.id === (sc.input && sc.input.refId)) : null;
+      const text = await askBest(sc.genre === 'beauty' ? buildBeautyRevisePrompt(sc, ins, bref ? beautyRefPack(bref) : null) : buildRevisePrompt(sc, ins),
         { signal: revCtl.signal, kind: '다듬기', say: sayR, onLen: (n) => sayR(`고치는 중… ${n}자`) });
       const nsc = versionsFrom(text, sc.input || {})[0];
+      if (sc.genre === 'beauty') { beautyDecorate([nsc], sc.input || {}); if (sc.source) nsc.source = sc.source; }
       nsc.label = '다듬은 버전'; nsc.ideaIds = sc.ideaIds || []; nsc.savedId = sc.savedId; nsc.createdAt = sc.createdAt;
       const alts = (S.alts && S.alts.includes(sc) ? S.alts : [sc]).concat([nsc]);
       LS.set('sw.rev', ''); S.revBusy = false; revCtl = null; setCurrent(nsc, alts); toast('다듬었어요. 위 버튼으로 전 버전과 비교할 수 있어요'); return;
@@ -1301,6 +1522,7 @@ function saveCurrent() {
     id: sc.savedId || SW.makeId(now), title: sc.title, cover: sc.cover, structure: sc.structure, hookType: sc.hookType, why: sc.why,
     slots: sc.slots, ctaKeyword: sc.ctaKeyword, caption: sc.caption, hashtags: sc.hashtags, needCheck: sc.needCheck,
     topic: sc.topic, input: sc.input || {}, ideaIds: sc.ideaIds || [],
+    ...(sc.genre === 'beauty' ? { genre: 'beauty', source: sc.source || null } : {}),   // 1.12.0: 뷰티(영어)는 표절검사 없이 저장
     status: old ? old.status : '초안', createdAt: old ? old.createdAt : (sc.createdAt || localISO(now)), updatedAt: localISO(now),
   };
   sPut(entry);
@@ -1315,8 +1537,10 @@ function saveCurrent() {
 function applyPasted() {
   const raw = $('#pasteBox').value.trim(); if (!raw) { toast('Claude 답을 붙여 넣어 주세요'); return; }
   try {
-    const inp = readForm();
+    const beauty = S.genre === 'beauty';
+    const inp = beauty ? readBeautyForm() : readForm();
     const vs = versionsFrom(raw, inp);
+    if (beauty) beautyDecorate(vs, inp);
     const ids = ideas().filter((x) => S.attached.has(x.id)).map((x) => x.id); vs.forEach((v) => { v.ideaIds = ids; });
     $('#pasteBox').value = ''; setCurrent(vs[0], vs); toast('붙여 넣은 대본을 열었어요');
     $('#resultWin').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1331,33 +1555,48 @@ async function copyText(text, label) {
 
 // ── 완성대본목록 ─────────────────────────────────────────
 function hookOf(x) { return x.slots && x.slots[0] ? x.slots[0].lines.map((l) => l.text).join(' ') : ''; }
+// 1.12.0: 완성대본(경제) / 완성대본(뷰티) 두 탭 — genre 'beauty' 만 뷰티, 없거나 다른 값은 경제(옛 대본 전부)
+const isBeauty = (x) => x && x.genre === 'beauty';
+const SC_TABS = [
+  { beauty: false, count: '#scriptCount', filter: '#scFilter', list: '#scList', f: 'scFilter', q: 'scQ', empty: '아직 완성 대본이 없어요. 대본 탭에서 뽑고 ★ 저장을 누르면 여기 쌓여요' },
+  { beauty: true, count: '#beautyCount', filter: '#bcFilter', list: '#bcList', f: 'bcFilter', q: 'bcQ', empty: '아직 뷰티 대본이 없어요. 만들기에서 뷰티를 고르고 영어 대본을 뽑아 ★ 저장하면 여기 쌓여요' },
+];
 function renderScripts() {
-  const all = allScripts();
-  const cnt = $('#scriptCount'); if (cnt) cnt.textContent = all.length ? String(all.length) : '';
-  const todo = all.filter((x) => x.auto && (x.status || '초안') === '초안').length;   // 1.8.0 맥북이 매일 뽑은 대본 중 아직 안 찍은 것
+  const every = allScripts();
+  const todo = every.filter((x) => x.auto && (x.status || '초안') === '초안').length;   // 1.8.0 맥북이 매일 뽑은 대본 중 아직 안 찍은 것
   const nb = $('#scriptNavCount'); if (nb) nb.textContent = todo ? String(todo) : '';
-  $('#scFilter').innerHTML = ['전체'].concat(STATUSES).map((k) => {
-    const n = k === '전체' ? all.length : all.filter((x) => (x.status || '초안') === k).length;
-    return `<button class="chip${k === S.scFilter ? ' is-on' : ''}" type="button" data-f="${k}" aria-pressed="${k === S.scFilter}">${k} ${n}</button>`;
-  }).join('');
-  let list = all;
-  if (S.scFilter !== '전체') list = list.filter((x) => (x.status || '초안') === S.scFilter);
-  if (S.scQ) list = list.filter((x) => [x.title, x.topic, hookOf(x), (x.cover || []).join(' ')].join(' ').includes(S.scQ));
-  const box = $('#scList');
-  if (!list.length) {
-    box.innerHTML = `<div class="empty"><b>📼</b>${all.length ? '조건에 맞는 대본이 없어요' : '아직 완성 대본이 없어요. 대본 탭에서 뽑고 ★ 저장을 누르면 여기 쌓여요'}</div>`;
-  } else {
-    box.innerHTML = list.map((x) => {
-      const st = x.status || '초안';
-      const len = (x.slots || []).map((s) => s.lines.map((l) => l.text).join(' ')).join(' ').length;
-      return `<button class="sc-card" type="button" data-id="${esc(x.id)}">
-        <span class="bar"><span>${fmtDate(x.createdAt)} · ${esc(x.structure || '')}</span><span class="st st-${esc(st)}">${esc(st)}</span></span>
-        <span class="in"><span class="hk">${esc(hookOf(x))}</span><span class="ti">${esc(x.title)}</span>
-        <span class="chips">${x.auto ? '<span class="tag auto">🤖 자동</span>' : ''}<span class="tag used">${esc(x.hookType || '후킹')}</span><span class="tag">${len}자</span>${x.ctaKeyword ? `<span class="tag">'${esc(x.ctaKeyword)}'</span>` : ''}${x._wait ? '<span class="tag wait">⏳ 올리는 중</span>' : ''}</span></span>
-      </button>`;
+  SC_TABS.forEach((t) => {
+    const all = every.filter((x) => isBeauty(x) === t.beauty);
+    const cnt = $(t.count); if (cnt) cnt.textContent = all.length ? String(all.length) : '';
+    const fbox = $(t.filter), box = $(t.list); if (!fbox || !box) return;
+    fbox.innerHTML = ['전체'].concat(STATUSES).map((k) => {
+      const n = k === '전체' ? all.length : all.filter((x) => (x.status || '초안') === k).length;
+      return `<button class="chip${k === S[t.f] ? ' is-on' : ''}" type="button" data-f="${k}" aria-pressed="${k === S[t.f]}">${k} ${n}</button>`;
     }).join('');
-  }
+    let list = all;
+    if (S[t.f] !== '전체') list = list.filter((x) => (x.status || '초안') === S[t.f]);
+    if (S[t.q]) { const q = t.beauty ? S[t.q].toLowerCase() : S[t.q]; list = list.filter((x) => { const h = [x.title, x.topic, hookOf(x), (x.cover || []).join(' ')].join(' '); return (t.beauty ? h.toLowerCase() : h).includes(q); }); }
+    if (!list.length) {
+      box.innerHTML = `<div class="empty"><b>${t.beauty ? '💄' : '📼'}</b>${all.length ? '조건에 맞는 대본이 없어요' : t.empty}</div>`;
+    } else {
+      box.innerHTML = list.map((x) => {
+        const st = x.status || '초안';
+        const said = (x.slots || []).map((sl) => sl.lines.map((l) => l.text).join(' ')).join(' ');
+        const len = t.beauty ? `${enWords(said)}단어` : `${said.length}자`;
+        return `<button class="sc-card" type="button" data-id="${esc(x.id)}">
+        <span class="bar"><span>${fmtDate(x.createdAt)} · ${esc(x.structure || '')}</span><span class="st st-${esc(st)}">${esc(st)}</span></span>
+        <span class="in"><span class="hk"${t.beauty ? ' lang="en"' : ''}>${esc(hookOf(x))}</span><span class="ti">${esc(x.title)}</span>
+        <span class="chips">${x.auto ? '<span class="tag auto">🤖 자동</span>' : ''}${t.beauty && x.source && x.source.code ? `<span class="tag">레퍼 ${esc(x.source.code)}</span>` : ''}<span class="tag used">${esc(x.hookType || '후킹')}</span><span class="tag">${len}</span>${x.ctaKeyword ? `<span class="tag">'${esc(x.ctaKeyword)}'</span>` : ''}${x._wait ? '<span class="tag wait">⏳ 올리는 중</span>' : ''}</span></span>
+      </button>`;
+      }).join('');
+    }
+  });
   if (S.openId && $('#scriptSheet').open) renderSheet();   // 닫힌 직후(close 이벤트 전) 올리기가 끝나도 시트가 되살아나지 않게
+}
+// 뷰티 대본: 어느 영어 레퍼에서 왔는지
+function beautySourceHtml(x) {
+  const s = x.source; if (!isBeauty(x) || !s || !(s.code || s.url)) return '';
+  return `<div class="sc-box sc-src"><b>💄 레퍼런스</b><div>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.code || '영상 열기')} ↗</a>` : esc(s.code)}</div></div>`;
 }
 function renderSheet() {
   const x = allScripts().find((s) => s.id === S.openId);
@@ -1369,8 +1608,8 @@ function renderSheet() {
     ${headHtml(x, `${x.createdAt.slice(0, 10)} 저장${x.updatedAt && x.updatedAt !== x.createdAt ? ` · ${x.updatedAt.slice(0, 10)} 고침` : ''}`)}
     <div class="chips" role="group" aria-label="상태">${STATUSES.map((k) => `<button class="chip${k === st ? ' is-on' : ''}" type="button" data-st="${k}" aria-pressed="${k === st}">${k}</button>`).join('')}</div>
     ${checksHtml(x)}
-    ${sourceHtml(x)}
-    ${expandHtml(x)}
+    ${sourceHtml(x)}${beautySourceHtml(x)}
+    ${isBeauty(x) ? '' : expandHtml(x)}
     ${slotsHtml(x, S.sheetEditing, false)}
     ${extrasHtml(x)}
     <div class="sc-btns">
@@ -1404,6 +1643,7 @@ function onSheetClick(e) {
   }
   else if (act === 'sRework') {
     const c = clean(JSON.parse(JSON.stringify(x)));
+    setGenre(isBeauty(x) ? 'beauty' : 'econ');
     setCurrent({ ...c, savedId: x.id, usedIdeaIds: [], ideaIds: x.ideaIds || [] }, []);
     $('#scriptSheet').close(); S.openId = null; SW.switchTab('make');
     setTimeout(() => $('#resultWin').scrollIntoView({ block: 'start' }), 60);
@@ -1442,6 +1682,7 @@ function init() {
   fillSelect('#mLen', Object.keys(LENS), f.len || Object.keys(LENS)[0]);
   $('#mTopic').value = f.topic || ''; $('#mRough').value = f.rough || ''; $('#mFacts').value = f.facts || ''; $('#mCta').value = f.cta || '';
   ['#mTopic', '#mRough', '#mFacts', '#mCta'].forEach((s) => $(s).addEventListener('input', saveForm));
+  $('#mTopic').addEventListener('input', (e) => { if (!e.isTrusted && S.genre !== 'econ') setGenre('econ'); });   // 급상승·촬영대기의 '대본 탭에 넣기'는 경제 대본
   ['#mStruct', '#mHook', '#mTone', '#mLen'].forEach((s) => $(s).addEventListener('change', saveForm));
   $('#attachList').addEventListener('change', (e) => {
     const c = e.target.closest('input[data-id]'); if (!c) return;
@@ -1453,25 +1694,42 @@ function init() {
   $('#genErr').addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     if (b.dataset.act === 'openKey') SW.openSettings();
-    if (b.dataset.act === 'copyPrompt') copyText(buildPrompt(readForm(), ideas().filter((x) => S.attached.has(x.id))), '프롬프트');
+    if (b.dataset.act === 'copyPrompt') { const pr = currentPrompt(); if (pr) copyText(pr, '프롬프트'); else toast('영어 레퍼런스를 하나 골라 주세요'); }
   });
-  $('#copyPromptBtn').addEventListener('click', () => { const inp = readForm(); if (!inp.topic && !inp.rough) { toast('주제나 대강 대본을 먼저 적어 주세요'); return; } copyText(buildPrompt(inp, ideas().filter((x) => S.attached.has(x.id))), '프롬프트'); });
+  $('#copyPromptBtn').addEventListener('click', () => {
+    if (S.genre === 'beauty') { if (!beautyRef()) { toast('영어 레퍼런스를 먼저 골라 주세요'); return; } copyText(currentPrompt(), '프롬프트'); return; }
+    const inp = readForm(); if (!inp.topic && !inp.rough) { toast('주제나 대강 대본을 먼저 적어 주세요'); return; } copyText(buildPrompt(inp, ideas().filter((x) => S.attached.has(x.id))), '프롬프트');
+  });
+  // 1.12.0 경제 / 뷰티 고르기 (마지막 선택 기억)
+  $('#genrePick').addEventListener('click', (e) => { const b = e.target.closest('[data-genre]'); if (b) setGenre(b.dataset.genre); });
+  $('#bRefList').addEventListener('change', (e) => { const r = e.target.closest('input[name=bRef]'); if (!r) return; S.bRef = r.value; LS.set('sw.bRef', S.bRef); renderBeautyRefs(); });
+  const bf = LS.get('sw.bform', {}); $('#bTopic').value = bf.topic || ''; $('#bNote').value = bf.note || '';
+  ['#bTopic', '#bNote'].forEach((q) => $(q).addEventListener('input', saveBeautyForm));
+  $('#bOpenMe').addEventListener('click', () => SW.openSettings());
+  // 설정 ⑤ 뷰티 내 정보
+  const meBox = $('#beautyMe'); meBox.value = beautyMe();
+  $('#beautyMeSave').addEventListener('click', () => { const v = meBox.value.trim(); LS.set('sw.beautyMe', v === BEAUTY_ME_DEFAULT.trim() ? '' : v); meBox.value = beautyMe(); toast('뷰티 내 정보를 저장했어요'); });
+  $('#beautyMeReset').addEventListener('click', () => { LS.set('sw.beautyMe', ''); meBox.value = beautyMe(); toast('기본값으로 돌렸어요'); });
   $('#pasteApply').addEventListener('click', applyPasted);
   $('#resultBody').addEventListener('click', onResultClick);
   $('#scFilter').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; S.scFilter = b.dataset.f; renderScripts(); });
   $('#scQ').addEventListener('input', (e) => { S.scQ = e.target.value.trim(); renderScripts(); });
-  $('#scList').addEventListener('click', (e) => { const c = e.target.closest('[data-id]'); if (!c) return; S.openId = c.dataset.id; S.sheetEditing = false; S.sheetConfirm = false; renderSheet(); });
+  const openCard = (e) => { const c = e.target.closest('[data-id]'); if (!c) return; S.openId = c.dataset.id; S.sheetEditing = false; S.sheetConfirm = false; renderSheet(); };
+  $('#scList').addEventListener('click', openCard);
+  $('#bcList').addEventListener('click', openCard);
+  $('#bcFilter').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; S.bcFilter = b.dataset.f; renderScripts(); });
+  $('#bcQ').addEventListener('input', (e) => { S.bcQ = e.target.value.trim(); renderScripts(); });
   $('#sheetBody').addEventListener('click', onSheetClick);
   $('#scriptSheet').addEventListener('close', () => { S.openId = null; });
   $('#claudeSave').addEventListener('click', saveKey);
   $('#claudeForget').addEventListener('click', forgetKey);
 
   document.addEventListener('sowon:entries', renderAttach);
-  document.addEventListener('sowon:tab', (e) => { if (e.detail === 'scripts') sRefresh(); if (e.detail === 'make') renderAttach(); });
+  document.addEventListener('sowon:tab', (e) => { if (e.detail === 'scripts' || e.detail === 'beauty') sRefresh(); if (e.detail === 'make') { renderAttach(); renderBeautyRefs(); } });
   document.addEventListener('sowon:toScript', (e) => {
     const x = e.detail; S.attached.add(x.id); LS.set('sw.attached', [...S.attached]);
     if (!x.ref && !$('#mRough').value.trim()) { $('#mRough').value = x.text; saveForm(); }   // 레퍼런스는 대강 대본 칸을 채우지 않는다
-    renderAttach(); openMore(); SW.switchTab('make'); toast(x.ref ? '대본 탭에 레퍼런스를 붙였어요' : '대본 탭에 메모를 붙였어요');
+    setGenre('econ'); renderAttach(); openMore(); SW.switchTab('make'); toast(x.ref ? '대본 탭에 레퍼런스를 붙였어요' : '대본 탭에 메모를 붙였어요');
   });
   document.addEventListener('sowon:topic', async (e) => {   // 스택의 "주제 3개" (Haiku)
     const x = e.detail;
@@ -1485,7 +1743,7 @@ function init() {
         const b = ev.target.closest('[data-i]'); if (!b) return; const s = list[+b.dataset.i];
         $('#mTopic').value = s.topic; const hk = HOOKS.find((h) => h[0] === s.hookType); $('#mHook').value = hk ? hk[0] : '자동';
         S.attached.add(x.id); LS.set('sw.attached', [...S.attached]); saveForm(); renderAttach(); openMore();
-        $('#topicSheet').close(); SW.switchTab('make'); toast('주제를 옮겼어요');
+        $('#topicSheet').close(); setGenre('econ'); SW.switchTab('make'); toast('주제를 옮겼어요');
       };
       $('#topicSheet').showModal();
     } catch (err) { toast(errMsg(err)); }
@@ -1505,7 +1763,7 @@ function init() {
   window.addEventListener('online', sFlush);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) sFlush(); });
 
-  renderKeyState(); renderAttach(); renderResult(); renderScripts(); renderRefs();
+  renderGenre(); renderKeyState(); renderAttach(); renderResult(); renderScripts(); renderRefs();
   const pend = LS.get('sw.macGen', null);   // 앱을 닫았다 열어도 맥북에 보낸 대본은 이어서 기다린다 (40분까지)
   if (pend && pend.id && !claudeKey() && Date.now() - (pend.at || 0) < 40 * 60 * 1000) { SW.switchTab('make'); runGen(null, pend.inp || {}, pend.ideaIds || [], pend); }
   else if (pend) LS.set('sw.macGen', null);
