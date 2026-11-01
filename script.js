@@ -578,6 +578,16 @@ function isEnglishRef(x) {
   return en >= 40 && en > ko * 3;
 }
 const enWords = (s) => (String(s || '').match(/[A-Za-z0-9'’]+/g) || []).length;
+// 1.12.1(11/1 사용자 "뷰티 영어레퍼는 문장구조 한국처럼 나누지 말고 레퍼 그대로 사용하면서 키워드 정도만 바꾸기"):
+// 레퍼는 '후킹·문제점 제시·첫 번째' 같은 한국식 칸 대신 원문 문장 순서 그대로 1) 2) 3)… 번호로 넘긴다.
+function refSentences(ref) {
+  const cut = (t) => (String(t || '').replace(/\s+/g, ' ').trim().match(/[^.!?]+[.!?]+["'’”)\]]*|[^.!?]+$/g) || []).map((x) => x.trim()).filter(Boolean);
+  const tr = cut(ref && ref.transcript);
+  if (tr.length >= 2) return tr;
+  // 받아쓰기에 문장부호가 없으면 칸 정리된 원문에서 칸 이름만 떼고 쓴다
+  const tx = cut(String((ref && ref.text) || '').replace(/^[^)\n]{1,30}\)\s*/gm, ' '));
+  return tx.length >= tr.length ? tx : tr;
+}
 function beautyRefPack(x) {
   const m = x.meta || {}, sc = x.script || {};
   return { id: x.id, code: x.code || '', url: x.url || '', title: sc.title || '', views: m.views || '', duration: m.duration || '',
@@ -585,47 +595,43 @@ function beautyRefPack(x) {
 }
 
 const BEAUTY_RULES = `[너의 일] 영어 인스타 릴스·쇼츠 대본을 쓴다. 채널은 한국 사람이 영어로 말하는 K-beauty 채널이다.
-방식(사용자 지시 그대로): "레퍼를 거의 그대로 복붙하듯이 하고 키워드 몇 개만 바꾸면 돼."
-1. 아래 [레퍼런스] 영어 원문의 문장 틀·길이·순서·말투·칸 수를 거의 그대로 둔다. 새로 짜지 않는다. 내 문장 하나하나가 레퍼 문장과 1:1로 맞아야 한다.
-2. 바꾸는 것은 주제·사람 정보 키워드뿐: 이름·나라·도시·정체성·좋아하는 것·꿈/경력 같은 말을 [내 정보]와 [이번 주제]의 말로 바꾼다.
-3. 키워드를 바꿔서 문장이 길어지면 두 문장을 합치거나 덜어서 원래 길이에 맞춘다. 영어 수준은 레퍼 그대로(쉬운 단어, 짧은 문장).
-4. 없는 사연 지어내기 금지: [내 정보]에 없는 경험·숫자·사실(나이·사는 곳·직업·결혼·돈·제품 이름 등)은 쓰지 않는다. 레퍼의 그런 문장은 내 정보로 바꿀 수 있으면 바꾸고, 못 바꾸면 뺀다.
-5. 권위 문장(원래 똥손 → 배워서 좋아짐 → 꿀팁 푼다)은 한 문장으로 한 번만. 'makeup artist'라는 말은 절대 쓰지 않는다.
-6. 레퍼가 목록·순서형이면 꿀팁 step 1, 2, 3…로 받는다. 레퍼에 순서가 없으면 억지로 만들지 않는다.
-7. 끝은 레퍼의 끝 인사·CTA 자리를 살리고, 그 안에 "Leave a cheering comment → my beauty secret letter 💌"를 넣는다.
-8. 화면요소는 한국어로 짧게. 비포 앤 애프터가 맞는 자리엔 "내 사진 비포 → 애프터"를 넣는다.
-9. 문장마다 한국어 뜻을 붙인다(쉬운 말, 자연스러운 존댓말).
-10. 영어 문장 안에도, ( ) 화면 칸 안에도 괄호를 또 쓰지 않는다(칸이 깨진다). 첫 칸 이름은 '후킹', 마지막 칸 이름은 'CTA'.`;
+방식(사용자 지시 그대로): "레퍼를 거의 그대로 복붙하듯이 하고 키워드 몇 개만 바꾸면 돼." "문장구조 한국처럼 나누지 말고 레퍼 그대로 사용하면서 내가 말하고자 하는 키워드 정도만 바꾸기."
+1. 한국 대본처럼 후킹·베네핏·문제점 제시·첫 번째·두 번째 같은 칸으로 나누거나 다시 짜지 않는다. [레퍼 원문]의 번호 문장을 그대로 따라간다: 레퍼 1번 → 내 1번, 2번 → 2번…. 문장 수·순서·길이·말투·문장 틀을 그대로 둔다. 합치거나 쪼개거나 순서를 바꾸지 않는다.
+2. 바꾸는 것은 내가 말하고자 하는 키워드뿐: 이름·나라·도시·주제·제품군·좋아하는 것 같은 낱말을 [내 정보]와 [이번 주제]의 말로 바꾼다. 키워드가 아닌 나머지 단어는 레퍼 그대로 둔다.
+3. 키워드를 바꿔서 문장이 길어지면 그 문장 안에서 덜어 원래 길이에 맞춘다. 영어 수준은 레퍼 그대로(쉬운 단어, 짧은 문장).
+4. 없는 사연 지어내기 금지: [내 정보]에 없는 경험·숫자·사실(나이·사는 곳·직업·결혼·돈·제품 이름 등)은 쓰지 않는다. 그런 낱말은 내 정보의 가까운 말로 바꾸고, 바꿀 말이 없는 문장만 빼고 '바꾼 점'에 적는다.
+5. 레퍼에 자기 경력·이유를 말하는 문장이 있으면 그 자리의 키워드만 내 권위(원래 똥손 → 배워서 좋아짐)로 바꾼다. 새 문장을 끼워 넣지 않는다. 'makeup artist'라는 말은 절대 쓰지 않는다.
+6. 레퍼의 끝 인사·CTA 문장 자리에서 키워드만 바꿔 "Leave a cheering comment → my beauty secret letter 💌"를 넣는다. 레퍼에 그런 문장이 없을 때만 마지막에 CTA) 한 줄을 덧붙인다.
+7. 화면요소는 한국어로 짧게. 비포 앤 애프터가 맞는 자리엔 "내 사진 비포 → 애프터"를 넣는다.
+8. 문장마다 한국어 뜻을 붙인다(쉬운 말, 자연스러운 존댓말).
+9. 영어 문장 안에도, ( ) 화면 칸 안에도 괄호를 또 쓰지 않는다(칸이 깨진다). 칸 이름은 레퍼 문장 번호 그대로 1) 2) 3)…(덧붙인 CTA 한 줄만 'CTA)').`;
 
-const BEAUTY_ALT_RULE = `각 슬롯 줄 바로 아래에, 그 칸만 바꿔 넣을 후보를 "  후보) 방식 | English sentence. ( 화면요소 | 뜻: 한국어 뜻 )" 줄로 붙여. 후킹은 3개, 나머지 칸은 2개씩. 후보도 레퍼 문장 틀을 그대로 두고 단어·표현만 다르게(방식은 한국어 6자 안팎, 예: 더 짧게·질문형·감탄형), [내 정보] 밖의 사연은 금지.`;
+const BEAUTY_ALT_RULE = `각 슬롯 줄 바로 아래에, 그 칸만 바꿔 넣을 후보를 "  후보) 방식 | English sentence. ( 화면요소 | 뜻: 한국어 뜻 )" 줄로 붙여. 후킹은 3개, 나머지 칸은 2개씩. 후보도 레퍼 문장 틀을 그대로 두고 키워드·표현만 다르게(방식은 한국어 6자 안팎, 예: 더 짧게·질문형·감탄형), [내 정보] 밖의 사연은 금지.`;
 
 const BEAUTY_FORMAT = `=== 대본 ===
 제목) English title (레퍼 제목 틀 그대로)
 표지) 영어 1줄 / 영어 2줄
-구조) 문제해결형 | 혜택강조형 | n가지형 | 통념반전형 중 레퍼와 같은 것
-후킹유형) 후킹 유형 이름(한국어)
-후킹) English sentence. ( 화면요소 | 뜻: 한국어 뜻 )
+1) 레퍼 1번 문장에서 키워드만 바꾼 English sentence. ( 화면요소 | 뜻: 한국어 뜻 )
   후보) 방식 | English sentence. ( 화면요소 | 뜻: 한국어 뜻 )
-(레퍼 칸 이름 그대로)) English sentence. ( 화면요소 | 뜻: 한국어 뜻 ) English sentence. ( 화면요소 | 뜻: 한국어 뜻 )
+2) 레퍼 2번 문장에서 키워드만 바꾼 English sentence. ( 화면요소 | 뜻: 한국어 뜻 )
   후보) 방식 | …
-CTA) English sentence. ( 화면요소 | 뜻: 한국어 뜻 )
-  후보) 방식 | …
-바꾼 점) 레퍼의 어떤 말을 무엇으로 바꿨는지 한국어로 한두 줄
+…레퍼 문장 수만큼 번호 그대로
+바꾼 점) 레퍼 낱말 → 내 키워드 목록(예: Japan→Korea, Una→K-Sein), 뺀 문장이 있으면 번호와 이유
 
 === 공통 ===
 캡션) English caption 3~5 lines (레퍼 캡션 틀 그대로, 이모지 OK)
-해시태그) #english #hashtags 5~8개
+해시태그) #english #hashtags 정확히 5개
 확인할 것) 찍기 전에 준비할 것(한국어) / 로 구분 (없으면 비움)`;
 
 // 예시: 도쿄 UNA 첫 영상(DcQVJ9lyzaz) 레퍼 → 완성대본 20261031-142204-kbt (사용자가 좋은 예라고 한 것)
-const BEAUTY_EX_REF = "후킹) I will show you real life in Japan.\n베네핏 - 주제 + n가지) Hi, I'm Una. I'm not famous and I'm not rich. I'm just a normal woman in Tokyo who loves anime and traveling.\n문제점 제시) Sorry for reading the script. My English isn't perfect, and I'm super, super shy speaking English to the camera.\n첫 번째) To be honest, for 30 years I lived without any big dreams, but recently I found one.\n두 번째) My dream is to become a creator and share real Japanese culture with you.\n세 번째) This is my very first video, yay! I have no friends yet, but I feel happy if you become my friends.\nCTA) Thank you for watching. See you in the next video.";
-const BEAUTY_EX_OUT = "=== 대본 ===\n제목) I will show you real Korean beauty life\n표지) K-Sein's real / Korean beauty life 🇰🇷\n구조) n가지형\n후킹유형) 선언·단정\n후킹) I will show you real beauty life in Korea. ( 화장대 앞 민낯 클로즈업 + 🇰🇷 | 뜻: 한국의 진짜 뷰티 생활을 보여줄게요. )\n베네핏 - 주제) Hi, I'm Korean Sein, K-Sein. I'm not famous. I'm just a normal K-jangnyeo, the oldest daughter in Korea, who loves K-beauty and face balance. ( 손 흔드는 인사 + 'K-Sein' 큰 자막, 'K-jangnyeo = the oldest daughter' 작은 자막 | 뜻: 안녕하세요, 코리안 세인, K-Sein이에요. 유명하지 않아요. K뷰티와 얼굴 균형을 좋아하는 평범한 K장녀예요. )\n문제점 제시) Sorry for reading the script. My English isn't perfect, and I'm super, super shy speaking English to the camera. ( 대본 종이 들고 웃는 컷 + 🙈 | 뜻: 대본 읽어서 미안해요. 영어가 완벽하지 않고, 카메라 앞에서 영어로 말하는 게 너무너무 부끄러워요. )\n첫 번째) To be honest, I used to have clumsy hands, but I learned a lot and got so much better, so now I'll share all my honey tips with you. ( 내 사진 비포 → 애프터 나란히, BEFORE / AFTER 자막 + 🍯 | 뜻: 솔직히 원래 똥손이었는데, 많이 배우고 훨씬 좋아졌어요. 그래서 이제 제 꿀팁 다 풀어볼게요. )\n두 번째) For over 10 years, I've studied not a pretty face, but a balanced face. ( 얼굴 위 가는 비율 선 이마·코·턱 + '10+ years' 자막 | 뜻: 10년 넘게, 예쁜 얼굴이 아니라 균형 잡힌 얼굴을 연구했어요. )\n세 번째) This is my very first video, yay! I have no friends yet, but I feel happy if you become my friends. ( 카메라 보고 작게 박수 + 🫶 | 뜻: 제 첫 영상이에요, 야호! 아직 친구가 없지만 여러분이 친구가 돼 주면 행복할 거예요. )\nCTA) Leave a cheering comment, and I'll send you my beauty secret letter that only I know. 💌 Thank you for watching. See you in the next video. ( 편지 봉투 열리는 컷 + 댓글창 👇, 손 흔들며 끝 | 뜻: 응원 댓글 남겨 주면 나만 아는 뷰티 시크릿 편지 보내 줄게요. 봐 줘서 고마워요. 다음 영상에서 만나요. )\n바꾼 점) Japan→Korea, Una→Korean Sein(K-Sein), 애니 좋아하는 도쿄 평범한 여자→K뷰티·얼굴 균형 좋아하는 K장녀, 30년 꿈 없음→원래 똥손이었는데 배워서 꿀팁 푼다(권위 한 문장), 크리에이터 꿈→10년 넘게 얼굴 균형 연구, 끝 인사 앞에 응원 댓글→뷰티 시크릿 편지. 'not rich'는 내 정보에 없어서 뺌.\n\n=== 공통 ===\n캡션) Welcome to K-Sein's real beauty life in Korea! 🇰🇷💄\nThank you for watching my very first video. I was so nervous speaking English to the camera 🙈\nI used to have clumsy hands, but I learned a lot, and now I'll share all my honey tips 🍯\nLeave a cheering comment and I'll send you my beauty secret letter 💌\n해시태그) #kbeauty #koreanbeauty #facebalance #ksein #lifeinkorea #koreanmakeup\n확인할 것) 비포/애프터 내 사진 2장 준비 / 응원 댓글 단 분께 보낼 '뷰티 시크릿 편지' DM 내용 준비";
+const BEAUTY_EX_REF = "1) I will show you real life in Japan.\n2) Hi, I'm Una.\n3) I'm not famous and I'm not rich.\n4) I'm just a normal woman in Tokyo who loves anime and traveling.\n5) Sorry for reading the script.\n6) My English isn't perfect, and I'm super, super shy speaking English to the camera.\n7) To be honest, for 30 years I lived without any big dreams, but recently I found one.\n8) My dream is to become a creator and share real Japanese culture with you.\n9) This is my very first video, yay!\n10) I have no friends yet, but I feel happy if you become my friends.\n11) Thank you for watching.\n12) See you in the next video.";
+const BEAUTY_EX_OUT = "=== 대본 ===\n제목) I will show you real Korean beauty life\n표지) K-Sein's real / Korean beauty life 🇰🇷\n1) I will show you real beauty life in Korea. ( 화장대 앞 민낯 클로즈업 + 🇰🇷 | 뜻: 한국의 진짜 뷰티 생활을 보여줄게요. )\n2) Hi, I'm K-Sein. ( 손 흔드는 인사 + 'K-Sein' 큰 자막 | 뜻: 안녕하세요, K-Sein이에요. )\n3) I'm not famous. ( 웃으며 손사래 | 뜻: 유명하지 않아요. )\n4) I'm just a normal K-jangnyeo in Korea who loves K-beauty and face balance. ( 'K-jangnyeo = the oldest daughter' 작은 자막 | 뜻: K뷰티와 얼굴 균형을 좋아하는 한국의 평범한 K장녀예요. )\n5) Sorry for reading the script. ( 대본 종이 들고 웃는 컷 | 뜻: 대본 읽어서 미안해요. )\n6) My English isn't perfect, and I'm super, super shy speaking English to the camera. ( 얼굴 가리는 컷 + 🙈 | 뜻: 영어가 완벽하지 않고, 카메라 앞에서 영어로 말하는 게 너무너무 부끄러워요. )\n7) To be honest, for years I had clumsy hands, but recently I got so much better. ( 내 사진 비포 → 애프터, BEFORE / AFTER 자막 | 뜻: 솔직히 오랫동안 똥손이었는데, 요즘 훨씬 좋아졌어요. )\n8) My dream is to become a creator and share real Korean honey tips with you. ( 꿀팁 노트 펼치기 + 🍯 | 뜻: 제 꿈은 크리에이터가 돼서 진짜 한국 꿀팁을 나누는 거예요. )\n9) This is my very first video, yay! ( 작게 박수 | 뜻: 제 첫 영상이에요, 야호! )\n10) I have no friends yet, but I feel happy if you become my friends. ( 카메라 보고 🫶 | 뜻: 아직 친구가 없지만 여러분이 친구가 돼 주면 행복할 거예요. )\n11) Thank you for watching, and leave a cheering comment for my beauty secret letter. 💌 ( 편지 봉투 열리는 컷 + 댓글창 👇 | 뜻: 봐 줘서 고마워요, 응원 댓글 남기면 뷰티 시크릿 편지 보내 줄게요. )\n12) See you in the next video. ( 손 흔들며 끝 | 뜻: 다음 영상에서 만나요. )\n바꾼 점) Japan→Korea, Una→K-Sein, woman in Tokyo→K-jangnyeo in Korea, anime and traveling→K-beauty and face balance, 30 years without dreams→years of clumsy hands, Japanese culture→Korean honey tips, 11번 끝 인사에 응원 댓글→뷰티 시크릿 편지. 3번 'not rich'는 내 정보에 없어서 그 부분만 뺌.\n\n=== 공통 ===\n캡션) Welcome to K-Sein's real beauty life in Korea! 🇰🇷💄\nThank you for watching my very first video. I was so nervous speaking English to the camera 🙈\nLeave a cheering comment and I'll send you my beauty secret letter 💌\n해시태그) #kbeauty #koreanbeauty #facebalance #ksein #lifeinkorea\n확인할 것) 비포/애프터 내 사진 2장 준비 / 응원 댓글 단 분께 보낼 '뷰티 시크릿 편지' DM 내용 준비";
 
 function beautyRefBlock(ref) {
   if (!ref) return '(레퍼 원문을 못 찾았어요 — 지금 대본의 틀을 그대로 지켜)';
   return [`코드 ${ref.code || '?'}${ref.views ? ` · 조회 ${ref.views}` : ''}${ref.duration ? ` · ${Math.round(ref.duration)}초` : ''}${ref.title ? ` · ${ref.title}` : ''}`,
-    ref.text ? `[칸 정리된 원문]\n${ref.text}` : '',
-    ref.transcript ? `[받아쓰기 원문]\n${String(ref.transcript).slice(0, 4000)}` : '',
+    (() => { const ss = refSentences(ref); return ss.length ? `[레퍼 원문 — 문장 순서 그대로, 번호 하나 = 문장 하나. 이 번호대로 따라 쓴다]\n${ss.map((x, i) => `${i + 1}) ${x}`).join('\n')}` : ''; })(),
+    ref.transcript && !/[.!?]/.test(ref.transcript) ? `[받아쓰기 그대로 — 문장부호 없음, 낱말 확인용]\n${String(ref.transcript).slice(0, 4000)}` : '',
     ref.caption ? `[원래 캡션]\n${ref.caption}` : ''].filter(Boolean).join('\n\n');
 }
 function buildBeautyPrompt(ref, inp) {
@@ -640,7 +646,7 @@ ${inp.topic || '(따로 없음 — 레퍼 주제를 내 채널, K-beauty·얼굴
 [더 넣을 말]
 ${inp.note || '(없음)'}
 
-[예시 — 레퍼(DcQVJ9lyzaz, 도쿄 UNA 첫 영상) 원문 → 키워드만 바꾼 대본. 바꾸는 정도와 형식만 참고해(예시엔 후보 줄을 뺐지만 너는 넣어)]
+[예시 — 레퍼(DcQVJ9lyzaz, 도쿄 UNA 첫 영상) 원문 → 문장 그대로 두고 키워드만 바꾼 대본. 바꾸는 정도와 형식만 참고해(예시엔 후보 줄을 뺐지만 너는 넣어)]
 레퍼:
 ${BEAUTY_EX_REF}
 
@@ -661,7 +667,7 @@ function buildBeautyRevisePrompt(sc, instruction, ref) {
 [내 정보 — 여기 있는 것만 내 이야기로 쓸 수 있다]
 ${beautyMe()}
 
-[할 일] 아래 영어 대본을 사용자 요청대로 고쳐. 요청하지 않은 부분은 그대로 두고, 레퍼 문장 틀은 계속 지킨다.
+[할 일] 아래 영어 대본을 사용자 요청대로 고쳐. 요청하지 않은 부분은 그대로 두고, 레퍼 번호 문장 틀은 계속 지킨다(한국식 칸으로 다시 나누지 않는다).
 사용자 요청: ${instruction}
 
 [지금 대본]
@@ -682,8 +688,8 @@ function buildBeautyAltsPrompt(sc) {
 ${beautyMe()}
 
 [주문] 아래 영어 대본의 칸마다, 바꿔 넣을 후보를 만들어. 칸 순서대로 ${sc.slots.length}개 칸 전부.
-- 첫 칸(후킹): 서로 다른 방식으로 4개. 나머지 칸: 3개씩.
-- 레퍼 문장 틀은 그대로 두고 단어·표현만 다르게, 쉬운 영어. 앞 칸에서 이어지고 뒤 칸으로 넘어가야 한다. [내 정보] 밖의 사연·숫자 금지, 'makeup artist' 금지.
+- 1번 칸: 서로 다른 방식으로 4개. 나머지 칸: 3개씩.
+- 레퍼 문장 틀은 그대로 두고 키워드·표현만 다르게, 쉬운 영어. 앞 칸에서 이어지고 뒤 칸으로 넘어가야 한다. [내 정보] 밖의 사연·숫자 금지, 'makeup artist' 금지.
 - 줄마다 화면요소(한국어)와 ko(한국어 뜻)를 적어.
 JSON 배열만, 칸 순서대로: [{"slot":"칸 이름","alts":[{"label":"방식(한국어 6자 안팎)","lines":[{"text":"English sentence","visual":"화면요소","ko":"한국어 뜻"}]}]}]
 
@@ -699,11 +705,12 @@ function beautyChecks(sc) {
   const noKo = sc.slots.reduce((n, s) => n + s.lines.filter((l) => !l.ko).length, 0);
   const ma = /make-?up\s+artist/i.test(said);
   const kor = /[가-힣]/.test(said);
-  const rw = sc.input && sc.input.refWords;
+  const rw = sc.input && sc.input.refWords, rs = sc.input && sc.input.refSents;
+  const nLines = sc.slots.reduce((n, s) => n + s.lines.length, 0);
   const near = rw ? Math.abs(words - rw) / rw : 0;
   return [
     { k: `영어 ${words}단어${rw ? ` · 레퍼 ${rw}` : ''}`, c: !rw ? 'ok' : near <= 0.25 ? 'ok' : near <= 0.5 ? 'warn' : 'bad', tip: '레퍼와 비슷한 길이' },
-    { k: `문장 ${sents}개`, c: 'ok' },
+    { k: `문장 ${rs ? nLines : sents}개${rs ? ` · 레퍼 ${rs}` : ''}`, c: !rs ? 'ok' : Math.abs(nLines - rs) <= 1 ? 'ok' : 'warn', tip: '레퍼 문장 수 그대로' },
     { k: `후킹 ${hookW}단어`, c: hookW >= 3 && hookW <= 14 ? 'ok' : 'warn', tip: '짧게 한 문장' },
     { k: ma ? "'makeup artist' 금지" : '금지어 0', c: ma ? 'bad' : 'ok' },
     { k: kor ? '영어 칸에 한글 있음' : '영어 ✔', c: kor ? 'warn' : 'ok' },
@@ -1246,7 +1253,7 @@ const beautyRef = () => (S.bRef ? beautyRefs().find((x) => x.id === S.bRef) : nu
 function readBeautyForm() {
   const x = beautyRef(); const ref = x ? beautyRefPack(x) : null;
   return { genre: 'beauty', topic: $('#bTopic').value.trim(), note: $('#bNote').value.trim(), refId: x ? x.id : '',
-    source: ref ? { code: ref.code, url: ref.url } : null, refWords: ref ? enWords(ref.transcript || ref.text.replace(/^[^)\n]{1,30}\)/gm, '')) : 0 };
+    source: ref ? { code: ref.code, url: ref.url } : null, refWords: ref ? enWords(ref.transcript || ref.text.replace(/^[^)\n]{1,30}\)/gm, '')) : 0, refSents: ref ? refSentences(ref).length : 0 };
 }
 function saveBeautyForm() { LS.set('sw.bform', { topic: $('#bTopic').value, note: $('#bNote').value }); }
 function renderBeautyRefs() {
