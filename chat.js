@@ -253,24 +253,28 @@
     const look = LOOK[key] || LOOK.video; const grid = AVA_ROWS.map((r) => r.split(''));
     if (look.beret) for (let r = 0; r < 3; r++) grid[r] = grid[r].map((ch) => (ch === 'h' ? 'r' : ch));
     [...(look.extra || []), ...(FACE[mood] || FACE.wait)].forEach(([r, c, ch]) => { grid[r][c] = ch; });
-    let out = '';
+    const NS = 'http://www.w3.org/2000/svg';   // innerHTML 대신 진짜 SVG 요소로(아이폰 사파리에서 안 보이는 일 없게)
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 16 16'); svg.setAttribute('width', '64'); svg.setAttribute('height', '64'); svg.setAttribute('shape-rendering', 'crispEdges'); svg.setAttribute('aria-hidden', 'true');
     grid.forEach((row, r) => row.forEach((ch, c) => {
       const fill = ch === 'h' ? look.h : ch === 'b' ? look.b : PAL[ch];
-      if (fill) out += `<rect x="${c}" y="${r}" width="1" height="1" fill="${fill}"/>`;
+      if (!fill) return;
+      const rc = document.createElementNS(NS, 'rect'); rc.setAttribute('x', String(c)); rc.setAttribute('y', String(r)); rc.setAttribute('width', '1'); rc.setAttribute('height', '1'); rc.setAttribute('fill', fill); svg.append(rc);
     }));
-    return `<svg viewBox="0 0 16 16" width="64" height="64" shape-rendering="crispEdges" aria-hidden="true">${out}</svg>`;
+    return svg;
   }
   const markCls = (s) => (s === '✓' ? 'ok' : s === '✗' ? 'bad' : s === '…' ? 'run' : 'idle');
   function desk(t) {
     const d = el('div', `desk is-${t.mood || 'wait'}`); const mood = MOOD[t.mood] || MOOD.wait;
-    const ava = el('div', 'ava'); ava.innerHTML = avatarSvg(t.key, t.mood); ava.append(el('div', 'ava-emoji', mood[1])); d.append(ava);
+    const ava = el('div', 'ava'); ava.append(avatarSvg(t.key, t.mood)); ava.append(el('div', 'ava-emoji', mood[1])); d.append(ava);
     const body = el('div', 'desk-body');
     const head = el('div', 'desk-head'); head.append(el('span', 'tag', t.team || '')); head.append(el('span', 'nm', t.name || '')); head.append(el('span', `mood ${t.mood || 'wait'}`, mood[0])); body.append(head);
     body.append(el('div', 'bubble', t.report || ''));
     const det = el('details', 'desk-more'); det.append(el('summary', '', `오늘 한 일 ${(t.steps || []).length}단계 · 일정`));
     (t.steps || []).forEach((s) => { const r = el('div', 'step'); r.append(el('i', `st-${markCls(s.s)}`, s.s || '·')); const tx = el('div', 'step-txt'); tx.append(el('div', '', s.t || '')); if (s.d) tx.append(el('div', 'sd', s.d)); r.append(tx); det.append(r); });
     if (t.schedule) det.append(el('div', 'sched', '일정: ' + t.schedule));
-    const rs = (routine.routines || []).filter((r) => r.team === t.key);
+    const rl = Array.isArray(routine.routines) ? routine.routines : (routine.routines && Array.isArray(routine.routines.routines) ? routine.routines.routines : []);   // 옛 데몬은 {asOf, routines} 통째로 넣었음
+    const rs = rl.filter((r) => r.team === t.key);
     if (rs.length) {
       const box = el('div', 'sched'); box.append(el('b', '', '클라우드 루틴'));
       rs.forEach((r) => box.append(el('div', '', `${r.enabled ? '🟢' : '⚪ (꺼짐)'} ${r.name} · ${r.when || ''}${r.lastRun ? ` · 마지막 ${r.lastRun}` : ''}${r.next ? ` · 다음 ${r.next}` : ''}`)));
