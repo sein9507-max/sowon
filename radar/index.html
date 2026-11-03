@@ -12,7 +12,7 @@
 </head>
 <body>
 <header class="top">
-  <div class="brand"><span class="logo">📡 떡상 레이더</span><span class="sub">인스타 릴스·캐러셀 + 유튜브 쇼츠 KR · 최근 24~72시간</span></div>
+  <div class="brand"><span class="logo">📡 떡상 레이더</span><span class="sub">인스타 릴스·캐러셀 + 유튜브 쇼츠 · 국내/해외 · 최근 24시간</span></div>
   <div class="status" id="status">불러오는 중…</div>
   <div class="tools">
     <button id="refresh" title="GitHub에서 다시 읽기">↻ 새로고침</button>
@@ -24,6 +24,7 @@
 <nav class="filters">
   <div class="row">
     <div class="seg" id="srcSeg"><button data-v="all" class="on">전체</button><button data-v="reel">🎬 릴스</button><button data-v="carousel">🖼 캐러셀</button><button data-v="shorts">▶ 유튜브 쇼츠</button></div>
+    <div class="seg" id="regSeg"><button data-v="all" class="on">🌏 전체</button><button data-v="국내">🇰🇷 국내</button><button data-v="해외">🌎 해외</button></div>
     <div class="seg" id="spanSeg"><button data-v="24">24시간</button><button data-v="48" class="on">48시간</button><button data-v="72">3일</button><button data-v="168">7일</button></div>
     <select id="sort" title="정렬"><option value="score">떡상점수</option><option value="views">조회수</option><option value="vph">시간당 조회</option><option value="mult">평소 대비 배수</option><option value="comments">댓글</option><option value="likes">좋아요</option><option value="new">최신</option></select>
     <select id="minViews" title="최소 조회수"><option value="0">최소 조회수 없음</option><option value="10000">조회 1만↑</option><option value="50000">조회 5만↑</option><option value="100000">조회 10만↑</option><option value="500000">조회 50만↑</option></select>

@@ -8,17 +8,18 @@
   const API = 'https://api.github.com';
   const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* 무시 */ } } };
   const TOPICS = [
+    ['뷰티', '뷰티,화장품,스킨케어,메이크업,올리브영,피부관리,선크림,쿠션,파운데이션,립스틱,틴트,세럼,토너,클렌징,다이소 화장품,skincare,skin care,makeup,make up,beauty,sunscreen,serum,lipstick,foundation,grwm'],
     ['지원금·정책', '지원금,청년수당,청년도약,청년내일,희망적금,바우처,환급,정부 지원,국가 지원,복지,수당,신청하세요,신청 가능,신청방법,청년장학'],
-    ['주식·코인', '주식,코인,비트코인,비트,ETF,배당,나스닥,코스피,코스닥,종목,환율,반도체,삼성전자,테슬라,엔비디아,증시,매수,매도,수익률'],
+    ['주식·코인', '주식,코인,비트코인,비트,ETF,배당,나스닥,코스피,코스닥,종목,환율,반도체,삼성전자,테슬라,엔비디아,증시,매수,매도,수익률,stock,stocks,crypto,bitcoin,invest,investing,dividend'],
     ['부동산·청약', '청약,집값,내집,내 집,전세,월세,아파트,부동산,분양,매물,주담대,재개발,신축,평수'],
-    ['재테크·저축', '재테크,적금,예금,통장,저축,짠테크,파킹,금리,이자,연금,절세,세금,자산,체크카드,신용카드,돈 모으,돈모으,1억,목돈,가계부,소비,절약'],
+    ['재테크·저축', '재테크,적금,예금,통장,저축,짠테크,파킹,금리,이자,연금,절세,세금,자산,체크카드,신용카드,돈 모으,돈모으,1억,목돈,가계부,소비,절약,money,saving,savings,budget,finance,personal finance,frugal,debt'],
     ['부업·수익', '부업,월 100,월100,N잡,창업,스마트스토어,쿠팡,블로그 수익,유튜브 수익,인스타 수익,돈 버는,돈버는,수익화,자동화 수익'],
     ['자기계발·AI', '자기계발,습관,미라클,독서,루틴,갓생,시간관리,동기부여,AI 활용,챗GPT,ChatGPT,챗지피티,노션,클로드,생산성,공부법'],
     ['신혼·결혼', '신혼,부부,결혼,예비부부,남편,아내,혼수,신혼집,결혼식,웨딩'],
     ['직장·월급', '월급,연봉,직장인,퇴사,이직,회사,상사,사회초년생,출근,퇴근,성과급'],
   ];
   const OUT = '주제 밖';
-  function topicOf(text) { const hay = String(text || '').toLowerCase(); for (const [t, ws] of TOPICS) { const w = ws.split(',').map((s) => s.trim().toLowerCase()).find((x) => x && hay.includes(x)); if (w) return { topic: t, word: w }; } return { topic: '', word: '' }; }
+  function topicOf(text) { const hay = String(text || '').toLowerCase(); for (const [t, ws] of TOPICS) { const w = ws.split(',').map((s) => s.trim().toLowerCase()).find((x) => x && (/^[\x00-\x7f]+$/.test(x) ? new RegExp(`(?<![a-z])${x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z])`).test(hay) : hay.includes(x))); if (w) return { topic: t, word: w }; } return { topic: '', word: '' }; }
 
   // ── 열쇠 ────────────────────────────────────────────────
   let token = '';
@@ -76,19 +77,19 @@
   // ── 상태 ────────────────────────────────────────────────
   let items = [], issues = { time: '', list: [] }, threads = null, board = { saved: {}, watch: {}, picks: {}, memos: {} }, boardSha = null;
   let loadedAt = 0, lastCollected = 0, loading = false;
-  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span', 48)), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews', 0)), q: '', topic: LS.get('radar.topic', ''), onlyWatch: false, onlySaved: false };
+  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span24', 24)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews', 0)), q: '', topic: LS.get('radar.topic', ''), onlyWatch: false, onlySaved: false };
   let current = null;
 
   // ── 불러오기 ────────────────────────────────────────────
   function normInsta(x) {
     const kind = x.kind === 'carousel' ? 'carousel' : x.kind === 'reel' ? 'reel' : x.kind === 'image' ? 'image' : (x.url || '').includes('/reel/') ? 'reel' : 'image';
     const t = x.topic ? { topic: x.topic, word: x.topicWord || '' } : topicOf(`${x.user} ${x.caption}`);
-    return { id: `ig:${x.code}`, code: x.code, platform: 'insta', kind, url: x.url || `https://www.instagram.com/${kind === 'reel' ? 'reel' : 'p'}/${x.code}/`, user: x.user || '', caption: x.caption || '', views: x.views ?? null, likes: x.likes ?? null, comments: x.comments ?? null, shares: x.shares ?? null,
+    return { id: `ig:${x.code}`, code: x.code, platform: 'insta', region: x.region || (/[가-힣]/.test(`${x.caption || ''}`) ? '국내' : '해외'), kind, url: x.url || `https://www.instagram.com/${kind === 'reel' ? 'reel' : 'p'}/${x.code}/`, user: x.user || '', caption: x.caption || '', views: x.views ?? null, likes: x.likes ?? null, comments: x.comments ?? null, shares: x.shares ?? null,
       postedAt: x.postedAt || x.capturedAt, capturedAt: x.capturedAt, seenAt: x.seenAt || x.capturedAt, thumb: x.thumb || '', carouselCount: x.carouselCount || null, audio: x.audio || '', duration: x.duration || null, followers: x.followers ?? null, topic: t.topic, topicWord: t.word, source: x.source || x.how || '', history: Array.isArray(x.history) ? x.history : [] };
   }
   function normYt(x) {
     const t = x.topic ? { topic: x.topic, word: x.topicWord || '' } : topicOf(`${x.title} ${x.caption}`);
-    return { id: `yt:${x.id}`, code: x.id, platform: 'yt', kind: x.kind === 'shorts' ? 'shorts' : 'video', url: x.url, user: x.user || '', caption: `${x.title || ''}\n${x.caption || ''}`.trim(), title: x.title || '', views: x.views ?? null, likes: x.likes ?? null, comments: x.comments ?? null, shares: null,
+    return { id: `yt:${x.id}`, code: x.id, platform: 'yt', region: x.region || (/US/.test(x.source || '') ? '해외' : '국내'), kind: x.kind === 'shorts' ? 'shorts' : 'video', url: x.url, user: x.user || '', caption: `${x.title || ''}\n${x.caption || ''}`.trim(), title: x.title || '', views: x.views ?? null, likes: x.likes ?? null, comments: x.comments ?? null, shares: null,
       postedAt: x.postedAt, capturedAt: x.capturedAt, seenAt: x.seenAt || x.capturedAt, thumb: x.thumb || '', carouselCount: null, audio: '', duration: x.duration || null, followers: null, topic: t.topic, topicWord: t.word, source: x.source || '유튜브 인기 KR', history: Array.isArray(x.history) ? x.history : [] };
   }
   function parseIssues(md) {       // 뉴스수집/트렌드/<날짜>.md 의 마지막 '⭐ 탑 20'
@@ -166,6 +167,7 @@
       if (F.src === 'carousel' && x.kind !== 'carousel' && x.kind !== 'image') return false;
       if (F.src === 'shorts' && x.platform !== 'yt') return false;
       if (F.src === 'all' && x.platform === 'yt' && x.kind === 'video') return false;
+      if (F.region !== 'all' && x.region !== F.region) return false;
       if (F.minViews && (x.views || 0) < F.minViews) return false;
       if (F.topic && (x.topic || OUT) !== F.topic) return false;
       if (F.onlyWatch && !board.watch[x.user]) return false;
@@ -181,7 +183,7 @@
   function setStatus(t) { $('#status').textContent = t; }
   function renderTopics() {
     const row = $('#topicRow'); row.replaceChildren();
-    const within = items.filter((x) => hoursAgo(x.postedAt) <= F.span && !(F.src === 'all' && x.platform === 'yt' && x.kind === 'video'));
+    const within = items.filter((x) => hoursAgo(x.postedAt) <= F.span && !(F.src === 'all' && x.platform === 'yt' && x.kind === 'video') && (F.region === 'all' || x.region === F.region));
     const counts = {}; within.forEach((x) => { const t = x.topic || OUT; counts[t] = (counts[t] || 0) + 1; });
     const mk = (label, v) => { const b = el('button', F.topic === v ? 'on' : ''); b.append(label, el('small', '', String(counts[v] || (v === '' ? within.length : 0)))); b.addEventListener('click', () => { F.topic = v; LS.set('radar.topic', v); render(); }); return b; };
     row.append(mk('전체', ''));
@@ -194,7 +196,7 @@
     const th = el('div', 'thumb');
     const ph = el('div', 'ph', (x.title || x.caption || '').slice(0, 60) || `@${x.user}`);
     if (x.thumb) { const img = el('img'); img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.src = x.thumb; img.addEventListener('error', () => { img.remove(); th.prepend(ph); }); th.append(img); } else th.append(ph);
-    th.append(el('span', 'tl', `${x.platform === 'yt' ? '유튜브' : '인스타'} · ${kindLabel(x)}`));
+    th.append(el('span', 'tl', `${x.region === '해외' ? '🌎' : '🇰🇷'} ${x.platform === 'yt' ? '유튜브' : '인스타'} · ${kindLabel(x)}`));
     const tr = el('span', 'tr' + (m.mult != null && m.mult >= 5 ? ' hot' : ''), m.mult != null ? `${m.mult.toFixed(1)}x` : `${m.score}점`); tr.title = m.mult != null ? `평소(중앙값 ${short(m.med.med)}, ${m.med.n}개) 대비` : '떡상점수'; th.append(tr);
     th.append(el('span', 'bl', x.views != null ? short(x.views) : `♥ ${short(x.likes)}`));
     th.append(el('span', 'br', ago(x.postedAt)));
@@ -214,6 +216,7 @@
   function render() {
     renderTopics();
     $('#srcSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === F.src));
+    $('#regSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === F.region));
     $('#spanSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === F.span));
     $('#sort').value = F.sort; $('#minViews').value = String(F.minViews);
     const list = filtered();
@@ -299,7 +302,8 @@
   // ── 이벤트 ──────────────────────────────────────────────
   function bind() {
     $('#srcSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.src = b.dataset.v; LS.set('radar.src', F.src); render(); });
-    $('#spanSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.span = Number(b.dataset.v); LS.set('radar.span', F.span); if (F.span >= 168) loadAll(true); else render(); });
+    $('#regSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.region = b.dataset.v; LS.set('radar.region', F.region); render(); });
+    $('#spanSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.span = Number(b.dataset.v); LS.set('radar.span24', F.span); if (F.span >= 168) loadAll(true); else render(); });
     $('#sort').addEventListener('change', (e) => { F.sort = e.target.value; LS.set('radar.sort', F.sort); render(); });
     $('#minViews').addEventListener('change', (e) => { F.minViews = Number(e.target.value); LS.set('radar.minViews', F.minViews); render(); });
     let qt = 0; $('#q').addEventListener('input', (e) => { clearTimeout(qt); qt = setTimeout(() => { F.q = e.target.value; render(); }, 200); });
