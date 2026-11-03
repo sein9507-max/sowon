@@ -94,8 +94,8 @@
   // ── 상태 ────────────────────────────────────────────────
   let items = [], issues = { time: '', list: [] }, threads = null, board = { saved: {}, watch: {}, picks: {}, memos: {} }, boardSha = null;
   let loadedAt = 0, lastCollected = 0, loading = false;
-  // 기본값(11/3 사용자): 3일 안 · 조회수 15만↑(24·48시간은 타이트), 주제는 뷰티·재테크만
-  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span72', 72)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews4', 150000)), minMult: Number(LS.get('radar.minMult', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false };
+  // 기본값(11/3 사용자, 레퍼처럼): 3일 안 · 추적 계정 최신 글 전부 · 최소 조회수 1만 · 떡상점수 정렬, 주제는 뷰티·재테크만
+  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span72', 72)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews5', 10000)), minMult: Number(LS.get('radar.minMult', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false };
   let current = null;
 
   // ── 불러오기 ────────────────────────────────────────────
@@ -354,7 +354,7 @@
     $('#spanSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.span = Number(b.dataset.v); LS.set('radar.span72', F.span); if (F.span >= 168) loadAll(true); else render(); });
     $('#sort').addEventListener('change', (e) => { F.sort = e.target.value; LS.set('radar.sort', F.sort); render(); });
     $('#minMult').addEventListener('change', (e) => { F.minMult = Number(e.target.value); LS.set('radar.minMult', F.minMult); render(); });
-    $('#minViews').addEventListener('change', (e) => { F.minViews = Number(e.target.value); LS.set('radar.minViews4', F.minViews); render(); });
+    $('#minViews').addEventListener('change', (e) => { F.minViews = Number(e.target.value); LS.set('radar.minViews5', F.minViews); render(); });
     let qt = 0; $('#q').addEventListener('input', (e) => { clearTimeout(qt); qt = setTimeout(() => { F.q = e.target.value; render(); }, 200); });
     $('#onlyWatch').addEventListener('change', (e) => { F.onlyWatch = e.target.checked; render(); });
     $('#onlySaved').addEventListener('change', (e) => { F.onlySaved = e.target.checked; render(); });
