@@ -280,6 +280,10 @@ select.field { background-image: linear-gradient(45deg, transparent 50%, var(--n
 .bl-more { align-self: flex-start; margin-left: 0; }
 .bl-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .bl-grid img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; background: var(--sky-1); }
+/* 1.14.0 사진 골라 분리 */
+.bl-grid.is-picking img { cursor: pointer; opacity: .85; transition: opacity .15s, outline-color .15s; outline: 3px solid transparent; outline-offset: -3px; }
+.bl-grid.is-picking img.is-picked { opacity: 1; outline-color: #ff5a7a; filter: saturate(1.1); }
+.bl-cutbar { margin: 6px 0; }
 .bl-count { margin: 0 0 4px; }
 .sc-expand { border-style: solid; border-color: #F5A8CF; background: #FFF6FB; }
 .sc-expand > b { color: var(--pink-deep); }

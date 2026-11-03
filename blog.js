@@ -7,7 +7,10 @@
  * 1.10.0 (사용자 10/22 "다 같은 장소인데 묶음이 나뉘어 있다 — 위아래 묶음 합치기"): 묶음마다 '위랑 합치기·아래랑 합치기'.
  *   일상/합치기.json 에 합친 묶음 id 를 남기고 맥북에 '지금 가져오기'를 요청한다. 맥북(일상사진_받기.py)이 실제로 합쳐
  *   묶음.json 에 올린다(합친 묶음은 parts 에 원래 묶음을 같이 둔다). 앱은 parts 를 펼쳐 합치기.json 대로 다시 합쳐 보여 주므로
- *   맥북이 돌기 전에도 바로 합쳐 보이고, '나누기'도 바로 된다. 합친 묶음 번호는 가장 이른 묶음 번호다. */
+ *   맥북이 돌기 전에도 바로 합쳐 보이고, '나누기'도 바로 된다. 합친 묶음 번호는 가장 이른 묶음 번호다.
+ * 1.14.0 (사용자 11/04 "사진끼리 짝꿍이 아닐 경우 사진 분리시키기"): 사진 모두 보기에서 '✂ 사진 골라 분리' → 고른 사진을 새 묶음으로.
+ *   일상/분리.json 에 {id: 새 묶음 id, photos} 를 남기고 맥북에 '지금 가져오기'를 요청한다. 맥북(일상사진_받기.py 분리)이 묶음.json 에서 실제로 떼어 내고,
+ *   앱도 분리.json 대로 바로 떼어 보여 준다. 따로 뗀 묶음은 '원래 묶음으로 되돌리기'. 대기 후기는 저녁 6시부터 맥북이 글로 써서 확장에 넣는다(도구/일상글_바로쓰기.py). */
 (() => {
   'use strict';
   const SW = window.sowon;
@@ -26,6 +29,7 @@
   let updatedAt = '', pullAt = LS.get('mb.blogPullAt', '');
   let groups = [], names = {}, reviews = [], reviewsSha = null, loading = false, loadedAt = 0;
   let merges = [];                                // 합치기.json — [[묶음 id, 묶음 id…], …]
+  let splits = [];                                // 분리.json — [{id, photos:[…]}, …] (1.14.0)
   const thumbs = new Map();                       // 경로 → data: 주소
   let drafts = LS.get('mb.blogDrafts', {});      // 묶음 id → 쓰다 만 후기
 
@@ -59,6 +63,7 @@
       } catch (e) { if ((e.status === 409 || e.status === 422) && attempt < 2) continue; throw e; }
     }
   }
+  const splitList = (d) => (Array.isArray(d.splits) ? d.splits : []).filter((x) => x && x.id && Array.isArray(x.photos) && x.photos.length);
   const mergeList = (d) => (Array.isArray(d.merges) ? d.merges : []).map((m) => m.ids).filter((ids) => Array.isArray(ids) && ids.length > 1);
 
   // 맥북이 합쳐 올린 묶음은 parts(원래 묶음)로 펼친다. 미리보기는 합친 묶음 폴더에 있으니 dirOf 로 기억한다.
@@ -86,20 +91,45 @@
         dirOf: Object.assign({}, ...gs.map((g) => g.dirOf)), parts: gs.flatMap((g) => g.parts) };
     });
   }
+  // 1.14.0 분리.json 대로 고른 사진을 원래 묶음에서 떼어 새 묶음으로 (맥북 일상사진_받기.py 분리 와 같은 규칙, 맥북이 이미 뗐으면 그대로)
+  const ts = (f) => { const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(f); return m ? `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}` : ''; };
+  const frozenId = (id) => { const r = reviews.find((x) => x.groupId === id); return !!r && (r.status === '완료' || r.status === '건너뜀'); };
+  function applySplits(list) {
+    if (!splits.length) return list;
+    let out = list.map((g) => ({ ...g }));
+    splits.forEach((sp) => {
+      const want = new Set(sp.photos);
+      if (frozenId(sp.id) || out.some((g) => frozenId(g.id) && g.photos.some((f) => want.has(f)))) return;
+      const got = [], dirOf = {};
+      out.forEach((g) => {
+        if (g.id === sp.id) return;
+        const hit = g.photos.filter((f) => want.has(f));
+        if (!hit.length) return;
+        hit.forEach((f) => { got.push(f); dirOf[f] = (g.dirOf && g.dirOf[f]) || g.id; });
+        g.photos = g.photos.filter((f) => !want.has(f)); g.count = g.photos.length;
+      });
+      const old = out.find((g) => g.id === sp.id);
+      if (old) { old.split = true; if (got.length) { old.photos = [...new Set([...old.photos, ...got])].sort(); old.count = old.photos.length; old.dirOf = { ...old.dirOf, ...dirOf }; } return; }
+      if (!got.length) return;
+      got.sort();
+      out.push({ id: sp.id, start: ts(got[0]), end: ts(got[got.length - 1]), count: got.length, photos: got, dirOf, parts: [sp.id], split: true });
+    });
+    return out.filter((g) => g.photos.length);
+  }
   let rawGroups = [];
-  const regroup = () => { groups = combine(expand(rawGroups)); };
+  const regroup = () => { groups = combine(applySplits(expand(rawGroups))); };
 
   async function load(force) {
     if (loading || !SW.cfg().token || !navigator.onLine) { render(); return; }
     if (!force && Date.now() - loadedAt < 60000) { render(); return; }
     loading = true; render();
     try {
-      const [g, n, r, m] = await Promise.all([readJSON(`${DIR()}/묶음.json`), readJSON(`${DIR()}/이름.json`), readJSON(`${DIR()}/후기.json`), readJSON(`${DIR()}/합치기.json`)]);
+      const [g, n, r, m, sp] = await Promise.all([readJSON(`${DIR()}/묶음.json`), readJSON(`${DIR()}/이름.json`), readJSON(`${DIR()}/후기.json`), readJSON(`${DIR()}/합치기.json`), readJSON(`${DIR()}/분리.json`)]);
       rawGroups = Array.isArray(g.data.groups) ? g.data.groups : [];
-      merges = mergeList(m.data); regroup();
       updatedAt = g.data.updatedAt || '';
       names = n.data.names || {};
       reviews = Array.isArray(r.data.entries) ? r.data.entries : []; reviewsSha = r.sha;
+      merges = mergeList(m.data); splits = splitList(sp.data); regroup();
       loadedAt = Date.now();
     } catch (e) { if (e.status !== 401) SW.toast(`블로그 불러오기 실패: ${e.message || e}`); }
     finally { loading = false; render(); }
@@ -138,11 +168,35 @@
     // 1.9.0 (사용자 10/21 "18개 묶음이면 어떤 사진이 들어갔는지 모른다 — 펼쳐서 한눈에"): 전체 사진 격자 펼치기
     const more = el('button', 'mini-btn bl-more', `📷 ${g.count}장 모두 보기`); more.type = 'button';
     const grid = el('div', 'bl-grid'); grid.hidden = true;
+    const fill = () => { if (!grid.childElementCount) g.photos.forEach((f) => { const im = el('img'); im.alt = ''; im.loading = 'lazy'; im.dataset.f = f; grid.append(im); thumb(im, thumbPath(g, f)); }); };
     more.addEventListener('click', () => {
-      if (!grid.childElementCount) g.photos.forEach((f) => { const im = el('img'); im.alt = ''; im.loading = 'lazy'; grid.append(im); thumb(im, thumbPath(g, f)); });
+      fill();
       grid.hidden = !grid.hidden; more.textContent = grid.hidden ? `📷 ${g.count}장 모두 보기` : '접기';
     });
-    card.append(more, grid);
+    card.append(more);
+    // 1.14.0 사진 골라 분리 — 이 묶음과 짝이 안 맞는 사진을 눌러 고르고 '따로 묶기'
+    const st0 = (rv || {}).status;
+    if (st0 !== '완료' && st0 !== '건너뜀' && g.count > 1) {
+      const cut = el('button', 'mini-btn bl-more', '✂ 사진 골라 분리'); cut.type = 'button';
+      const bar = el('div', 'bl-skips bl-cutbar'); bar.hidden = true;
+      const go = el('button', 'aqua-btn small', '고른 사진 따로 묶기'); go.type = 'button'; go.disabled = true;
+      const no = el('button', 'mini-btn', '취소'); no.type = 'button';
+      const picked = new Set();
+      const sync = () => { go.textContent = picked.size ? `고른 ${picked.size}장 따로 묶기` : '짝 안 맞는 사진을 눌러 골라요'; go.disabled = !picked.size || picked.size >= g.count; };
+      const onTap = (e) => {
+        const im = e.target.closest('img'); if (!im || !grid.classList.contains('is-picking')) return;
+        const f = im.dataset.f; if (picked.has(f)) { picked.delete(f); im.classList.remove('is-picked'); } else { picked.add(f); im.classList.add('is-picked'); }
+        sync();
+      };
+      grid.addEventListener('click', onTap);
+      const stop = () => { picked.clear(); grid.classList.remove('is-picking'); grid.querySelectorAll('.is-picked').forEach((x) => x.classList.remove('is-picked')); bar.hidden = true; cut.hidden = false; };
+      cut.addEventListener('click', () => { fill(); grid.hidden = false; more.textContent = '접기'; grid.classList.add('is-picking'); bar.hidden = false; cut.hidden = true; sync(); });
+      no.addEventListener('click', stop);
+      go.addEventListener('click', () => cutOut(g, [...picked], go));
+      bar.append(go, no);
+      card.append(cut, bar);
+    }
+    card.append(grid);
 
     if (rv && rv.status === '건너뜀') {
       card.classList.add('is-done');
@@ -166,7 +220,7 @@
     ta.addEventListener('input', () => { drafts[g.id] = ta.value; LS.set('mb.blogDrafts', drafts); });
     say.append(ta); card.append(say);
     const row = el('div', 'bl-row');
-    if (rv && rv.status === '대기') row.append(el('span', 'bl-status wait', '⏳ 대기 중 — 밤 10시에 글로 만들어요 (고쳐서 다시 눌러도 돼요)'));
+    if (rv && rv.status === '대기') row.append(el('span', 'bl-status wait', '⏳ 대기 중 — 저녁 6시부터 맥북이 글로 써서 확장에 넣어요 (고쳐서 다시 눌러도 돼요)'));
     if (rv && rv.status === '실패') row.append(el('span', 'bl-status bad', `다시 확인 필요: ${rv.note || '루틴이 글을 못 썼어요'}`));
     const btn = el('button', 'aqua-btn small bl-pub', rv && rv.status === '대기' ? '고친 후기로 다시 발행' : '발행');
     btn.type = 'button';
@@ -184,6 +238,12 @@
     row.append(btn); card.append(row);
     // 1.10.0: 같은 장소인데 나뉜 묶음 합치기 (위·아래 = 지금 목록에서 바로 위·아래 묶음)
     const mrow = el('div', 'bl-skips bl-merge');
+    if (g.split && splits.some((x) => x.id === g.id)) {
+      mrow.append(el('span', 'bl-sub', '✂ 따로 뗀 사진 묶음'));
+      const ub = el('button', 'mini-btn', '원래 묶음으로 되돌리기'); ub.type = 'button';
+      ub.addEventListener('click', () => unsplit(g, ub));
+      mrow.append(ub);
+    }
     if (g.parts.length > 1) {
       mrow.append(el('span', 'bl-sub', `🔗 묶음 ${g.parts.length}개를 합쳤어요`));
       const sp = el('button', 'mini-btn', '나누기'); sp.type = 'button';
@@ -251,6 +311,42 @@
     finally { btn.disabled = false; render(); }
   }
 
+  const SPLIT_NOTE = '소원저장소 블로그 탭 사진 골라 분리. 맥북 도구/일상사진_받기.py 가 읽어 묶음.json 에서 사진을 떼어 새 묶음으로 만든다';
+  async function cutOut(g, photos, btn) {
+    if (!SW.cfg().token) { SW.toast('설정에서 저장소 열쇠를 먼저 넣어주세요'); SW.openSettings(); return; }
+    if (!photos.length || photos.length >= g.count) { SW.toast('묶음에 사진이 한 장은 남아야 해요'); return; }
+    photos = [...photos].sort();
+    btn.disabled = true;
+    try {
+      const body = await save(`${DIR()}/분리.json`, (d) => {
+        const list = splitList(d);
+        const ids = new Set([...groups.map((x) => x.id), ...rawGroups.map((x) => x.id), ...list.map((x) => x.id)]);
+        const base = `${photos[0].slice(0, 13)}s`;
+        let id = base, k = 2; while (ids.has(id)) id = `${base}${k++}`;
+        const pick = new Set(photos);
+        list.forEach((x) => { if (x.id !== id) x.photos = x.photos.filter((f) => !pick.has(f)); });   // 다른 분리에 있던 사진이면 거기서 빼서 이번 묶음으로
+        list.push({ id, from: g.id, photos, at: SW.isoLocal(new Date()) });
+        return { version: 1, note: SPLIT_NOTE, splits: list.filter((x) => x.photos.length) };
+      }, `일상 사진 분리 ${g.id} → ${photos.length}장`);
+      splits = splitList(body); regroup();
+      SW.toast(`${photos.length}장을 따로 묶었어요. 맥북이 5분쯤 뒤 묶음에도 반영해요`);
+      requestPull().catch(() => {});
+    } catch (e) { SW.toast(`분리 실패: ${e.message || e}`); }
+    finally { btn.disabled = false; render(); }
+  }
+  async function unsplit(g, btn) {
+    btn.disabled = true;
+    try {
+      const body = await save(`${DIR()}/분리.json`, (d) => ({ version: 1, note: SPLIT_NOTE, splits: splitList(d).filter((x) => x.id !== g.id) }), `일상 사진 분리 되돌리기 ${g.id}`);
+      splits = splitList(body);
+      // 맥북이 이미 떼어 올린 묶음이면 원래 묶음 자리로 돌려 보이게 — 맥북이 다시 묶을 때까지는 그 묶음이 그대로 보일 수 있다
+      regroup();
+      SW.toast('되돌렸어요. 맥북이 5분쯤 뒤 원래 묶음으로 다시 묶어요');
+      requestPull().catch(() => {});
+    } catch (e) { SW.toast(`되돌리기 실패: ${e.message || e}`); }
+    finally { btn.disabled = false; render(); }
+  }
+
   async function publish(g, label, text, btn) {
     text = text.trim();
     if (text.length < 10) { SW.toast('후기를 한두 문장만 더 적어주세요'); return; }
@@ -264,7 +360,7 @@
         if (i >= 0) entries[i] = entry; else entries.push(entry);
       }, `일상 후기 ${label}`);
       delete drafts[g.id]; LS.set('mb.blogDrafts', drafts);
-      SW.toast('발행 대기에 넣었어요. 밤 10시에 글로 만들어요');
+      SW.toast('발행 대기에 넣었어요. 저녁 6시부터 글로 써서 확장에 넣어요');
     } catch (e) { SW.toast(`발행 실패: ${e.message || e}`); }
     finally { btn.disabled = false; render(); }
   }
