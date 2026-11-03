@@ -96,6 +96,7 @@
       await modify(id, (d) => {
         const base = d && d.id ? d : { version: 1, id, title: id === MAIN.id ? MAIN.title : '새 채팅', main: id === MAIN.id, createdAt: m.at, messages: [],
           note: '소원저장소 앱 채팅. 맥북 도구/소원_맥북채팅.py 가 claude 로 답을 붙인다' };
+        if (c.model) base.model = c.model; else if (!base.model) base.model = 'opus';   // 11/3 사용자 "채팅창 기본은 오퍼스"
         base.messages = (base.messages || []).concat([m]);
         if (!base.title || base.title === '새 채팅') base.title = text.replace(/\s+/g, ' ').slice(0, 24);
         base.updatedAt = m.at;
@@ -115,6 +116,17 @@
       SW.toast('그만두라고 보냈어요');
     } catch (e) { SW.toast(`취소 실패: ${e.message || e}`); }
     render();
+  }
+  // 11/3 사용자 "채팅창 기본은 오퍼스로 할 거고, 페이블로 전환하는 버튼도" — 채팅마다 model(opus | claude-fable-5-1), 맥북 데몬이 --model 로 넘김
+  const MODELS = [['opus', '오퍼스 (기본)'], ['fable', '페이블 (더 깊게)']];
+  const modelKey = (c) => (c && String(c.model || '').includes('fable') ? 'fable' : 'opus');
+  async function setModel(k) {
+    const c = chats[cur]; if (!c) return;
+    const model = k === 'fable' ? 'claude-fable-5-1' : 'opus';
+    c.model = model; render();
+    if (c._local) return;
+    try { await modify(cur, (d) => { if (!d) return null; d.model = model; return d; }, `소원저장소 채팅: ${cur} 모델 ${k}`); }
+    catch (e) { SW.toast(`모델 저장 실패: ${e.message || e}`); }
   }
   function newChat() {
     const id = 'c_' + SW.makeId(new Date());
@@ -188,6 +200,12 @@
     const nb = el('button', 'chip', '+ 새 채팅'); nb.type = 'button'; nb.id = 'chatNew'; nb.addEventListener('click', newChat); pick.append(nb);
     $('#chatTitle').textContent = c.title || '새 채팅';
     $('#chatRename').hidden = !!c.main; $('#chatDel').hidden = !!c.main;
+    const mb = $('#chatModel'); mb.replaceChildren();
+    MODELS.forEach(([k, label]) => {
+      const on = modelKey(c) === k;
+      const b = el('button', 'chip' + (on ? ' is-on' : ''), label); b.type = 'button'; b.dataset.model = k; b.setAttribute('aria-pressed', String(on));
+      b.addEventListener('click', () => setModel(k)); mb.append(b);
+    });
     const hint = $('#chatHint');
     hint.textContent = !SW.cfg().token ? '설정 ①에서 저장소 열쇠를 넣으면 맥북 Claude와 대화할 수 있어요.'
       : c.main ? '맥북 터미널에서 돌던 그 대화에 그대로 이어져요. 맥북이 꺼져 있으면 켜질 때 답해요.'
@@ -199,7 +217,8 @@
     ms.forEach((m) => {
       const d = el('div', `ch-msg ${m.role === 'user' ? 'user' : 'assistant'}`); d.dataset.id = m.id || '';
       const t = el('div', 'ch-text'); linkify(m.text, t); d.append(t);
-      const meta = el('div', 'ch-meta', `${m.role === 'user' ? '나' : '맥북 Claude'} · ${hhmm(m.at)}${m.took && m.role === 'assistant' ? ` · ${fmtSec(m.took)} 걸림` : ''}`);
+      const who = m.role === 'user' ? '나' : `맥북 Claude${m.model ? (String(m.model).includes('fable') ? ' · 페이블' : ' · 오퍼스') : ''}`;
+      const meta = el('div', 'ch-meta', `${who} · ${hhmm(m.at)}${m.took && m.role === 'assistant' ? ` · ${fmtSec(m.took)} 걸림` : ''}`);
       d.append(meta);
       if (m.role === 'user') { const [txt, cls] = statusOf(m); if (txt) d.append(el('span', `ch-st ${cls}`, txt)); }
       box.append(d);
@@ -212,6 +231,54 @@
     const r = el('div', 'rt-row'); r.append(el('i', `rt-dot ${dotCls}`));
     const b = el('div', 'rt-txt'); b.append(el('b', '', title)); if (sub) b.append(el('div', 'rt-sub', sub)); r.append(b); parent.append(r);
   }
+  // ── 사무실 캐릭터(픽셀, 11/3 사용자 "사무실처럼 캐릭터 만들어서 각 직원처럼 보이게") ──
+  const AVA_ROWS = ['....hhhhhhhh....', '...hhhhhhhhhh...', '..hhhhhhhhhhhh..', '..hhssssssssshh.', '..hsssssssssssh.', '..hsssssssssssh.', '..hsssssssssssh.', '..hsssssssssssh.',
+    '..hsssssssssssh.', '...sssssssssss..', '....sssssssss...', '.....bbbbbbb....', '...bbbbbbbbbbb..', '..bbbbbbbbbbbbb.', '..bbbbwwbbbbbbb.', '..bbbbbbbbbbbbb.'];
+  const PAL = { s: '#FFE3CF', w: '#FFFFFF', e: '#24407A', m: '#E0607A', g: '#24407A', p: '#F0529F', r: '#F0529F', y: '#FFD23F', k: '#2B2B45', c: '#6FC3FF', u: '#FFB3C7' };
+  const LOOK = {
+    sihwang: { h: '#2B2B45', b: '#4AA6F7', extra: [[5, 4, 'g'], [5, 5, 'g'], [5, 6, 'g'], [5, 9, 'g'], [5, 10, 'g'], [5, 11, 'g'], [7, 4, 'g'], [7, 5, 'g'], [7, 6, 'g'], [7, 9, 'g'], [7, 10, 'g'], [7, 11, 'g'], [6, 4, 'g'], [6, 6, 'g'], [6, 9, 'g'], [6, 11, 'g'], [6, 7, 'g'], [6, 8, 'g']] },
+    video: { h: '#6B4FD8', b: '#A788F7', extra: [[0, 4, 'p'], [0, 5, 'p'], [0, 6, 'p'], [0, 7, 'p'], [0, 8, 'p'], [0, 9, 'p'], [0, 10, 'p'], [0, 11, 'p'], [4, 1, 'p'], [5, 1, 'p'], [6, 1, 'p'], [5, 2, 'p'], [4, 14, 'p'], [5, 14, 'p'], [6, 14, 'p'], [5, 13, 'p']] },
+    blog: { h: '#A26A3C', b: '#FFB3DA', beret: true, extra: [[0, 12, 'r'], [12, 12, 'y'], [13, 12, 'y'], [14, 12, 'y']] },
+  };
+  const MOOD = { work: ['일하는 중', '💻'], done: ['오늘 끝 · 퇴근', '✅'], wait: ['대기 중', '⏳'], bad: ['문제 생김', '⚠️'], off: ['쉬는 날', '💤'] };
+  const EYES = [[6, 5, 'e'], [6, 10, 'e']];
+  const FACE = {
+    work: [...EYES, [8, 7, 'm'], [8, 8, 'm'], [4, 13, 'c']],
+    done: [...EYES, [8, 6, 'm'], [8, 7, 'm'], [8, 8, 'm'], [8, 9, 'm'], [7, 3, 'u'], [7, 12, 'u']],
+    wait: [...EYES, [8, 7, 'm']],
+    bad: [...EYES, [4, 5, 'k'], [4, 10, 'k'], [8, 6, 'm'], [8, 9, 'm'], [9, 7, 'm'], [9, 8, 'm'], [4, 13, 'c']],
+    off: [[6, 4, 'k'], [6, 5, 'k'], [6, 6, 'k'], [6, 9, 'k'], [6, 10, 'k'], [6, 11, 'k'], [8, 7, 'm']],
+  };
+  function avatarSvg(key, mood) {
+    const look = LOOK[key] || LOOK.video; const grid = AVA_ROWS.map((r) => r.split(''));
+    if (look.beret) for (let r = 0; r < 3; r++) grid[r] = grid[r].map((ch) => (ch === 'h' ? 'r' : ch));
+    [...(look.extra || []), ...(FACE[mood] || FACE.wait)].forEach(([r, c, ch]) => { grid[r][c] = ch; });
+    let out = '';
+    grid.forEach((row, r) => row.forEach((ch, c) => {
+      const fill = ch === 'h' ? look.h : ch === 'b' ? look.b : PAL[ch];
+      if (fill) out += `<rect x="${c}" y="${r}" width="1" height="1" fill="${fill}"/>`;
+    }));
+    return `<svg viewBox="0 0 16 16" width="64" height="64" shape-rendering="crispEdges" aria-hidden="true">${out}</svg>`;
+  }
+  const markCls = (s) => (s === '✓' ? 'ok' : s === '✗' ? 'bad' : s === '…' ? 'run' : 'idle');
+  function desk(t) {
+    const d = el('div', `desk is-${t.mood || 'wait'}`); const mood = MOOD[t.mood] || MOOD.wait;
+    const ava = el('div', 'ava'); ava.innerHTML = avatarSvg(t.key, t.mood); ava.append(el('div', 'ava-emoji', mood[1])); d.append(ava);
+    const body = el('div', 'desk-body');
+    const head = el('div', 'desk-head'); head.append(el('span', 'tag', t.team || '')); head.append(el('span', 'nm', t.name || '')); head.append(el('span', `mood ${t.mood || 'wait'}`, mood[0])); body.append(head);
+    body.append(el('div', 'bubble', t.report || ''));
+    const det = el('details', 'desk-more'); det.append(el('summary', '', `오늘 한 일 ${(t.steps || []).length}단계 · 일정`));
+    (t.steps || []).forEach((s) => { const r = el('div', 'step'); r.append(el('i', `st-${markCls(s.s)}`, s.s || '·')); const tx = el('div', 'step-txt'); tx.append(el('div', '', s.t || '')); if (s.d) tx.append(el('div', 'sd', s.d)); r.append(tx); det.append(r); });
+    if (t.schedule) det.append(el('div', 'sched', '일정: ' + t.schedule));
+    const rs = (routine.routines || []).filter((r) => r.team === t.key);
+    if (rs.length) {
+      const box = el('div', 'sched'); box.append(el('b', '', '클라우드 루틴'));
+      rs.forEach((r) => box.append(el('div', '', `${r.enabled ? '🟢' : '⚪ (꺼짐)'} ${r.name} · ${r.when || ''}${r.lastRun ? ` · 마지막 ${r.lastRun}` : ''}${r.next ? ` · 다음 ${r.next}` : ''}`)));
+      det.append(box);
+    }
+    body.append(det); d.append(body); return d;
+  }
+
   function renderRoutine() {
     const body = $('#rtBody'); if (!body) return; body.replaceChildren();
     const up = $('#rtUpdated');
@@ -219,6 +286,11 @@
     if (!routine) { up.textContent = ''; body.append(el('p', 'hint', loading ? '불러오는 중…' : '맥북이 아직 루틴 상태를 안 적었어요. 맥북이 켜지고 1~2분 뒤에 생겨요.')); return; }
     const stale = (Date.now() - tsOf(routine.at)) > 20 * 60 * 1000;
     up.textContent = `맥북이 ${ago(routine.at)}에 적음${stale ? ' · 20분 넘게 조용함 — 맥북이 꺼졌거나 잠든 것 같아요' : ''}${routine.idleSec != null ? ` · 맥북 손 안 댄 지 ${fmtSec(routine.idleSec)}` : ''}`;
+    if (Array.isArray(routine.teams) && routine.teams.length) {
+      const off = el('section', 'office'); off.append(el('h3', '', '🏢 신혼테크 사무실'));
+      routine.teams.forEach((t) => off.append(desk(t))); body.append(off);
+    }
+    const more = el('details', 'rt-all'); more.append(el('summary', '', '🗂 전체 루틴·로그 자세히')); body.append(more);
     const vids = routine.videos || [];
     const g1 = el('section', 'rt-group'); g1.append(el('h3', '', `🎬 오늘·어제 영상 (${vids.length})`));
     if (!vids.length) g1.append(el('p', 'hint small', '기획된 편이 없어요.'));
@@ -227,14 +299,14 @@
       const parts = [v.day.slice(5), v.stage, v.qa ? `검사 ${v.qa}` : '', v.upload, v.clip ? '클립 ✓' : '', v.comment ? '첫 댓글 ✓' : ''].filter(Boolean);
       row(g1, dot, v.job, parts.join(' · ') + (v.qaWhy ? `\n${v.qaWhy}` : ''));
     });
-    body.append(g1);
+    more.append(g1);
     const g2 = el('section', 'rt-group'); g2.append(el('h3', '', '🖥 지금 돌고 있는 것'));
     (routine.procs || []).forEach((p) => row(g2, p.on ? 'ok' : 'off', p.name, p.on ? `돌아가는 중 (${p.since})` : '꺼짐'));
-    body.append(g2);
+    more.append(g2);
     if ((routine.crons || []).length) {
       const g3 = el('section', 'rt-group'); g3.append(el('h3', '', '⏰ 터미널 세션 예약'));
       routine.crons.forEach((c) => row(g3, 'ok', c.when || '', c.what || ''));
-      body.append(g3);
+      more.append(g3);
     }
     const g4 = el('section', 'rt-group'); g4.append(el('h3', '', '🔁 맥북 루틴 (launchd)'));
     (routine.launchd || []).forEach((j) => {
@@ -242,10 +314,10 @@
       const sub = [j.when, !j.loaded ? '안 켜짐' : j.pid ? '돌아가는 중' : (j.lastExit && j.lastExit !== '0') ? `마지막 종료 코드 ${j.lastExit}` : '', j.log ? `${ago(j.logAt)} · ${j.log}` : ''].filter(Boolean).join(' · ');
       row(g4, dot, j.name, sub);
     });
-    body.append(g4);
+    more.append(g4);
     const g5 = el('section', 'rt-group'); g5.append(el('h3', '', '📜 로그 끝 줄'));
     (routine.logs || []).forEach((l) => row(g5, 'ok', `${l.name} · ${ago(l.at)}`, l.line));
-    body.append(g5);
+    more.append(g5);
   }
 
   // ── 폴링 ────────────────────────────────────────────────

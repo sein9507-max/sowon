@@ -467,3 +467,27 @@ select.field { background-image: linear-gradient(45deg, transparent 50%, var(--n
 .rt-dot.off { background: #C9C9C9; } .rt-dot.bad { background: #F08080; }
 .rt-txt { min-width: 0; } .rt-txt b { font-weight: 700; word-break: break-word; }
 .rt-sub { font-size: 12.5px; color: var(--navy-soft); white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+.ch-model { margin: 6px 0 0; }
+.ch-model .chip { flex: 1; font-size: 13px; }
+/* 1.13.0 루틴 = 사무실(11/3 사용자 "각 업무팀이 일 했는지 사무실처럼 캐릭터 … 팀별 보고 한두 줄") */
+.office { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+.office h3 { margin: 0; font-family: var(--pix); font-size: 15px; color: var(--navy); }
+.desk { display: flex; gap: 10px; padding: 10px; border-radius: 18px; background: #fff; border: 3px solid #fff; box-shadow: var(--shadow); align-items: flex-start; }
+.desk.is-bad { border-color: #FFB3B3; } .desk.is-work { border-color: var(--lemon-deep); } .desk.is-done { border-color: #B8EBC4; }
+.desk .ava { flex: 0 0 auto; width: 68px; text-align: center; }
+.desk .ava svg { width: 64px; height: 64px; display: block; margin: 0 auto; }
+.desk .ava-emoji { font-size: 15px; line-height: 1; margin-top: -6px; }
+.desk-body { min-width: 0; flex: 1; }
+.desk-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.desk .tag { font-family: var(--pix); font-size: 11px; color: var(--navy-soft); }
+.desk .nm { font-family: var(--pix); font-size: 15px; color: var(--navy); }
+.desk .mood { font-family: var(--pix); font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--sky-2); }
+.mood.work { background: var(--lemon); } .mood.done { background: #CFF5D8; } .mood.bad { background: #FFD2D2; color: #A1272F; } .mood.off { background: #E6E6E6; }
+.bubble { position: relative; margin-top: 6px; padding: 8px 10px; border-radius: 12px; background: var(--ice); border: 2px solid var(--line); font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+.bubble::before { content: ""; position: absolute; left: -10px; top: 12px; border: 6px solid transparent; border-right-color: var(--line); border-left: 0; }
+.desk-more { margin-top: 6px; } .desk-more summary { font-family: var(--pix); font-size: 12px; color: var(--blue-deep); cursor: pointer; }
+.step { display: flex; gap: 6px; font-size: 13px; padding: 4px 0; border-top: 1px dashed var(--line); }
+.step i { font-style: normal; width: 16px; flex: 0 0 auto; text-align: center; } .step .st-ok { color: #2E9E5B; } .step .st-bad { color: #D64545; } .step .st-run { color: var(--blue-deep); } .step .st-idle { color: #B0B8C8; }
+.step-txt { min-width: 0; } .step .sd { font-size: 12px; color: var(--navy-soft); word-break: break-word; overflow-wrap: anywhere; }
+.sched { margin-top: 6px; font-size: 12px; color: var(--navy-soft); border-top: 1px dashed var(--line); padding-top: 4px; }
+.rt-all { margin-top: 12px; } .rt-all > summary { font-family: var(--pix); font-size: 13px; color: var(--blue-deep); cursor: pointer; }
