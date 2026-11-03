@@ -94,7 +94,7 @@
   // ── 상태 ────────────────────────────────────────────────
   let items = [], issues = { time: '', list: [] }, threads = null, board = { saved: {}, watch: {}, picks: {}, memos: {} }, boardSha = null;
   let loadedAt = 0, lastCollected = 0, loading = false;
-  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span24', 24)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false };
+  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span24', 24)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews2', 10000)), minMult: Number(LS.get('radar.minMult', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false };
   let current = null;
 
   // ── 불러오기 ────────────────────────────────────────────
@@ -176,11 +176,13 @@
     const likeRate = x.views ? (x.likes || 0) / x.views : null;
     const m = x.medianViews ? { med: x.medianViews, n: x.medianN || 0, acct: true } : medians.get(`${x.platform}:${x.user}`); const mult = m && x.views != null ? x.views / Math.max(1, m.med) : null;
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-    const s1 = vph != null ? clamp(Math.log10(vph + 1) / Math.log10(50001) * 60, 0, 60) : 0;
-    const s2 = cpk != null ? clamp(cpk / 20 * 20, 0, 20) : 0;
-    const s3 = likeRate != null ? clamp(likeRate / 0.08 * 15, 0, 15) : 0;
-    const s4 = h <= 24 ? 5 : h <= 48 ? 3 : 0;
-    return { h, vph, vphRecent, cpk, likeRate, mult, med: m, score: Math.round(s1 + s2 + s3 + s4), viewsLike: x.views == null && x.likes != null };
+    // 떡상점수(레퍼 사이트처럼 조회수·평소 대비 배수 위주, 11/3): 조회수 35 + 배수 30 + 시간당 20 + 1천뷰당 댓글 10 + 신선도 5
+    const s1 = views != null ? clamp(Math.log10(Math.max(1, views) / 1000) / 4 * 35, 0, 35) : 0;          // 1만 9 · 10만 17 · 100만 26 · 1000만 35
+    const s2 = mult != null ? clamp(Math.log2(mult + 1) / Math.log2(33) * 30, 0, 30) : 0;                // 1배 7 · 4배 14 · 15배 24 · 32배↑ 30
+    const s3 = vph != null ? clamp(Math.log10(vph + 1) / Math.log10(50001) * 20, 0, 20) : 0;            // 5만/h 만점
+    const s4 = cpk != null ? clamp(cpk / 20 * 10, 0, 10) : 0;                                            // 1천뷰당 댓글 20개 만점
+    const s5 = h <= 24 ? 5 : h <= 48 ? 3 : 0;
+    return { h, vph, vphRecent, cpk, likeRate, mult, med: m, score: Math.round(s1 + s2 + s3 + s4 + s5), viewsLike: x.views == null && x.likes != null };
   }
 
   // ── 거르기·정렬 ─────────────────────────────────────────
@@ -197,7 +199,7 @@
       if (F.src === 'all' && x.platform === 'yt' && x.kind === 'video') return false;
       if (x.platform === 'yt' && ((x.views || 0) < YT_MIN_VIEWS || ytJunk(x))) return false;   // 유튜브 쇼츠는 조회수 5만 이상만(사용자 기준 11/3)
       if (F.region !== 'all' && x.region !== F.region) return false;
-      if (F.minViews && (x.views || 0) < F.minViews) return false;
+      if (F.minViews && (x.views != null ? x.views : (x.likes || 0) * 20) < F.minViews) return false;
       const g = groupOf(x.topic || '');
       if (F.group === 'all' ? g === 'etc' : g !== F.group) return false;
       if (F.group === 'money' && F.topic && x.topic !== F.topic) return false;
@@ -205,7 +207,7 @@
       if (F.onlySaved && !board.saved[x.id]) return false;
       if (q && !`${x.user} ${x.caption}`.toLowerCase().includes(q)) return false;
       return true;
-    }).map((x) => ({ x, m: metrics(x) }));
+    }).map((x) => ({ x, m: metrics(x) })).filter((r) => !F.minMult || (r.m.mult || 0) >= F.minMult);
     const key = { score: (r) => r.m.score, views: (r) => r.x.views || 0, vph: (r) => r.m.vphRecent || r.m.vph || 0, mult: (r) => r.m.mult || 0, comments: (r) => r.x.comments || 0, likes: (r) => r.x.likes || 0, new: (r) => new Date(r.x.postedAt).getTime() }[F.sort] || ((r) => r.m.score);
     return list.sort((a, b) => key(b) - key(a));
   }
@@ -234,7 +236,13 @@
     const c = el('article', 'card' + (board.picks[x.id] ? ' picked' : ''));
     const th = el('div', 'thumb');
     const ph = el('div', 'ph', (x.title || x.caption || '').slice(0, 60) || `@${x.user}`);
-    if (x.thumb) { const img = el('img'); img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.src = x.thumb; img.addEventListener('error', () => { img.remove(); th.prepend(ph); }); th.append(img); } else th.append(ph);
+    if (x.thumb) {   // 인스타 계정 글 썸네일(fbcdn.net)은 다른 사이트에서 못 불러오게 막혀 있어서(CORP) 공개 이미지 중계 wsrv.nl 을 거친다. 실패하면 원래 주소 → 글자 카드
+      const img = el('img'); img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+      const direct = x.thumb, viaProxy = x.platform === 'yt' ? direct : `https://wsrv.nl/?url=${encodeURIComponent(direct)}&w=360&q=72&output=jpg`;
+      img.src = viaProxy;
+      img.addEventListener('error', () => { if (img.src !== direct && viaProxy !== direct) { img.src = direct; return; } img.remove(); th.prepend(ph); });
+      th.append(img);
+    } else th.append(ph);
     th.append(el('span', 'tl', `${x.region === '해외' ? '🌎' : '🇰🇷'} ${platName(x)} · ${kindLabel(x)}`));
     const tr = el('span', 'tr' + (m.mult != null && m.mult >= 5 ? ' hot' : ''), m.mult != null ? `${m.mult.toFixed(1)}x` : `${m.score}점`); tr.title = m.mult != null ? `평소(중앙값 ${short(m.med.med)}, ${m.med.n}개) 대비` : '떡상점수'; th.append(tr);
     th.append(el('span', 'bl', x.views != null ? short(x.views) : `♥ ${short(x.likes)}`));
@@ -257,7 +265,7 @@
     $('#srcSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === F.src));
     $('#regSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === F.region));
     $('#spanSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === F.span));
-    $('#sort').value = F.sort; $('#minViews').value = String(F.minViews);
+    $('#sort').value = F.sort; $('#minViews').value = String(F.minViews); $('#minMult').value = String(F.minMult);
     const list = filtered();
     const grid = $('#grid'); grid.replaceChildren();
     if (!items.length) grid.append(el('p', 'empty', loading ? '읽는 중…' : token ? '아직 쌓인 게 없어요. 조사용 크롬에서 확장 2.0으로 인스타를 내리면 여기 쌓여요. 유튜브 쇼츠는 맥북 떡상_수집.py(API 키 필요).' : '열쇠를 넣으면 불러와요.'));
@@ -344,7 +352,8 @@
     $('#regSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.region = b.dataset.v; LS.set('radar.region', F.region); render(); });
     $('#spanSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.span = Number(b.dataset.v); LS.set('radar.span24', F.span); if (F.span >= 168) loadAll(true); else render(); });
     $('#sort').addEventListener('change', (e) => { F.sort = e.target.value; LS.set('radar.sort', F.sort); render(); });
-    $('#minViews').addEventListener('change', (e) => { F.minViews = Number(e.target.value); LS.set('radar.minViews', F.minViews); render(); });
+    $('#minMult').addEventListener('change', (e) => { F.minMult = Number(e.target.value); LS.set('radar.minMult', F.minMult); render(); });
+    $('#minViews').addEventListener('change', (e) => { F.minViews = Number(e.target.value); LS.set('radar.minViews2', F.minViews); render(); });
     let qt = 0; $('#q').addEventListener('input', (e) => { clearTimeout(qt); qt = setTimeout(() => { F.q = e.target.value; render(); }, 200); });
     $('#onlyWatch').addEventListener('change', (e) => { F.onlyWatch = e.target.checked; render(); });
     $('#onlySaved').addEventListener('change', (e) => { F.onlySaved = e.target.checked; render(); });
