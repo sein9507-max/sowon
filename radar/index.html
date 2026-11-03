@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://api.github.com; img-src 'self' data: https://*.cdninstagram.com https://*.fbcdn.net https://i.ytimg.com https://*.ytimg.com; frame-src https://www.instagram.com https://www.youtube.com https://www.youtube-nocookie.com; style-src 'self'; script-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0B1220">
+<title>떡상 레이더</title>
+<link rel="stylesheet" href="radar.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo">📡 떡상 레이더</span><span class="sub">인스타 릴스·캐러셀 + 유튜브 쇼츠 KR · 최근 24~72시간</span></div>
+  <div class="status" id="status">불러오는 중…</div>
+  <div class="tools">
+    <button id="refresh" title="GitHub에서 다시 읽기">↻ 새로고침</button>
+    <button id="exportBtn" class="accent" title="담은 것을 영상기획 폴더에 기획표로 내보내기">📄 기획표 <span id="pickCount">0</span></button>
+    <button id="setupBtn">⚙ 열쇠</button>
+  </div>
+</header>
+
+<nav class="filters">
+  <div class="row">
+    <div class="seg" id="srcSeg"><button data-v="all" class="on">전체</button><button data-v="reel">🎬 릴스</button><button data-v="carousel">🖼 캐러셀</button><button data-v="shorts">▶ 유튜브 쇼츠</button></div>
+    <div class="seg" id="spanSeg"><button data-v="24">24시간</button><button data-v="48" class="on">48시간</button><button data-v="72">3일</button><button data-v="168">7일</button></div>
+    <select id="sort" title="정렬"><option value="score">떡상점수</option><option value="views">조회수</option><option value="vph">시간당 조회</option><option value="mult">평소 대비 배수</option><option value="comments">댓글</option><option value="likes">좋아요</option><option value="new">최신</option></select>
+    <select id="minViews" title="최소 조회수"><option value="0">최소 조회수 없음</option><option value="10000">조회 1만↑</option><option value="50000">조회 5만↑</option><option value="100000">조회 10만↑</option><option value="500000">조회 50만↑</option></select>
+    <input id="q" type="search" placeholder="캡션·계정 검색" autocomplete="off">
+    <label class="chk"><input type="checkbox" id="onlyWatch"> ★ 감시 계정만</label>
+    <label class="chk"><input type="checkbox" id="onlySaved"> 💾 저장한 것만</label>
+  </div>
+  <div class="row topics" id="topicRow"></div>
+</nav>
+
+<main class="layout">
+  <section class="gridwrap">
+    <p class="count" id="count"></p>
+    <section class="grid" id="grid"></section>
+  </section>
+  <aside class="side">
+    <details open><summary>🔥 지금 이슈 탑 20 <small id="issueTime"></small></summary><ol id="issueList" class="plain"></ol></details>
+    <details open><summary>🧵 스레드 24시간 화제 키워드 <small id="thTime"></small></summary><ol id="thList" class="plain"></ol></details>
+    <details><summary>★ 감시 계정 · 💾 보드</summary><div id="boardBox"></div></details>
+    <details><summary>📏 떡상점수 계산법</summary>
+      <p class="hint">시간당 조회(0~60점, 5만/h면 만점) + 1천뷰당 댓글(0~20점, 20개면 만점) + 좋아요율(0~15점, 8%면 만점) + 올라온 지 24시간 안 5점. 조회수가 없는 캐러셀은 좋아요×20을 조회수 대신 쓴다. 평소 대비 배수는 같은 계정 게시물이 3개 이상 쌓였을 때만 나온다.</p>
+    </details>
+  </aside>
+</main>
+
+<dialog id="detail">
+  <div class="dwrap">
+    <div class="dleft"><iframe id="embed" title="원본 미리보기" allow="encrypted-media; picture-in-picture" referrerpolicy="no-referrer" loading="lazy"></iframe><p class="hint" id="embedHint"></p></div>
+    <div class="dright">
+      <div class="dhead"><span id="dPlat" class="tag"></span> <b id="dUser"></b> <span id="dMeta" class="muted"></span></div>
+      <div class="btns"><a id="dOpen" class="btn" target="_blank" rel="noopener noreferrer">원본 열기</a><button id="dCopy">링크 복사</button><button id="dClose">닫기</button></div>
+      <div class="tiles" id="tiles"></div>
+      <p class="hint" id="dTrend"></p>
+      <pre class="caption" id="dCaption"></pre>
+      <p class="tags" id="dTags"></p>
+      <textarea id="dMemo" placeholder="벤치마킹 메모: 훅(첫 3초)이 뭔지, 구조, 내 버전 아이디어 — 적고 밖을 누르면 보드에 저장"></textarea>
+      <div class="btns">
+        <button id="dSave" class="accent">💾 보드에 저장</button>
+        <button id="dPick">📄 기획표에 담기</button>
+        <button id="dScript">🎬 대본 탭에 넣기</button>
+        <button id="dPrompt">📋 분석 프롬프트 복사</button>
+        <button id="dWatch">☆ 이 계정 감시</button>
+      </div>
+      <p class="hint">남의 영상 클립을 그대로 쓰지 않는다. 훅·구조·소구점만 배우고 내 주제·내 화면으로 다시 만든다(운영규칙 5절).</p>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="setup">
+  <form method="dialog">
+    <h3>⚙ GitHub 열쇠</h3>
+    <p class="hint">소원저장소 앱과 같은 열쇠(classic, repo, No expiration). 이 브라우저에만 저장되고 api.github.com 외엔 어디로도 안 간다. 소원저장소를 이 브라우저에서 연 적이 있으면 자동으로 가져온다.</p>
+    <input id="tokenIn" type="password" placeholder="ghp_… 또는 github_pat_…" autocomplete="off">
+    <p class="hint" id="setupMsg"></p>
+    <div class="btns"><button id="tokenSave" class="accent" value="save">저장하고 연결 확인</button><button value="cancel">닫기</button></div>
+  </form>
+</dialog>
+
+<div id="toast"></div>
+<script src="radar.js"></script>
+</body>
+</html>
