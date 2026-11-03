@@ -51,6 +51,7 @@
     <div class="seg" data-group="ref"><button class="tab-btn seg-btn is-active" data-tab="refs" type="button">대본 스택 <em id="refCount"></em></button><button class="tab-btn seg-btn" data-tab="trend" type="button">급상승 <em id="trendCount"></em></button><button class="tab-btn seg-btn" data-tab="wait" type="button">촬영대기 <em id="waitCount"></em></button></div>
     <div class="seg" data-group="script" hidden><button class="tab-btn seg-btn" data-tab="make" type="button">만들기</button><button class="tab-btn seg-btn" data-tab="scripts" type="button">완성대본(경제) <em id="scriptCount"></em></button><button class="tab-btn seg-btn" data-tab="beauty" type="button">완성대본(뷰티) <em id="beautyCount"></em></button></div>
     <div class="seg" data-group="memo" hidden><button class="tab-btn seg-btn" data-tab="talk" type="button">말하기</button><button class="tab-btn seg-btn" data-tab="stack" type="button">쌓인 메모 <em id="stackCount"></em></button></div>
+    <div class="seg" data-group="chat" hidden><button class="tab-btn seg-btn" data-tab="chat" type="button">채팅</button><button class="tab-btn seg-btn" data-tab="routine" type="button">루틴</button></div>
   </div>
 
   <main>
@@ -252,6 +253,34 @@
     </section>
 
     <!-- 촬영대기 (1.11.0, 사용자 10/26): 급상승 오늘의 주제에서 촬영결정한 시안이 모이는 곳. 자료 아이디어뇌/주제선정/촬영.json (topic.js) -->
+    <!-- 채팅 (1.13.0, 2026-11-03 사용자 "휴대폰으로 명령어를 넣어서 너를 제어하고 싶어 … 소원저장소에 탭 하나 추가해서 채팅창") — chat.js -->
+    <section id="tab-chat" class="tab" aria-label="채팅">
+      <div class="win">
+        <div class="win-bar"><span class="win-title">💬 claude_chat.exe</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
+        <div class="win-body">
+          <div id="chatPick" class="ch-pick" aria-label="채팅 고르기"></div>
+          <div class="ch-head"><b id="chatTitle"></b><span class="ch-tools"><button id="chatRename" class="mini-btn" type="button">이름</button><button id="chatDel" class="mini-btn" type="button">지우기</button></span></div>
+          <p id="chatHint" class="hint small"></p>
+          <div class="ch-compose"><label class="sr-only" for="chatInput">메시지</label><textarea id="chatInput" class="field" rows="2" placeholder="맥북 Claude에게 할 말…"></textarea><button id="chatSend" class="ch-send" type="button">보내기</button></div>
+          <button id="chatStop" class="ghost-btn" type="button" hidden>그만 (아직 안 시작했으면 취소돼요)</button>
+        </div>
+      </div>
+      <div id="chatMsgs" class="ch-list" aria-live="polite"></div>
+    </section>
+
+    <!-- 루틴 상태 (1.13.0) — 맥북이 아이디어뇌/채팅/_루틴.json 에 적은 것 -->
+    <section id="tab-routine" class="tab" aria-label="루틴">
+      <div class="win">
+        <div class="win-bar"><span class="win-title">🕰 routines.log</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
+        <div class="win-body">
+          <p class="hint">맥북이 돌리는 루틴과 오늘 영상이 어디까지 갔는지 1~2분마다 적어요.</p>
+          <p id="rtUpdated" class="hint small"></p>
+          <button id="rtRefresh" class="ghost-btn" type="button">새로 불러오기</button>
+        </div>
+      </div>
+      <div id="rtBody" class="rt-body"></div>
+    </section>
+
     <section id="tab-wait" class="tab" aria-label="촬영대기">
       <div class="win">
         <div class="win-bar"><span class="win-title">🎬 shoot_queue.txt</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
@@ -275,6 +304,7 @@
     <button class="nav-btn" data-group="script" type="button"><span class="tab-ico">✎</span><span>대본 <em id="scriptNavCount"></em></span></button>
     <button class="nav-btn" data-group="memo" type="button"><span class="tab-ico">♡</span>메모</button>
     <button class="nav-btn" data-group="blog" type="button"><span class="tab-ico">✿</span><span>블로그 <em id="blogCount"></em></span></button>
+    <button class="nav-btn" data-group="chat" type="button"><span class="tab-ico">✉</span><span>채팅 <em id="chatNavCount"></em></span></button>
   </nav>
 </div>
 
@@ -414,6 +444,7 @@
 <script src="blog.js" defer></script>
 <script src="trend.js" defer></script>
 <script src="topic.js" defer></script>
+<script src="chat.js" defer></script>
 <script type="module" src="script.js"></script>
 </body>
 </html>

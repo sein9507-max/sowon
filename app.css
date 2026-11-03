@@ -436,3 +436,34 @@ select.field { background-image: linear-gradient(45deg, transparent 50%, var(--n
 .sc-line .ko { font-size: 12.5px; line-height: 1.5; color: #8A93A6; word-break: keep-all; overflow-wrap: anywhere; }
 .alt-line small.ko { color: #8A93A6; }
 .sc-line .say[lang=en], .sc-card .hk[lang=en] { word-break: normal; overflow-wrap: anywhere; }
+
+/* 1.13.0 채팅 탭 (2026-11-03 사용자 "휴대폰으로 명령어를 넣어서 너를 제어 … 채팅창 여러 개 … 루틴화 시킨 작업도 확인") */
+.ch-pick { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.ch-pick::-webkit-scrollbar { display: none; }
+.ch-pick .chip { flex: 0 0 auto; white-space: nowrap; }
+.ch-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ch-head b { font-family: var(--pix); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-tools { display: flex; gap: 4px; flex: 0 0 auto; }
+.ch-compose { display: flex; gap: 8px; align-items: stretch; margin-top: 8px; }
+.ch-compose textarea.field { flex: 1; min-height: 52px; max-height: 180px; resize: none; line-height: 1.45; }
+.ch-send { flex: 0 0 auto; width: 64px; border: 0; border-radius: 16px; background: linear-gradient(180deg, #8FD0FF 0%, #4AA6F7 100%); color: #fff; font-family: var(--pix); font-size: 14px; text-shadow: 1px 1px 0 rgba(31,85,170,.5); box-shadow: 0 4px 0 #2A6FC7; }
+.ch-send:active { transform: translateY(3px); box-shadow: 0 1px 0 #2A6FC7; }
+.ch-send:disabled { filter: grayscale(.6); opacity: .7; }
+.ch-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.ch-msg { max-width: 92%; padding: 10px 12px; border-radius: 16px; font-size: 15px; line-height: 1.5; }
+.ch-text { white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+.ch-msg.user { align-self: flex-end; background: var(--lemon); border-bottom-right-radius: 4px; }
+.ch-msg.assistant { align-self: flex-start; background: #fff; border: 2px solid var(--line); border-bottom-left-radius: 4px; }
+.ch-msg a { color: var(--blue-deep); overflow-wrap: anywhere; }
+.ch-meta { font-family: var(--pix); font-size: 11px; color: var(--navy-soft); margin-top: 4px; }
+.ch-msg.user .ch-meta { text-align: right; }
+.ch-st { display: inline-block; font-family: var(--pix); font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--sky-2); color: var(--navy); margin-top: 6px; }
+.ch-st.run { background: var(--pink); } .ch-st.wait { background: var(--lilac); } .ch-st.fail { background: #FFD2D2; color: #A1272F; } .ch-st.off { background: #E6E6E6; }
+.rt-body { margin-top: 10px; }
+.rt-group { margin-top: 12px; }
+.rt-group h3 { margin: 0 0 4px; font-family: var(--pix); font-size: 14px; color: var(--navy); }
+.rt-row { display: flex; gap: 8px; padding: 8px 10px; border-radius: 12px; background: #fff; border: 2px solid var(--line); margin-top: 6px; font-size: 14px; }
+.rt-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; background: #9ED99E; }
+.rt-dot.off { background: #C9C9C9; } .rt-dot.bad { background: #F08080; }
+.rt-txt { min-width: 0; } .rt-txt b { font-weight: 700; word-break: break-word; }
+.rt-sub { font-size: 12.5px; color: var(--navy-soft); white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
