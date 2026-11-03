@@ -100,7 +100,7 @@
     const kind = x.kind === 'carousel' ? 'carousel' : x.kind === 'reel' ? 'reel' : x.kind === 'image' ? 'image' : (x.url || '').includes('/reel/') ? 'reel' : 'image';
     const t = x.topic ? { topic: x.topic, word: x.topicWord || '' } : topicOf(`${x.user} ${x.caption}`);
     return { windowAt: x.windowAt || null, id: `ig:${x.code}`, code: x.code, platform: 'insta', region: x.region || (/[가-힣]/.test(`${x.caption || ''}`) ? '국내' : '해외'), kind, url: x.url || `https://www.instagram.com/${kind === 'reel' ? 'reel' : 'p'}/${x.code}/`, user: x.user || '', caption: x.caption || '', views: x.views ?? null, likes: x.likes ?? null, comments: x.comments ?? null, shares: x.shares ?? null,
-      postedAt: x.postedAt || x.capturedAt, capturedAt: x.capturedAt, seenAt: x.seenAt || x.capturedAt, thumb: x.thumb || '', carouselCount: x.carouselCount || null, audio: x.audio || '', duration: x.duration || null, followers: x.followers ?? null, topic: t.topic, topicWord: t.word, source: x.source || x.how || '', history: Array.isArray(x.history) ? x.history : [] };
+      postedAt: x.postedAt || x.capturedAt, capturedAt: x.capturedAt, seenAt: x.seenAt || x.capturedAt, thumb: x.thumb || '', carouselCount: x.carouselCount || null, audio: x.audio || '', duration: x.duration || null, followers: x.followers ?? null, medianViews: x.medianViews || null, medianN: x.medianN || null, topic: t.topic, topicWord: t.word, source: x.source || x.how || '', history: Array.isArray(x.history) ? x.history : [] };
   }
   function normYt(x) {
     const t = x.topic ? { topic: x.topic, word: x.topicWord || '' } : topicOf(`${x.title} ${x.caption}`);
@@ -172,7 +172,7 @@
     if (hist.length >= 2) { const a = hist[hist.length - 2], b = hist[hist.length - 1]; const dh = (new Date(b.at) - new Date(a.at)) / 36e5; if (dh >= 0.4 && b.views >= a.views) vphRecent = (b.views - a.views) / dh; }
     const cpk = views ? (x.comments || 0) / views * 1000 : null;
     const likeRate = x.views ? (x.likes || 0) / x.views : null;
-    const m = medians.get(`${x.platform}:${x.user}`); const mult = m && x.views != null ? x.views / Math.max(1, m.med) : null;
+    const m = x.medianViews ? { med: x.medianViews, n: x.medianN || 0, acct: true } : medians.get(`${x.platform}:${x.user}`); const mult = m && x.views != null ? x.views / Math.max(1, m.med) : null;
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
     const s1 = vph != null ? clamp(Math.log10(vph + 1) / Math.log10(50001) * 60, 0, 60) : 0;
     const s2 = cpk != null ? clamp(cpk / 20 * 20, 0, 20) : 0;
@@ -285,7 +285,7 @@
     $('#dOpen').href = x.url;
     const tiles = $('#tiles'); tiles.replaceChildren();
     tiles.append(tile('조회수', x.views != null ? short(x.views) : '-', x.views == null ? '캐러셀·사진은 조회수가 안 와요' : ''),
-      tile('평소 대비', m.mult != null ? `${m.mult.toFixed(1)}x` : '-', m.med ? `중앙값 ${short(m.med.med)} (${m.med.n}개)` : '같은 계정 3개↑ 쌓이면 나와요'),
+      tile('평소 대비', m.mult != null ? `${m.mult.toFixed(1)}x` : '-', m.med ? `중앙값 ${short(m.med.med)} (${m.med.acct ? '최근 ' : ''}${m.med.n}개)` : '같은 계정 3개↑ 쌓이면 나와요'),
       tile('시간당 조회', m.vph != null ? short(m.vphRecent || m.vph) : '-', m.vphRecent ? `최근 구간 기준 · 평균 ${short(m.vph)}` : m.viewsLike ? '좋아요×20 기준' : '올린 뒤 평균'),
       tile('1천뷰당 댓글', m.cpk != null ? m.cpk.toFixed(1) : '-', ''),
       tile('좋아요', short(x.likes), ''), tile('댓글', short(x.comments), ''), tile('공유', x.shares != null ? short(x.shares) : '-', '인스타 응답에 있을 때만'),
