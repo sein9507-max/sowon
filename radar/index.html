@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0B1220">
 <meta http-equiv="Cache-Control" content="no-cache">
 <title>떡상 레이더</title>
-<link rel="stylesheet" href="radar.css?v=1.7.1">
+<link rel="stylesheet" href="radar.css?v=1.8.0">
 </head>
 <body>
 <header class="top">
@@ -28,7 +28,7 @@
     <div class="seg" id="regSeg"><button data-v="all" class="on">🌏 전체</button><button data-v="국내">🇰🇷 국내</button><button data-v="해외">🌎 해외</button></div>
     <div class="seg" id="spanSeg"><button data-v="24">24시간</button><button data-v="48" class="on">48시간</button><button data-v="72">3일</button><button data-v="168">7일</button></div>
     <select id="sort" title="정렬"><option value="score">떡상점수</option><option value="views">조회수</option><option value="vph">시간당 조회</option><option value="mult">평소 대비 배수</option><option value="comments">댓글</option><option value="likes">좋아요</option><option value="new">최신</option></select>
-    <select id="minViews" title="최소 조회수"><option value="0">최소 조회수 없음</option><option value="5000">조회 5천↑</option><option value="10000">조회 1만↑</option><option value="30000">조회 3만↑</option><option value="50000">조회 5만↑</option><option value="100000">조회 10만↑</option><option value="500000">조회 50만↑</option></select>
+    <select id="minViews" title="최소 조회수(캐러셀은 좋아요×200)"><option value="0">최소 조회수 없음</option><option value="10000">조회 1만↑</option><option value="50000">조회 5만↑</option><option value="100000">조회 10만↑</option><option value="300000">조회 30만↑</option><option value="1000000">조회 100만↑</option></select>
     <select id="minMult" title="최소 배수(평소 대비)"><option value="0">최소 배수 없음</option><option value="2">2배↑</option><option value="5">5배↑</option><option value="10">10배↑</option></select>
     <input id="q" type="search" placeholder="캡션·계정 검색" autocomplete="off">
     <label class="chk"><input type="checkbox" id="onlyWatch"> ★ 감시 계정만</label>
@@ -86,6 +86,6 @@
 </dialog>
 
 <div id="toast"></div>
-<script src="radar.js?v=1.7.1"></script>
+<script src="radar.js?v=1.8.0"></script>
 </body>
 </html>

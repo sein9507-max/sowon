@@ -94,7 +94,7 @@
   // ── 상태 ────────────────────────────────────────────────
   let items = [], issues = { time: '', list: [] }, threads = null, board = { saved: {}, watch: {}, picks: {}, memos: {} }, boardSha = null;
   let loadedAt = 0, lastCollected = 0, loading = false;
-  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span24', 24)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews2', 10000)), minMult: Number(LS.get('radar.minMult', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false };
+  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span24', 24)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews3', 100000)),   // 11/3 사용자 "릴스는 24시간 내 10만 이상" minMult: Number(LS.get('radar.minMult', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false };
   let current = null;
 
   // ── 불러오기 ────────────────────────────────────────────
@@ -199,7 +199,7 @@
       if (F.src === 'all' && x.platform === 'yt' && x.kind === 'video') return false;
       if (x.platform === 'yt' && ((x.views || 0) < YT_MIN_VIEWS || ytJunk(x))) return false;   // 유튜브 쇼츠는 조회수 5만 이상만(사용자 기준 11/3)
       if (F.region !== 'all' && x.region !== F.region) return false;
-      if (F.minViews && (x.views != null ? x.views : (x.likes || 0) * 20) < F.minViews) return false;
+      if (F.minViews && (x.views != null ? x.views : (x.likes || 0) * 200) < F.minViews) return false;   // 캐러셀·사진은 좋아요 500 ≈ 10만 급
       const g = groupOf(x.topic || '');
       if (F.group === 'all' ? g === 'etc' : g !== F.group) return false;
       if (F.group === 'money' && F.topic && x.topic !== F.topic) return false;
@@ -272,7 +272,7 @@
     else if (!list.length) grid.append(el('p', 'empty', '조건에 맞는 게 없어요. 기간·주제·최소 조회수를 풀어 보세요.'));
     else list.slice(0, 300).forEach(({ x, m }) => grid.append(card(x, m)));
     const ig = items.filter((x) => x.platform === 'insta' && winH(x) <= F.span).length, tt = items.filter((x) => x.platform === 'tt' && winH(x) <= F.span).length, xh = items.filter((x) => x.platform === 'xhs' && winH(x) <= F.span).length, yt = items.filter((x) => x.platform === 'yt' && (x.views || 0) >= YT_MIN_VIEWS && !ytJunk(x) && winH(x) <= F.span).length;
-    $('#count').textContent = `${list.length}개 표시 · 기간 안 인스타 ${ig} · 유튜브 ${yt} · 틱톡 ${tt} · 레드노트 ${xh} · 유튜브는 조회 5만↑만 · * 는 조회수 대신 좋아요×20`;
+    $('#count').textContent = `${list.length}개 표시 · 기간 안 인스타 ${ig} · 유튜브 ${yt} · 틱톡 ${tt} · 레드노트 ${xh} · 캐러셀은 좋아요×200 기준 · * 는 점수에 좋아요×20`;
     setStatus(`마지막 수집 ${lastCollected ? ago(new Date(lastCollected).toISOString()) : '없음'} · 전체 ${items.length}개 · 읽은 시각 ${new Date(loadedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`);
     $('#pickCount').textContent = String(Object.keys(board.picks).length);
   }
@@ -353,7 +353,7 @@
     $('#spanSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.span = Number(b.dataset.v); LS.set('radar.span24', F.span); if (F.span >= 168) loadAll(true); else render(); });
     $('#sort').addEventListener('change', (e) => { F.sort = e.target.value; LS.set('radar.sort', F.sort); render(); });
     $('#minMult').addEventListener('change', (e) => { F.minMult = Number(e.target.value); LS.set('radar.minMult', F.minMult); render(); });
-    $('#minViews').addEventListener('change', (e) => { F.minViews = Number(e.target.value); LS.set('radar.minViews2', F.minViews); render(); });
+    $('#minViews').addEventListener('change', (e) => { F.minViews = Number(e.target.value); LS.set('radar.minViews3', F.minViews); render(); });
     let qt = 0; $('#q').addEventListener('input', (e) => { clearTimeout(qt); qt = setTimeout(() => { F.q = e.target.value; render(); }, 200); });
     $('#onlyWatch').addEventListener('change', (e) => { F.onlyWatch = e.target.checked; render(); });
     $('#onlySaved').addEventListener('change', (e) => { F.onlySaved = e.target.checked; render(); });
