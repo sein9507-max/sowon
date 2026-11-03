@@ -19,6 +19,7 @@
     ['직장·월급', '월급,연봉,직장인,퇴사,이직,회사,상사,사회초년생,출근,퇴근,성과급'],
   ];
   const OUT = '주제 밖';
+  const YT_MIN_VIEWS = 100000;
   function topicOf(text) { const hay = String(text || '').toLowerCase(); for (const [t, ws] of TOPICS) { const w = ws.split(',').map((s) => s.trim().toLowerCase()).find((x) => x && (/^[\x00-\x7f]+$/.test(x) ? new RegExp(`(?<![a-z])${x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z])`).test(hay) : hay.includes(x))); if (w) return { topic: t, word: w }; } return { topic: '', word: '' }; }
 
   // ── 열쇠 ────────────────────────────────────────────────
@@ -167,6 +168,7 @@
       if (F.src === 'carousel' && x.kind !== 'carousel' && x.kind !== 'image') return false;
       if (F.src === 'shorts' && x.platform !== 'yt') return false;
       if (F.src === 'all' && x.platform === 'yt' && x.kind === 'video') return false;
+      if (x.platform === 'yt' && (x.views || 0) < YT_MIN_VIEWS) return false;   // 유튜브 쇼츠는 조회수 10만 이상만(사용자 기준 11/3)
       if (F.region !== 'all' && x.region !== F.region) return false;
       if (F.minViews && (x.views || 0) < F.minViews) return false;
       if (F.topic && (x.topic || OUT) !== F.topic) return false;
@@ -183,7 +185,7 @@
   function setStatus(t) { $('#status').textContent = t; }
   function renderTopics() {
     const row = $('#topicRow'); row.replaceChildren();
-    const within = items.filter((x) => hoursAgo(x.postedAt) <= F.span && !(F.src === 'all' && x.platform === 'yt' && x.kind === 'video') && (F.region === 'all' || x.region === F.region));
+    const within = items.filter((x) => hoursAgo(x.postedAt) <= F.span && !(x.platform === 'yt' && (x.views || 0) < YT_MIN_VIEWS) && !(F.src === 'all' && x.platform === 'yt' && x.kind === 'video') && (F.region === 'all' || x.region === F.region));
     const counts = {}; within.forEach((x) => { const t = x.topic || OUT; counts[t] = (counts[t] || 0) + 1; });
     const mk = (label, v) => { const b = el('button', F.topic === v ? 'on' : ''); b.append(label, el('small', '', String(counts[v] || (v === '' ? within.length : 0)))); b.addEventListener('click', () => { F.topic = v; LS.set('radar.topic', v); render(); }); return b; };
     row.append(mk('전체', ''));
@@ -224,8 +226,8 @@
     if (!items.length) grid.append(el('p', 'empty', loading ? '읽는 중…' : token ? '아직 쌓인 게 없어요. 조사용 크롬에서 확장 2.0으로 인스타를 내리면 여기 쌓여요. 유튜브 쇼츠는 맥북 떡상_수집.py(API 키 필요).' : '열쇠를 넣으면 불러와요.'));
     else if (!list.length) grid.append(el('p', 'empty', '조건에 맞는 게 없어요. 기간·주제·최소 조회수를 풀어 보세요.'));
     else list.slice(0, 300).forEach(({ x, m }) => grid.append(card(x, m)));
-    const ig = items.filter((x) => x.platform === 'insta' && hoursAgo(x.postedAt) <= F.span).length, yt = items.filter((x) => x.platform === 'yt' && hoursAgo(x.postedAt) <= F.span).length;
-    $('#count').textContent = `${list.length}개 표시 · 기간 안 인스타 ${ig}개 · 유튜브 ${yt}개 · * 는 조회수 대신 좋아요×20`;
+    const ig = items.filter((x) => x.platform === 'insta' && hoursAgo(x.postedAt) <= F.span).length, yt = items.filter((x) => x.platform === 'yt' && (x.views || 0) >= YT_MIN_VIEWS && hoursAgo(x.postedAt) <= F.span).length;
+    $('#count').textContent = `${list.length}개 표시 · 기간 안 인스타 ${ig}개 · 유튜브 ${yt}개 · 유튜브는 조회 10만↑만 · * 는 조회수 대신 좋아요×20`;
     setStatus(`마지막 수집 ${lastCollected ? ago(new Date(lastCollected).toISOString()) : '없음'} · 전체 ${items.length}개 · 읽은 시각 ${new Date(loadedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`);
     $('#pickCount').textContent = String(Object.keys(board.picks).length);
   }
