@@ -8,11 +8,11 @@
   const API = 'https://api.github.com';
   const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* 무시 */ } } };
   const TOPICS = [
-    ['뷰티', '뷰티,화장품,스킨케어,메이크업,올리브영,피부관리,선크림,쿠션,파운데이션,립스틱,틴트,세럼,토너,클렌징,다이소 화장품,skincare,skin care,makeup,make up,beauty,sunscreen,serum,lipstick,foundation,grwm'],
+    ['뷰티', '뷰티,화장품,스킨케어,메이크업,올리브영,피부관리,선크림,쿠션,파운데이션,립스틱,틴트,세럼,토너,클렌징,다이소 화장품,skincare,skin care,makeup,make up,beauty,sunscreen,serum,lipstick,foundation,grwm,护肤,美妆,化妆,彩妆,面霜,精华,口红'],
     ['지원금·정책', '지원금,청년수당,청년도약,청년내일,희망적금,바우처,환급,정부 지원,국가 지원,복지,수당,신청하세요,신청 가능,신청방법,청년장학'],
-    ['주식·코인', '주식,코인,비트코인,비트,ETF,배당,나스닥,코스피,코스닥,종목,환율,반도체,삼성전자,테슬라,엔비디아,증시,매수,매도,수익률,stock,stocks,crypto,bitcoin,invest,investing,dividend'],
+    ['주식·코인', '주식,코인,비트코인,비트,ETF,배당,나스닥,코스피,코스닥,종목,환율,반도체,삼성전자,테슬라,엔비디아,증시,매수,매도,수익률,stock,stocks,crypto,bitcoin,invest,investing,dividend,股票,基金,炒股'],
     ['부동산·청약', '청약,집값,내집,내 집,전세,월세,아파트,부동산,분양,매물,주담대,재개발,신축,평수'],
-    ['재테크·저축', '재테크,적금,예금,통장,저축,짠테크,파킹,금리,이자,연금,절세,세금,자산,체크카드,신용카드,돈 모으,돈모으,1억,목돈,가계부,소비,절약,money,saving,savings,budget,finance,personal finance,frugal,debt'],
+    ['재테크·저축', '재테크,적금,예금,통장,저축,짠테크,파킹,금리,이자,연금,절세,세금,자산,체크카드,신용카드,돈 모으,돈모으,1억,목돈,가계부,소비,절약,money,saving,savings,budget,finance,personal finance,frugal,debt,理财,存钱,攒钱,省钱,储蓄'],
     ['부업·수익', '부업,월 100,월100,N잡,창업,스마트스토어,쿠팡,블로그 수익,유튜브 수익,인스타 수익,돈 버는,돈버는,수익화,자동화 수익'],
     ['자기계발·AI', '자기계발,습관,미라클,독서,루틴,갓생,시간관리,동기부여,AI 활용,챗GPT,ChatGPT,챗지피티,노션,클로드,생산성,공부법'],
     ['신혼·결혼', '신혼,부부,결혼,예비부부,남편,아내,혼수,신혼집,결혼식,웨딩'],
@@ -70,6 +70,7 @@
   const kstDay = (d) => new Date(d.getTime() + 9 * 3600e3).toISOString().slice(0, 10);
   const daysBack = (n) => Array.from({ length: n }, (_, i) => kstDay(new Date(Date.now() - i * 864e5)));
   const hoursAgo = (iso) => (Date.now() - new Date(iso).getTime()) / 36e5;
+  const winH = (x) => hoursAgo(x.windowAt || x.postedAt);   // 인기 차트(틱톡·인스타 인기 릴스)는 모은 시각 기준, 나머지는 올린 시각
   const ago = (iso) => { if (!iso) return '시간 모름'; const h = hoursAgo(iso); return h < 1 ? `${Math.max(1, Math.round(h * 60))}분 전` : h < 48 ? `${Math.round(h)}시간 전` : `${Math.round(h / 24)}일 전`; };
   const short = (n) => (n == null ? '-' : n >= 1e8 ? (n / 1e8).toFixed(1).replace(/\.0$/, '') + '억' : n >= 1e4 ? (n / 1e4).toFixed(n >= 1e5 ? 0 : 1).replace(/\.0$/, '') + '만' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + '천' : String(Math.round(n)));
   function isoLocal(d) { const o = -d.getTimezoneOffset(), s = o >= 0 ? '+' : '-', a = Math.abs(o); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${s}${pad(Math.floor(a / 60))}:${pad(a % 60)}`; }
@@ -85,7 +86,7 @@
   function normInsta(x) {
     const kind = x.kind === 'carousel' ? 'carousel' : x.kind === 'reel' ? 'reel' : x.kind === 'image' ? 'image' : (x.url || '').includes('/reel/') ? 'reel' : 'image';
     const t = x.topic ? { topic: x.topic, word: x.topicWord || '' } : topicOf(`${x.user} ${x.caption}`);
-    return { id: `ig:${x.code}`, code: x.code, platform: 'insta', region: x.region || (/[가-힣]/.test(`${x.caption || ''}`) ? '국내' : '해외'), kind, url: x.url || `https://www.instagram.com/${kind === 'reel' ? 'reel' : 'p'}/${x.code}/`, user: x.user || '', caption: x.caption || '', views: x.views ?? null, likes: x.likes ?? null, comments: x.comments ?? null, shares: x.shares ?? null,
+    return { windowAt: x.windowAt || null, id: `ig:${x.code}`, code: x.code, platform: 'insta', region: x.region || (/[가-힣]/.test(`${x.caption || ''}`) ? '국내' : '해외'), kind, url: x.url || `https://www.instagram.com/${kind === 'reel' ? 'reel' : 'p'}/${x.code}/`, user: x.user || '', caption: x.caption || '', views: x.views ?? null, likes: x.likes ?? null, comments: x.comments ?? null, shares: x.shares ?? null,
       postedAt: x.postedAt || x.capturedAt, capturedAt: x.capturedAt, seenAt: x.seenAt || x.capturedAt, thumb: x.thumb || '', carouselCount: x.carouselCount || null, audio: x.audio || '', duration: x.duration || null, followers: x.followers ?? null, topic: t.topic, topicWord: t.word, source: x.source || x.how || '', history: Array.isArray(x.history) ? x.history : [] };
   }
   function normYt(x) {
@@ -111,17 +112,25 @@
     loading = true; setStatus('GitHub에서 읽는 중…');
     try {
       const igDays = daysBack(F.span >= 168 ? 8 : 4), ytDays = daysBack(3), thDays = daysBack(2);
-      const [igs, yts, ths, bd, trendToday, trendYday] = await Promise.all([
+      const extDays = daysBack(F.span >= 168 ? 8 : 3);
+      const [igs, yts, ths, bd, trendToday, trendYday, igx, tts, xhs] = await Promise.all([
         Promise.all(igDays.map((d) => readJson(`${CFG.dir}/일별/${d}.json`).catch(() => null))),
         Promise.all(ytDays.map((d) => readJson(`${CFG.dir}/유튜브/${d}.json`).catch(() => null))),
         Promise.all(thDays.map((d) => readJson(`${CFG.dir}/스레드/${d}.json`).catch(() => null))),
         readJson(`${CFG.dir}/보드.json`).catch(() => null),
         readFile(`${CFG.trendDir}/${kstDay(new Date())}.md`).catch(() => null),
         readFile(`${CFG.trendDir}/${kstDay(new Date(Date.now() - 864e5))}.md`).catch(() => null),
+        Promise.all(extDays.map((d) => readJson(`${CFG.dir}/인스타/${d}.json`).catch(() => null))),
+        Promise.all(extDays.map((d) => readJson(`${CFG.dir}/틱톡/${d}.json`).catch(() => null))),
+        Promise.all(extDays.map((d) => readJson(`${CFG.dir}/레드노트/${d}.json`).catch(() => null))),
       ]);
       const byId = new Map(); lastCollected = 0;
       igs.filter(Boolean).forEach((f) => (f.data.entries || []).forEach((x) => { const it = normInsta(x); byId.set(it.id, it); lastCollected = Math.max(lastCollected, new Date(it.seenAt || it.capturedAt).getTime() || 0); }));
       yts.filter(Boolean).forEach((f) => (f.data.entries || []).forEach((x) => { const it = normYt(x); if (!byId.has(it.id) || new Date(it.seenAt) > new Date(byId.get(it.id).seenAt)) byId.set(it.id, it); lastCollected = Math.max(lastCollected, new Date(it.seenAt || it.capturedAt).getTime() || 0); }));
+      const addAll = (files, norm) => files.filter(Boolean).forEach((f) => (f.data.entries || []).forEach((x) => { const it = norm(x); const old = byId.get(it.id); if (!old || new Date(it.seenAt) > new Date(old.seenAt)) byId.set(it.id, { ...it, windowAt: it.windowAt && old && old.windowAt && old.windowAt > it.windowAt ? old.windowAt : it.windowAt }); lastCollected = Math.max(lastCollected, new Date(it.seenAt || it.capturedAt).getTime() || 0); }));
+      addAll(igx, normInsta);
+      addAll(tts, (x) => ({ ...normInsta(x), id: `tt:${x.code}`, platform: 'tt', kind: 'tiktok', url: x.url, windowAt: x.windowAt }));
+      addAll(xhs, (x) => ({ ...normInsta(x), id: `xhs:${x.code}`, platform: 'xhs', kind: x.kind, url: x.url, title: x.title || '', windowAt: x.windowAt }));
       items = [...byId.values()].filter((x) => x.postedAt);
       threads = ths.find((f) => f && f.data && Array.isArray(f.data.keywords)) ? ths.find((f) => f && f.data && Array.isArray(f.data.keywords)).data : null;
       if (bd && !bd.broken) { board = { saved: {}, watch: {}, picks: {}, memos: {}, ...bd.data }; boardSha = bd.sha; } else { boardSha = bd ? bd.sha : null; }
@@ -163,10 +172,13 @@
   function filtered() {
     const q = F.q.trim().toLowerCase();
     let list = items.filter((x) => {
-      if (hoursAgo(x.postedAt) > F.span) return false;
+      if (winH(x) > F.span) return false;
       if (F.src === 'reel' && x.kind !== 'reel') return false;
       if (F.src === 'carousel' && x.kind !== 'carousel' && x.kind !== 'image') return false;
+      if ((F.src === 'reel' || F.src === 'carousel') && x.platform !== 'insta') return false;
       if (F.src === 'shorts' && x.platform !== 'yt') return false;
+      if (F.src === 'tiktok' && x.platform !== 'tt') return false;
+      if (F.src === 'xhs' && x.platform !== 'xhs') return false;
       if (F.src === 'all' && x.platform === 'yt' && x.kind === 'video') return false;
       if (x.platform === 'yt' && (x.views || 0) < YT_MIN_VIEWS) return false;   // 유튜브 쇼츠는 조회수 10만 이상만(사용자 기준 11/3)
       if (F.region !== 'all' && x.region !== F.region) return false;
@@ -185,20 +197,21 @@
   function setStatus(t) { $('#status').textContent = t; }
   function renderTopics() {
     const row = $('#topicRow'); row.replaceChildren();
-    const within = items.filter((x) => hoursAgo(x.postedAt) <= F.span && !(x.platform === 'yt' && (x.views || 0) < YT_MIN_VIEWS) && !(F.src === 'all' && x.platform === 'yt' && x.kind === 'video') && (F.region === 'all' || x.region === F.region));
+    const within = items.filter((x) => winH(x) <= F.span && !(x.platform === 'yt' && (x.views || 0) < YT_MIN_VIEWS) && !(F.src === 'all' && x.platform === 'yt' && x.kind === 'video') && (F.region === 'all' || x.region === F.region));
     const counts = {}; within.forEach((x) => { const t = x.topic || OUT; counts[t] = (counts[t] || 0) + 1; });
     const mk = (label, v) => { const b = el('button', F.topic === v ? 'on' : ''); b.append(label, el('small', '', String(counts[v] || (v === '' ? within.length : 0)))); b.addEventListener('click', () => { F.topic = v; LS.set('radar.topic', v); render(); }); return b; };
     row.append(mk('전체', ''));
     TOPICS.forEach(([t]) => row.append(mk(t, t)));
     row.append(mk(OUT, OUT));
   }
-  function kindLabel(x) { return x.kind === 'carousel' ? `🖼 캐러셀${x.carouselCount ? ` ${x.carouselCount}장` : ''}` : x.kind === 'reel' ? '🎬 릴스' : x.kind === 'shorts' ? '▶ 쇼츠' : x.kind === 'video' ? '▶ 영상' : '📷 사진'; }
+  function platName(x) { return { insta: '인스타', yt: '유튜브', tt: '틱톡', xhs: '레드노트' }[x.platform] || x.platform; }
+  function kindLabel(x) { if (x.platform === 'tt') return '🎵 틱톡'; if (x.platform === 'xhs') return x.kind === 'video' ? '📕 영상' : '📕 노트'; return x.kind === 'carousel' ? `🖼 캐러셀${x.carouselCount ? ` ${x.carouselCount}장` : ''}` : x.kind === 'reel' ? '🎬 릴스' : x.kind === 'shorts' ? '▶ 쇼츠' : x.kind === 'video' ? '▶ 영상' : '📷 사진'; }
   function card(x, m) {
     const c = el('article', 'card' + (board.picks[x.id] ? ' picked' : ''));
     const th = el('div', 'thumb');
     const ph = el('div', 'ph', (x.title || x.caption || '').slice(0, 60) || `@${x.user}`);
     if (x.thumb) { const img = el('img'); img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.src = x.thumb; img.addEventListener('error', () => { img.remove(); th.prepend(ph); }); th.append(img); } else th.append(ph);
-    th.append(el('span', 'tl', `${x.region === '해외' ? '🌎' : '🇰🇷'} ${x.platform === 'yt' ? '유튜브' : '인스타'} · ${kindLabel(x)}`));
+    th.append(el('span', 'tl', `${x.region === '해외' ? '🌎' : '🇰🇷'} ${platName(x)} · ${kindLabel(x)}`));
     const tr = el('span', 'tr' + (m.mult != null && m.mult >= 5 ? ' hot' : ''), m.mult != null ? `${m.mult.toFixed(1)}x` : `${m.score}점`); tr.title = m.mult != null ? `평소(중앙값 ${short(m.med.med)}, ${m.med.n}개) 대비` : '떡상점수'; th.append(tr);
     th.append(el('span', 'bl', x.views != null ? short(x.views) : `♥ ${short(x.likes)}`));
     th.append(el('span', 'br', ago(x.postedAt)));
@@ -226,8 +239,8 @@
     if (!items.length) grid.append(el('p', 'empty', loading ? '읽는 중…' : token ? '아직 쌓인 게 없어요. 조사용 크롬에서 확장 2.0으로 인스타를 내리면 여기 쌓여요. 유튜브 쇼츠는 맥북 떡상_수집.py(API 키 필요).' : '열쇠를 넣으면 불러와요.'));
     else if (!list.length) grid.append(el('p', 'empty', '조건에 맞는 게 없어요. 기간·주제·최소 조회수를 풀어 보세요.'));
     else list.slice(0, 300).forEach(({ x, m }) => grid.append(card(x, m)));
-    const ig = items.filter((x) => x.platform === 'insta' && hoursAgo(x.postedAt) <= F.span).length, yt = items.filter((x) => x.platform === 'yt' && (x.views || 0) >= YT_MIN_VIEWS && hoursAgo(x.postedAt) <= F.span).length;
-    $('#count').textContent = `${list.length}개 표시 · 기간 안 인스타 ${ig}개 · 유튜브 ${yt}개 · 유튜브는 조회 10만↑만 · * 는 조회수 대신 좋아요×20`;
+    const ig = items.filter((x) => x.platform === 'insta' && winH(x) <= F.span).length, tt = items.filter((x) => x.platform === 'tt' && winH(x) <= F.span).length, xh = items.filter((x) => x.platform === 'xhs' && winH(x) <= F.span).length, yt = items.filter((x) => x.platform === 'yt' && (x.views || 0) >= YT_MIN_VIEWS && winH(x) <= F.span).length;
+    $('#count').textContent = `${list.length}개 표시 · 기간 안 인스타 ${ig} · 유튜브 ${yt} · 틱톡 ${tt} · 레드노트 ${xh} · 유튜브는 조회 10만↑만 · * 는 조회수 대신 좋아요×20`;
     setStatus(`마지막 수집 ${lastCollected ? ago(new Date(lastCollected).toISOString()) : '없음'} · 전체 ${items.length}개 · 읽은 시각 ${new Date(loadedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`);
     $('#pickCount').textContent = String(Object.keys(board.picks).length);
   }
@@ -251,9 +264,9 @@
   function tile(label, val, sub) { const t = el('div', 'tile'); t.append(el('small', '', label), el('b', '', val)); if (sub) t.append(el('i', '', sub)); return t; }
   function openDetail(x) {
     current = x; const m = metrics(x);
-    $('#embed').src = x.platform === 'yt' ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(x.code)}` : `https://www.instagram.com/${x.kind === 'reel' ? 'reel' : 'p'}/${encodeURIComponent(x.code)}/embed/captioned/`;
-    $('#embedHint').textContent = x.platform === 'yt' ? '유튜브 공식 임베드' : '인스타 공식 임베드(퍼가기). 안 뜨면 그 계정이 퍼가기를 껐거나 비공개 — 원본 열기로.';
-    $('#dPlat').textContent = `${x.platform === 'yt' ? '유튜브' : '인스타'} ${kindLabel(x)}`;
+    $('#embed').src = x.platform === 'yt' ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(x.code)}` : x.platform === 'tt' ? `https://www.tiktok.com/embed/v2/${encodeURIComponent(x.code)}` : x.platform === 'xhs' ? 'about:blank' : `https://www.instagram.com/${x.kind === 'reel' ? 'reel' : 'p'}/${encodeURIComponent(x.code)}/embed/captioned/`;
+    $('#embedHint').textContent = x.platform === 'yt' ? '유튜브 공식 임베드' : x.platform === 'tt' ? '틱톡 공식 임베드' : x.platform === 'xhs' ? '레드노트는 퍼가기가 없어요 — 원본 열기로 보세요.' : '인스타 공식 임베드(퍼가기). 안 뜨면 그 계정이 퍼가기를 껐거나 비공개 — 원본 열기로.';
+    $('#dPlat').textContent = `${platName(x)} ${kindLabel(x)}`;
     $('#dUser').textContent = `@${x.user || '?'}`;
     $('#dMeta').textContent = ` · ${ago(x.postedAt)} · 발견: ${x.source || '?'}${x.topic ? ` · ${x.topic}(${x.topicWord})` : ''}${x.audio ? ` · ♪ ${x.audio}` : ''}${x.duration ? ` · ${Math.round(x.duration)}초` : ''}${x.followers ? ` · 팔로워 ${short(x.followers)}` : ''}`;
     $('#dOpen').href = x.url;
