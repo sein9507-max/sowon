@@ -29,6 +29,7 @@
     const t = `${x.title || ''} ${x.caption || ''}`;
     if (YT_JUNK_RE.test(x.title || '')) return true;
     if (x.region === '국내' && !/[가-힣]/.test(x.title || '')) return true;
+    if (x.region === '해외' && /#(telugu|hindi|tamil|bhojpuri|urdu)/i.test(t)) return true;
     if (x.region === '해외' && /[ऀ-෿؀-ۿ฀-๿]/.test(t)) return true;   // 인도·아랍·태국 글자
     return false;
   }
