@@ -103,7 +103,7 @@
     const kind = x.kind === 'carousel' ? 'carousel' : x.kind === 'reel' ? 'reel' : x.kind === 'image' ? 'image' : (x.url || '').includes('/reel/') ? 'reel' : 'image';
     const t = x.topic ? { topic: x.topic, word: x.topicWord || '' } : topicOf(`${x.user} ${x.caption}`);
     return { windowAt: x.windowAt || null, id: `ig:${x.code}`, code: x.code, platform: 'insta', region: x.region || (/[가-힣]/.test(`${x.caption || ''}`) ? '국내' : '해외'), kind, url: x.url || `https://www.instagram.com/${kind === 'reel' ? 'reel' : 'p'}/${x.code}/`, user: x.user || '', caption: x.caption || '', views: x.views ?? null, likes: x.likes ?? null, comments: x.comments ?? null, shares: x.shares ?? null,
-      postedAt: x.postedAt || x.capturedAt, capturedAt: x.capturedAt, seenAt: x.seenAt || x.capturedAt, thumb: x.thumb || '', carouselCount: x.carouselCount || null, audio: x.audio || '', duration: x.duration || null, followers: x.followers ?? null, medianViews: x.medianViews || null, medianN: x.medianN || null, topic: t.topic, topicWord: t.word, source: x.source || x.how || '', history: Array.isArray(x.history) ? x.history : [] };
+      postedAt: x.postedAt || x.capturedAt, capturedAt: x.capturedAt, seenAt: x.seenAt || x.capturedAt, thumb: x.thumb || '', carouselCount: x.carouselCount || null, audio: x.audio || '', duration: x.duration || null, followers: x.followers ?? null, video: x.video || '', medianViews: x.medianViews || null, medianN: x.medianN || null, topic: t.topic, topicWord: t.word, source: x.source || x.how || '', history: Array.isArray(x.history) ? x.history : [] };
   }
   function normYt(x) {
     const t = x.topic ? { topic: x.topic, word: x.topicWord || '' } : topicOf(`${x.title} ${x.caption}`);
@@ -324,6 +324,20 @@
     try { board = await updateJson(`${CFG.dir}/보드.json`, (d) => ({ ...d, saved: { ...(d.saved || {}), ...board.saved }, watch: { ...board.watch }, picks: { ...board.picks }, memos: { ...(d.memos || {}), ...board.memos }, updatedAt: isoLocal(new Date()) }), `레이더 보드: ${msg}`); if (board && !board.saved) board = { saved: {}, watch: {}, picks: {}, memos: {}, ...board }; }
     catch (e) { toast(`보드 저장 실패: ${e.message || e}`); }
   }
+  async function pushToScriptStack(x) {   // 소원저장소 '대본 스택'(아이디어뇌/대본스택/스택.json)에 대기 항목으로 넣는다 → 맥북이 받아쓰기·정리·학습
+    const now = new Date(); const m = metrics(x);
+    try {
+      let dup = false;
+      await updateJson(`${CFG.stackDir.replace('스택', '대본스택')}/스택.json`, (d) => {
+        const entries = Array.isArray(d.entries) ? d.entries : [];
+        if (entries.some((e) => e.code === x.code || e.url === x.url)) { dup = true; return d; }
+        entries.push({ id: makeId(now), at: isoLocal(now), url: x.url, code: x.code, memo: board.memos[x.id] || `레이더 저장 · ${x.platform === 'yt' ? '유튜브' : x.platform === 'tt' ? '틱톡' : '인스타'} @${x.user} · 조회 ${short(x.views)} · ${m.mult ? m.mult.toFixed(1) + '배 · ' : ''}점수 ${m.score}`,
+          status: '대기', error: '', from: '레이더', video: x.video || '', caption: (x.caption || '').slice(0, 1500), user: x.user, views: x.views, likes: x.likes, comments: x.comments, postedAt: x.postedAt, topic: x.topic || '' });
+        return { ...d, entries };
+      }, `레이더 저장 → 대본 스택 @${x.user}`);
+      toast(dup ? '보드에 저장 (대본 스택엔 이미 있어요)' : '보드에 저장 + 대본 스택에 넣었어요 → 맥북이 받아쓰기·대본 정리·문장틀 학습을 이어서 해요');
+    } catch (e) { toast(`보드엔 저장, 대본 스택 넣기 실패: ${e.message || e}`); }
+  }
   function refText(x, m) {
     const plat = x.platform === 'yt' ? '유튜브 쇼츠' : `인스타 ${kindLabel(x)}`;
     return [`📡 떡상 레이더 레퍼런스 — ${plat} @${x.user || '?'} (조회 ${short(x.views)} · 좋아요 ${short(x.likes)} · 댓글 ${short(x.comments)} · ${m.vph ? `${short(m.vphRecent || m.vph)}/h · ` : ''}${m.mult ? `평소 대비 ${m.mult.toFixed(1)}x · ` : ''}점수 ${m.score} · ${ago(x.postedAt)})`,
@@ -371,7 +385,12 @@
     $('#detail').addEventListener('close', () => { $('#embed').src = 'about:blank'; });
     $('#dCopy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(current.url); toast('링크를 복사했어요'); } catch { window.prompt('복사하세요', current.url); } });
     $('#dMemo').addEventListener('change', async () => { if (!current) return; const v = $('#dMemo').value.trim(); if (v) board.memos[current.id] = v; else delete board.memos[current.id]; await saveBoard('메모'); toast('메모 저장'); });
-    $('#dSave').addEventListener('click', async () => { if (!current) return; if (board.saved[current.id]) delete board.saved[current.id]; else board.saved[current.id] = isoLocal(new Date()); await saveBoard(board.saved[current.id] ? '저장' : '저장 해제'); $('#dSave').textContent = board.saved[current.id] ? '💾 저장됨 (누르면 해제)' : '💾 보드에 저장'; render(); renderSide(); });
+    $('#dSave').addEventListener('click', async () => {
+      if (!current) return; const x = current;
+      if (board.saved[x.id]) { delete board.saved[x.id]; await saveBoard('저장 해제'); $('#dSave').textContent = '💾 보드에 저장'; render(); renderSide(); return; }
+      board.saved[x.id] = isoLocal(new Date()); await saveBoard('저장'); $('#dSave').textContent = '💾 저장됨 (누르면 해제)'; render(); renderSide();
+      if (x.platform === 'insta' || x.platform === 'yt' || x.platform === 'tt') await pushToScriptStack(x);   // 11/3 사용자: 저장 = 레퍼로 바로(받아쓰기→대본 정리→문장틀·소구점 학습)
+    });
     $('#dPick').addEventListener('click', async () => { if (!current) return; if (board.picks[current.id]) delete board.picks[current.id]; else board.picks[current.id] = isoLocal(new Date()); await saveBoard('기획표'); $('#dPick').textContent = board.picks[current.id] ? '📄 기획표에 담김 (누르면 빼기)' : '📄 기획표에 담기'; render(); renderSide(); });
     $('#dWatch').addEventListener('click', async () => { if (!current || !current.user) return; if (board.watch[current.user]) delete board.watch[current.user]; else board.watch[current.user] = isoLocal(new Date()); await saveBoard('감시 계정'); $('#dWatch').textContent = board.watch[current.user] ? '★ 감시 중 (누르면 해제)' : '☆ 이 계정 감시'; render(); renderSide(); });
     $('#dPrompt').addEventListener('click', async () => { if (!current) return; const t = promptText(current, metrics(current)); try { await navigator.clipboard.writeText(t); toast('분석 프롬프트를 복사했어요 → 클로드에 붙여넣기'); } catch { window.prompt('복사하세요', t); } });
