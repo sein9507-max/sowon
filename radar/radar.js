@@ -37,7 +37,7 @@
 
   // ── 열쇠 ────────────────────────────────────────────────
   let token = '';
-  const okTok = (t) => /^(gh[pousr]_|github_pat_)[A-Za-z0-9_]{20,}$/.test(t || '') ? t : '';
+  const okTok = (t) => { t = String(t || '').replace(/\s/g, ''); return /^(gh[pousr]_|github_pat_)[A-Za-z0-9_]{20,}$/.test(t) ? t : ''; };
   function findToken() {
     if (location.hash.startsWith('#k=')) { let t = ''; try { t = atob(decodeURIComponent(location.hash.slice(3))); } catch { t = ''; } try { history.replaceState(null, '', location.pathname); } catch { /* 무시 */ } if (okTok(t)) { LS.set('radar.token', t); return t; } }
     const mine = okTok(LS.get('radar.token', '')); if (mine) return mine;
@@ -340,11 +340,11 @@
     $('#refresh').addEventListener('click', () => loadAll(true));
     $('#setupBtn').addEventListener('click', openSetup);
     $('#tokenSave').addEventListener('click', async (e) => {
-      e.preventDefault(); const t = okTok($('#tokenIn').value.trim());
+      e.preventDefault(); const t = okTok($('#tokenIn').value);
       if (!t) { $('#setupMsg').textContent = '열쇠 모양이 아니에요 (ghp_… / github_pat_…)'; return; }
-      token = t; $('#setupMsg').textContent = '확인 중…';
-      try { await gh(repo()); LS.set('radar.token', t); $('#setupMsg').textContent = '✔ 연결됐어요'; $('#setup').close(); loadAll(true); }
-      catch (err) { $('#setupMsg').textContent = `⚠ ${err.message || err}`; }
+      token = t; LS.set('radar.token', t); $('#setupMsg').textContent = '저장했어요. 연결 확인 중…';   // 먼저 저장(확인이 실패해도 다시 묻지 않게)
+      try { await gh(repo()); $('#setupMsg').textContent = '✔ 연결됐어요'; $('#setup').close(); loadAll(true); }
+      catch (err) { $('#setupMsg').textContent = err.status === 404 ? '⚠ 열쇠는 저장했는데 newlywed_tech 저장소가 안 보여요. 열쇠 만들 때 repo 칸에 체크했는지 확인해 주세요' : err.status === 401 ? '⚠ 열쇠가 틀렸어요. ghp_로 시작하는 글자 전체를 다시 붙여넣어 주세요' : `⚠ ${err.message || err}`; }
     });
     $('#dClose').addEventListener('click', closeDetail);
     $('#detail').addEventListener('click', (e) => { if (e.target === $('#detail')) closeDetail(); });
