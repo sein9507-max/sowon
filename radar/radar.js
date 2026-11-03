@@ -20,6 +20,18 @@
   ];
   const OUT = '주제 밖';
   const YT_MIN_VIEWS = 100000;
+  // 유튜브에서 아이디어에 안 쓰이는 것: 음악(10)·게임(20)·영화(1)·예고편·뮤비, 국내인데 한글 없음, 해외인데 라틴 글자 아님(11/3 사용자 "유튜브 레퍼런스 너무 별로")
+  const YT_JUNK_CAT = new Set(['1', '10', '20']);
+  const YT_JUNK_RE = /trailer|teaser|\bm\/?v\b|official (video|audio|mv)|lyric|예고편|티저|뮤직비디오|\bost\b|gameplay|fortnite|roblox|brawl stars|minecraft|롤드컵|\blck\b/i;
+  function ytJunk(x) {
+    if (x.platform !== 'yt') return false;
+    if (YT_JUNK_CAT.has(String(x.category || ''))) return true;
+    const t = `${x.title || ''} ${x.caption || ''}`;
+    if (YT_JUNK_RE.test(x.title || '')) return true;
+    if (x.region === '국내' && !/[가-힣]/.test(x.title || '')) return true;
+    if (x.region === '해외' && /[ऀ-෿؀-ۿ฀-๿]/.test(t)) return true;   // 인도·아랍·태국 글자
+    return false;
+  }
   function topicOf(text) { const hay = String(text || '').toLowerCase(); for (const [t, ws] of TOPICS) { const w = ws.split(',').map((s) => s.trim().toLowerCase()).find((x) => x && (/^[\x00-\x7f]+$/.test(x) ? new RegExp(`(?<![a-z])${x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z])`).test(hay) : hay.includes(x))); if (w) return { topic: t, word: w }; } return { topic: '', word: '' }; }
 
   // ── 열쇠 ────────────────────────────────────────────────
@@ -92,7 +104,7 @@
   function normYt(x) {
     const t = x.topic ? { topic: x.topic, word: x.topicWord || '' } : topicOf(`${x.title} ${x.caption}`);
     return { id: `yt:${x.id}`, code: x.id, platform: 'yt', region: x.region || (/US/.test(x.source || '') ? '해외' : '국내'), kind: x.kind === 'shorts' ? 'shorts' : 'video', url: x.url, user: x.user || '', caption: `${x.title || ''}\n${x.caption || ''}`.trim(), title: x.title || '', views: x.views ?? null, likes: x.likes ?? null, comments: x.comments ?? null, shares: null,
-      postedAt: x.postedAt, capturedAt: x.capturedAt, seenAt: x.seenAt || x.capturedAt, thumb: x.thumb || '', carouselCount: null, audio: '', duration: x.duration || null, followers: null, topic: t.topic, topicWord: t.word, source: x.source || '유튜브 인기 KR', history: Array.isArray(x.history) ? x.history : [] };
+      postedAt: x.postedAt, capturedAt: x.capturedAt, seenAt: x.seenAt || x.capturedAt, thumb: x.thumb || '', carouselCount: null, audio: '', duration: x.duration || null, followers: null, topic: t.topic, topicWord: t.word, category: x.category || '', source: x.source || '유튜브 인기 KR', history: Array.isArray(x.history) ? x.history : [] };
   }
   function parseIssues(md) {       // 뉴스수집/트렌드/<날짜>.md 의 마지막 '⭐ 탑 20'
     const lines = md.split('\n'); let time = '', list = [], cur = null, curTime = '';
@@ -180,7 +192,7 @@
       if (F.src === 'tiktok' && x.platform !== 'tt') return false;
       if (F.src === 'xhs' && x.platform !== 'xhs') return false;
       if (F.src === 'all' && x.platform === 'yt' && x.kind === 'video') return false;
-      if (x.platform === 'yt' && (x.views || 0) < YT_MIN_VIEWS) return false;   // 유튜브 쇼츠는 조회수 10만 이상만(사용자 기준 11/3)
+      if (x.platform === 'yt' && ((x.views || 0) < YT_MIN_VIEWS || ytJunk(x))) return false;   // 유튜브 쇼츠는 조회수 10만 이상만(사용자 기준 11/3)
       if (F.region !== 'all' && x.region !== F.region) return false;
       if (F.minViews && (x.views || 0) < F.minViews) return false;
       if (F.topic && (x.topic || OUT) !== F.topic) return false;
@@ -197,7 +209,7 @@
   function setStatus(t) { $('#status').textContent = t; }
   function renderTopics() {
     const row = $('#topicRow'); row.replaceChildren();
-    const within = items.filter((x) => winH(x) <= F.span && !(x.platform === 'yt' && (x.views || 0) < YT_MIN_VIEWS) && !(F.src === 'all' && x.platform === 'yt' && x.kind === 'video') && (F.region === 'all' || x.region === F.region));
+    const within = items.filter((x) => winH(x) <= F.span && !(x.platform === 'yt' && ((x.views || 0) < YT_MIN_VIEWS || ytJunk(x))) && !(F.src === 'all' && x.platform === 'yt' && x.kind === 'video') && (F.region === 'all' || x.region === F.region));
     const counts = {}; within.forEach((x) => { const t = x.topic || OUT; counts[t] = (counts[t] || 0) + 1; });
     const mk = (label, v) => { const b = el('button', F.topic === v ? 'on' : ''); b.append(label, el('small', '', String(counts[v] || (v === '' ? within.length : 0)))); b.addEventListener('click', () => { F.topic = v; LS.set('radar.topic', v); render(); }); return b; };
     row.append(mk('전체', ''));
@@ -239,7 +251,7 @@
     if (!items.length) grid.append(el('p', 'empty', loading ? '읽는 중…' : token ? '아직 쌓인 게 없어요. 조사용 크롬에서 확장 2.0으로 인스타를 내리면 여기 쌓여요. 유튜브 쇼츠는 맥북 떡상_수집.py(API 키 필요).' : '열쇠를 넣으면 불러와요.'));
     else if (!list.length) grid.append(el('p', 'empty', '조건에 맞는 게 없어요. 기간·주제·최소 조회수를 풀어 보세요.'));
     else list.slice(0, 300).forEach(({ x, m }) => grid.append(card(x, m)));
-    const ig = items.filter((x) => x.platform === 'insta' && winH(x) <= F.span).length, tt = items.filter((x) => x.platform === 'tt' && winH(x) <= F.span).length, xh = items.filter((x) => x.platform === 'xhs' && winH(x) <= F.span).length, yt = items.filter((x) => x.platform === 'yt' && (x.views || 0) >= YT_MIN_VIEWS && winH(x) <= F.span).length;
+    const ig = items.filter((x) => x.platform === 'insta' && winH(x) <= F.span).length, tt = items.filter((x) => x.platform === 'tt' && winH(x) <= F.span).length, xh = items.filter((x) => x.platform === 'xhs' && winH(x) <= F.span).length, yt = items.filter((x) => x.platform === 'yt' && (x.views || 0) >= YT_MIN_VIEWS && !ytJunk(x) && winH(x) <= F.span).length;
     $('#count').textContent = `${list.length}개 표시 · 기간 안 인스타 ${ig} · 유튜브 ${yt} · 틱톡 ${tt} · 레드노트 ${xh} · 유튜브는 조회 10만↑만 · * 는 조회수 대신 좋아요×20`;
     setStatus(`마지막 수집 ${lastCollected ? ago(new Date(lastCollected).toISOString()) : '없음'} · 전체 ${items.length}개 · 읽은 시각 ${new Date(loadedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`);
     $('#pickCount').textContent = String(Object.keys(board.picks).length);
