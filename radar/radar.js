@@ -19,6 +19,8 @@
     ['직장·월급', '월급,연봉,직장인,퇴사,이직,회사,상사,사회초년생,출근,퇴근,성과급'],
   ];
   const OUT = '주제 밖';
+  const BEAUTY = ['뷰티'], MONEY = ['지원금·정책', '주식·코인', '부동산·청약', '재테크·저축', '부업·수익', '직장·월급'];   // 11/3 사용자 "뷰티·재테크만"
+  const groupOf = (t) => (BEAUTY.includes(t) ? 'beauty' : MONEY.includes(t) ? 'money' : 'etc');
   const YT_MIN_VIEWS = 50000;
   // 유튜브에서 아이디어에 안 쓰이는 것: 음악(10)·게임(20)·영화(1)·예고편·뮤비, 국내인데 한글 없음, 해외인데 라틴 글자 아님(11/3 사용자 "유튜브 레퍼런스 너무 별로")
   const YT_JUNK_CAT = new Set(['1', '10', '20']);
@@ -92,7 +94,7 @@
   // ── 상태 ────────────────────────────────────────────────
   let items = [], issues = { time: '', list: [] }, threads = null, board = { saved: {}, watch: {}, picks: {}, memos: {} }, boardSha = null;
   let loadedAt = 0, lastCollected = 0, loading = false;
-  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span24', 24)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews', 0)), q: '', topic: LS.get('radar.topic', ''), onlyWatch: false, onlySaved: false };
+  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span24', 24)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false };
   let current = null;
 
   // ── 불러오기 ────────────────────────────────────────────
@@ -196,7 +198,9 @@
       if (x.platform === 'yt' && ((x.views || 0) < YT_MIN_VIEWS || ytJunk(x))) return false;   // 유튜브 쇼츠는 조회수 5만 이상만(사용자 기준 11/3)
       if (F.region !== 'all' && x.region !== F.region) return false;
       if (F.minViews && (x.views || 0) < F.minViews) return false;
-      if (F.topic && (x.topic || OUT) !== F.topic) return false;
+      const g = groupOf(x.topic || '');
+      if (F.group === 'all' ? g === 'etc' : g !== F.group) return false;
+      if (F.group === 'money' && F.topic && x.topic !== F.topic) return false;
       if (F.onlyWatch && !board.watch[x.user]) return false;
       if (F.onlySaved && !board.saved[x.id]) return false;
       if (q && !`${x.user} ${x.caption}`.toLowerCase().includes(q)) return false;
@@ -211,11 +215,18 @@
   function renderTopics() {
     const row = $('#topicRow'); row.replaceChildren();
     const within = items.filter((x) => winH(x) <= F.span && !(x.platform === 'yt' && ((x.views || 0) < YT_MIN_VIEWS || ytJunk(x))) && !(F.src === 'all' && x.platform === 'yt' && x.kind === 'video') && (F.region === 'all' || x.region === F.region));
-    const counts = {}; within.forEach((x) => { const t = x.topic || OUT; counts[t] = (counts[t] || 0) + 1; });
-    const mk = (label, v) => { const b = el('button', F.topic === v ? 'on' : ''); b.append(label, el('small', '', String(counts[v] || (v === '' ? within.length : 0)))); b.addEventListener('click', () => { F.topic = v; LS.set('radar.topic', v); render(); }); return b; };
-    row.append(mk('전체', ''));
-    TOPICS.forEach(([t]) => row.append(mk(t, t)));
-    row.append(mk(OUT, OUT));
+    const cnt = (f) => within.filter(f).length;
+    const mk = (label, on, n, fn) => { const b = el('button', on ? 'on' : ''); b.append(label, el('small', '', String(n))); b.addEventListener('click', fn); return b; };
+    const setG = (g) => { F.group = g; F.topic = ''; LS.set('radar.group', g); LS.set('radar.topic2', ''); render(); };
+    row.append(mk('전체', F.group === 'all', cnt((x) => groupOf(x.topic || '') !== 'etc'), () => setG('all')));
+    row.append(mk('💄 뷰티', F.group === 'beauty', cnt((x) => groupOf(x.topic || '') === 'beauty'), () => setG('beauty')));
+    row.append(mk('💰 재테크', F.group === 'money', cnt((x) => groupOf(x.topic || '') === 'money'), () => setG('money')));
+    if (F.group === 'money') {
+      const sep = el('span', 'muted', '│'); row.append(sep);
+      MONEY.forEach((t) => row.append(mk(t, F.topic === t, cnt((x) => x.topic === t), () => { F.topic = F.topic === t ? '' : t; LS.set('radar.topic2', F.topic); render(); })));
+    }
+    const etc = mk('그 밖 보기', F.group === 'etc', cnt((x) => groupOf(x.topic || '') === 'etc'), () => setG(F.group === 'etc' ? 'all' : 'etc'));
+    etc.style.marginLeft = 'auto'; etc.style.opacity = '.7'; row.append(etc);
   }
   function platName(x) { return { insta: '인스타', yt: '유튜브', tt: '틱톡', xhs: '레드노트' }[x.platform] || x.platform; }
   function kindLabel(x) { if (x.platform === 'tt') return '🎵 틱톡'; if (x.platform === 'xhs') return x.kind === 'video' ? '📕 영상' : '📕 노트'; return x.kind === 'carousel' ? `🖼 캐러셀${x.carouselCount ? ` ${x.carouselCount}장` : ''}` : x.kind === 'reel' ? '🎬 릴스' : x.kind === 'shorts' ? '▶ 쇼츠' : x.kind === 'video' ? '▶ 영상' : '📷 사진'; }
