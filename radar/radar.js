@@ -83,7 +83,7 @@
   const kstDay = (d) => new Date(d.getTime() + 9 * 3600e3).toISOString().slice(0, 10);
   const daysBack = (n) => Array.from({ length: n }, (_, i) => kstDay(new Date(Date.now() - i * 864e5)));
   const hoursAgo = (iso) => (Date.now() - new Date(iso).getTime()) / 36e5;
-  const winH = (x) => hoursAgo(x.windowAt || x.postedAt);   // 인기 차트(틱톡·인스타 인기 릴스)는 모은 시각 기준, 나머지는 올린 시각
+  const winH = (x) => hoursAgo(x.postedAt);   // 기간은 언제나 '올린 시각' 기준(11/3 사용자 "24시간 조건이 안 맞아")
   const ago = (iso) => { if (!iso) return '시간 모름'; const h = hoursAgo(iso); return h < 1 ? `${Math.max(1, Math.round(h * 60))}분 전` : h < 48 ? `${Math.round(h)}시간 전` : `${Math.round(h / 24)}일 전`; };
   const short = (n) => (n == null ? '-' : n >= 1e8 ? (n / 1e8).toFixed(1).replace(/\.0$/, '') + '억' : n >= 1e4 ? (n / 1e4).toFixed(n >= 1e5 ? 0 : 1).replace(/\.0$/, '') + '만' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + '천' : String(Math.round(n)));
   function isoLocal(d) { const o = -d.getTimezoneOffset(), s = o >= 0 ? '+' : '-', a = Math.abs(o); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${s}${pad(Math.floor(a / 60))}:${pad(a % 60)}`; }
