@@ -94,8 +94,8 @@
   // ── 상태 ────────────────────────────────────────────────
   let items = [], issues = { time: '', list: [] }, threads = null, board = { saved: {}, watch: {}, picks: {}, memos: {} }, boardSha = null;
   let loadedAt = 0, lastCollected = 0, loading = false;
-  // 기본값(11/3 사용자 "10만 이상을 원해"): 3일 안 · 최소 조회수 10만(캐러셀은 좋아요 500↑) · 떡상점수 정렬, 주제는 뷰티·재테크만
-  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span72', 72)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews6', 100000)), minMult: Number(LS.get('radar.minMult', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false };
+  // 기본값(11/3 밤, 레퍼 콘텐츠플래닛과 같게): 3일 안 · 모든 주제 · 최소 조회수 1만 · 떡상점수 정렬. 뷰티/재테크 탭으로 좁히고, 10만↑은 칸에서 고른다
+  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span72', 72)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews7', 10000)), minMult: Number(LS.get('radar.minMult', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false };
   let current = null;
 
   // ── 불러오기 ────────────────────────────────────────────
@@ -202,7 +202,7 @@
       if (F.region !== 'all' && x.region !== F.region) return false;
       if (F.minViews && (x.views != null ? x.views : (x.likes || 0) * 200) < F.minViews) return false;   // 캐러셀·사진은 좋아요 500 ≈ 10만 급
       const g = groupOf(x.topic || '');
-      if (F.group === 'all' ? g === 'etc' : g !== F.group) return false;
+      if (F.group !== 'all' && g !== F.group) return false;
       if (F.group === 'money' && F.topic && x.topic !== F.topic) return false;
       if (F.onlyWatch && !board.watch[x.user]) return false;
       if (F.onlySaved && !board.saved[x.id]) return false;
@@ -221,15 +221,14 @@
     const cnt = (f) => within.filter(f).length;
     const mk = (label, on, n, fn) => { const b = el('button', on ? 'on' : ''); b.append(label, el('small', '', String(n))); b.addEventListener('click', fn); return b; };
     const setG = (g) => { F.group = g; F.topic = ''; LS.set('radar.group', g); LS.set('radar.topic2', ''); render(); };
-    row.append(mk('전체', F.group === 'all', cnt((x) => groupOf(x.topic || '') !== 'etc'), () => setG('all')));
+    row.append(mk('전체', F.group === 'all', within.length, () => setG('all')));
     row.append(mk('💄 뷰티', F.group === 'beauty', cnt((x) => groupOf(x.topic || '') === 'beauty'), () => setG('beauty')));
     row.append(mk('💰 재테크', F.group === 'money', cnt((x) => groupOf(x.topic || '') === 'money'), () => setG('money')));
     if (F.group === 'money') {
       const sep = el('span', 'muted', '│'); row.append(sep);
       MONEY.forEach((t) => row.append(mk(t, F.topic === t, cnt((x) => x.topic === t), () => { F.topic = F.topic === t ? '' : t; LS.set('radar.topic2', F.topic); render(); })));
     }
-    const etc = mk('그 밖 보기', F.group === 'etc', cnt((x) => groupOf(x.topic || '') === 'etc'), () => setG(F.group === 'etc' ? 'all' : 'etc'));
-    etc.style.marginLeft = 'auto'; etc.style.opacity = '.7'; row.append(etc);
+    row.append(mk('🗂 그 밖', F.group === 'etc', cnt((x) => groupOf(x.topic || '') === 'etc'), () => setG('etc')));
   }
   function platName(x) { return { insta: '인스타', yt: '유튜브', tt: '틱톡', xhs: '레드노트' }[x.platform] || x.platform; }
   function kindLabel(x) { if (x.platform === 'tt') return '🎵 틱톡'; if (x.platform === 'xhs') return x.kind === 'video' ? '📕 영상' : '📕 노트'; return x.kind === 'carousel' ? `🖼 캐러셀${x.carouselCount ? ` ${x.carouselCount}장` : ''}` : x.kind === 'reel' ? '🎬 릴스' : x.kind === 'shorts' ? '▶ 쇼츠' : x.kind === 'video' ? '▶ 영상' : '📷 사진'; }
@@ -354,7 +353,7 @@
     $('#spanSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; F.span = Number(b.dataset.v); LS.set('radar.span72', F.span); if (F.span >= 168) loadAll(true); else render(); });
     $('#sort').addEventListener('change', (e) => { F.sort = e.target.value; LS.set('radar.sort', F.sort); render(); });
     $('#minMult').addEventListener('change', (e) => { F.minMult = Number(e.target.value); LS.set('radar.minMult', F.minMult); render(); });
-    $('#minViews').addEventListener('change', (e) => { F.minViews = Number(e.target.value); LS.set('radar.minViews6', F.minViews); render(); });
+    $('#minViews').addEventListener('change', (e) => { F.minViews = Number(e.target.value); LS.set('radar.minViews7', F.minViews); render(); });
     let qt = 0; $('#q').addEventListener('input', (e) => { clearTimeout(qt); qt = setTimeout(() => { F.q = e.target.value; render(); }, 200); });
     $('#onlyWatch').addEventListener('change', (e) => { F.onlyWatch = e.target.checked; render(); });
     $('#onlySaved').addEventListener('change', (e) => { F.onlySaved = e.target.checked; render(); });
