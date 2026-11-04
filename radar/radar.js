@@ -94,7 +94,7 @@
   // ── 상태 ────────────────────────────────────────────────
   let items = [], issues = { time: '', list: [] }, threads = null, board = { saved: {}, watch: {}, picks: {}, memos: {} }, boardSha = null;
   let loadedAt = 0, lastCollected = 0, loading = false;
-  // 기본값(11/3 밤, 레퍼 콘텐츠플래닛과 같게): 3일 안 · 모든 주제 · 최소 조회수 1만 · 떡상점수 정렬. 뷰티/재테크 탭으로 좁히고, 10만↑은 칸에서 고른다
+  // 기본값: 3일 안 · 뷰티+재테크(그 밖은 탭) · 최소 조회수 1만 · 떡상점수 정렬. 10만↑은 칸에서 고른다
   const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span72', 72)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews7', 10000)), minMult: Number(LS.get('radar.minMult', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false };
   let current = null;
 
@@ -202,7 +202,7 @@
       if (F.region !== 'all' && x.region !== F.region) return false;
       if (F.minViews && (x.views != null ? x.views : (x.likes || 0) * 200) < F.minViews) return false;   // 캐러셀·사진은 좋아요 500 ≈ 10만 급
       const g = groupOf(x.topic || '');
-      if (F.group !== 'all' && g !== F.group) return false;
+      if (F.group === 'all' ? g === 'etc' : g !== F.group) return false;   // 전체 = 뷰티+재테크(11/4 사용자 "내가 찾는 주제가 맞는지"), 그 밖은 탭
       if (F.group === 'money' && F.topic && x.topic !== F.topic) return false;
       if (F.onlyWatch && !board.watch[x.user]) return false;
       if (F.onlySaved && !board.saved[x.id]) return false;
@@ -221,7 +221,7 @@
     const cnt = (f) => within.filter(f).length;
     const mk = (label, on, n, fn) => { const b = el('button', on ? 'on' : ''); b.append(label, el('small', '', String(n))); b.addEventListener('click', fn); return b; };
     const setG = (g) => { F.group = g; F.topic = ''; LS.set('radar.group', g); LS.set('radar.topic2', ''); render(); };
-    row.append(mk('전체', F.group === 'all', within.length, () => setG('all')));
+    row.append(mk('전체', F.group === 'all', cnt((x) => groupOf(x.topic || '') !== 'etc'), () => setG('all')));
     row.append(mk('💄 뷰티', F.group === 'beauty', cnt((x) => groupOf(x.topic || '') === 'beauty'), () => setG('beauty')));
     row.append(mk('💰 재테크', F.group === 'money', cnt((x) => groupOf(x.topic || '') === 'money'), () => setG('money')));
     if (F.group === 'money') {
