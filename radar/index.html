@@ -9,11 +9,11 @@
 <meta name="theme-color" content="#0B1220">
 <meta http-equiv="Cache-Control" content="no-cache">
 <title>떡상 레이더</title>
-<link rel="stylesheet" href="radar.css?v=1.11.0">
+<link rel="stylesheet" href="radar.css?v=1.12.0">
 </head>
 <body>
 <header class="top">
-  <div class="brand"><span class="logo">📡 떡상 레이더</span><span class="sub">인스타 · 유튜브 쇼츠 · 틱톡 · 레드노트 · 국내/해외 · 기본 3일 안 · 국내 재테크 + 해외 뷰티 · 조회 1만↑ · 떡상점수순</span></div>
+  <div class="brand"><span class="logo">📡 떡상 레이더</span><span class="sub">인스타 · 유튜브 쇼츠 · 틱톡 · 레드노트 · 국내/해외 · 기본 3일 안 · 국내 재테크 + 해외 뷰티 · 조회 1만↑ · 떡상점수순 · 주제별 수집은 Aside(로그인 없음)</span></div>
   <div class="status" id="status">불러오는 중…</div>
   <div class="tools">
     <button id="refresh" title="GitHub에서 다시 읽기">↻ 새로고침</button>
@@ -43,6 +43,7 @@
     <section class="grid" id="grid"></section>
   </section>
   <aside class="side">
+    <details open><summary>🔎 주제 검색어 <small id="tqTime"></small></summary><div id="tqBox"></div></details>
     <details open><summary>🔥 지금 이슈 탑 20 <small id="issueTime"></small></summary><ol id="issueList" class="plain"></ol></details>
     <details open><summary>🧵 스레드 24시간 화제 키워드 <small id="thTime"></small></summary><ol id="thList" class="plain"></ol></details>
     <details><summary>★ 감시 계정 · 💾 보드</summary><div id="boardBox"></div></details>
@@ -86,6 +87,6 @@
 </dialog>
 
 <div id="toast"></div>
-<script src="radar.js?v=1.11.0"></script>
+<script src="radar.js?v=1.12.0"></script>
 </body>
 </html>

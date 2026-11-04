@@ -94,7 +94,7 @@
   const makeId = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${Math.random().toString(36).slice(2, 5)}`;
 
   // ── 상태 ────────────────────────────────────────────────
-  let items = [], issues = { time: '', list: [] }, threads = null, board = { saved: {}, watch: {}, picks: {}, memos: {} }, boardSha = null;
+  let items = [], issues = { time: '', list: [] }, threads = null, topicQ = null, board = { saved: {}, watch: {}, picks: {}, memos: {} }, boardSha = null;
   let loadedAt = 0, lastCollected = 0, loading = false;
   // 기본값: 3일 안 · 뷰티+재테크(그 밖은 탭) · 최소 조회수 1만 · 떡상점수 정렬. 10만↑은 칸에서 고른다
   const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span72', 72)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews7', 10000)), minMult: Number(LS.get('radar.minMult', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false };
@@ -131,11 +131,12 @@
     try {
       const igDays = daysBack(F.span >= 168 ? 8 : 4), ytDays = daysBack(3), thDays = daysBack(2);
       const extDays = daysBack(F.span >= 168 ? 8 : 3);
-      const [igs, yts, ths, bd, trendToday, trendYday, igx, tts, xhs] = await Promise.all([
+      const [igs, yts, ths, bd, tq, trendToday, trendYday, igx, tts, xhs] = await Promise.all([
         Promise.all(igDays.map((d) => readJson(`${CFG.dir}/일별/${d}.json`).catch(() => null))),
         Promise.all(ytDays.map((d) => readJson(`${CFG.dir}/유튜브/${d}.json`).catch(() => null))),
         Promise.all(thDays.map((d) => readJson(`${CFG.dir}/스레드/${d}.json`).catch(() => null))),
         readJson(`${CFG.dir}/보드.json`).catch(() => null),
+        readJson(`${CFG.dir}/주제검색어.json`).catch(() => null),
         readFile(`${CFG.trendDir}/${kstDay(new Date())}.md`).catch(() => null),
         readFile(`${CFG.trendDir}/${kstDay(new Date(Date.now() - 864e5))}.md`).catch(() => null),
         Promise.all(extDays.map((d) => readJson(`${CFG.dir}/인스타/${d}.json`).catch(() => null))),
@@ -151,6 +152,7 @@
       addAll(xhs, (x) => ({ ...normInsta(x), id: `xhs:${x.code}`, platform: 'xhs', kind: x.kind, url: x.url, title: x.title || '', windowAt: x.windowAt }));
       items = [...byId.values()].filter((x) => x.postedAt);
       threads = ths.find((f) => f && f.data && Array.isArray(f.data.keywords)) ? ths.find((f) => f && f.data && Array.isArray(f.data.keywords)).data : null;
+      topicQ = tq && !tq.broken ? tq.data : null;
       if (bd && !bd.broken) { board = { saved: {}, watch: {}, picks: {}, memos: {}, ...bd.data }; boardSha = bd.sha; } else { boardSha = bd ? bd.sha : null; }
       issues = trendToday ? parseIssues(trendToday.text) : trendYday ? parseIssues(trendYday.text) : { time: '', list: [] };
       if (trendToday && !issues.list.length && trendYday) issues = parseIssues(trendYday.text);
@@ -288,10 +290,38 @@
       $('#thTime').textContent = threads.updatedAt ? ago(threads.updatedAt) : '';
       threads.keywords.slice(0, 20).forEach((k) => { const li = el('li'); li.append(k.q, el('span', 'cnt', `${k.count24h}건`)); const top = (k.top && k.top[0]) || (k.recent && k.recent[0]); if (top && top.url) { const a = el('a', '', ' 대표 글'); a.href = top.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.title = top.text || ''; li.append(a); } tl.append(li); });
     } else { $('#thTime').textContent = ''; tl.append(el('li', '', threads && threads.error ? `스레드 API 오류: ${threads.error.slice(0, 80)}` : '아직 없어요. 스레드 앱 검수 뒤 토큰을 넣으면 맥북이 3시간마다 모아요(운영규칙 7절).')); }
+    renderTopicQ();
     const bb = $('#boardBox'); bb.replaceChildren();
     const ws = Object.keys(board.watch); bb.append(el('div', '', `감시 계정 ${ws.length}개 · 저장 ${Object.keys(board.saved).length}개 · 기획표 담김 ${Object.keys(board.picks).length}개`));
     ws.forEach((u) => { const s = el('span', 'w', `★ @${u} ✕`); s.title = '감시 해제'; s.addEventListener('click', async () => { delete board.watch[u]; await saveBoard('감시 해제 @' + u); render(); renderSide(); }); bb.append(s); });
     if (Object.keys(board.picks).length) { const b = el('button', '', '기획표 비우기'); b.style.cssText = 'margin-top:6px;font-size:11px;padding:2px 8px'; b.addEventListener('click', async () => { board.picks = {}; await saveBoard('기획표 비움'); render(); renderSide(); }); bb.append(el('div'), b); }
+  }
+
+  // 주제별 검색어(11/4 사용자 "어사이드로 주제별로"): 맥북 수집기가 07·13·19시에 Aside 시크릿 창으로 구글 site:instagram.com/reel <검색어> 최근 1주를 찾고,
+  // 그 계정 릴스 탭 조회수·평소 중앙값까지 읽어 온다. 여기서 고치면 다음 수집부터 그 검색어로 긁는다. 재테크 주제는 한국어, 뷰티는 영어(규칙)
+  function renderTopicQ() {
+    const box = $('#tqBox'); box.replaceChildren();
+    const topics = (topicQ && topicQ.topics) || {};
+    $('#tqTime').textContent = topicQ ? `${Object.values(topics).flat().length}개` : '아직 없음';
+    if (!topicQ) { box.append(el('p', 'hint', '맥북이 Aside로 처음 수집하면 기본 검색어가 생겨요(07·13·19시). 그 뒤 여기서 고칠 수 있어요.')); return; }
+    const fromSearch = (t) => items.filter((x) => x.platform === 'insta' && x.topic === t && /^주제 검색/.test(x.source || '') && winH(x) <= F.span).length;
+    [...BEAUTY, ...MONEY].forEach((t) => {
+      const row = el('div', 'tq');
+      const name = el('button', 'tqname' + ((t === '뷰티' ? F.group === 'beauty' : F.group === 'money' && F.topic === t) ? ' on' : ''), `${t === '뷰티' ? '💄 뷰티(해외)' : t}`);
+      name.title = '이 주제만 보기'; name.append(el('small', '', String(fromSearch(t))));
+      name.addEventListener('click', () => { if (t === '뷰티') { F.group = 'beauty'; F.topic = ''; } else { F.group = 'money'; F.topic = t; } LS.set('radar.group', F.group); LS.set('radar.topic2', F.topic); render(); renderSide(); });
+      row.append(name);
+      (topics[t] || []).forEach((w) => { const c = el('span', 'w', `${w} ✕`); c.title = '이 검색어 빼기'; c.addEventListener('click', () => saveTopicQ(t, (topics[t] || []).filter((v) => v !== w), `빼기 ${t}: ${w}`)); row.append(c); });
+      const inp = el('input'); inp.type = 'text'; inp.placeholder = t === '뷰티' ? '+ 영어 검색어' : '+ 검색어'; inp.maxLength = 30;
+      inp.addEventListener('keydown', (e) => { if (e.key !== 'Enter' || e.isComposing) return; const w = inp.value.trim(); if (!w) return; if ((topics[t] || []).includes(w)) { inp.value = ''; return; } if (t === '뷰티' && /[가-힣]/.test(w)) { toast('뷰티는 해외 글만 모으는 규칙이라 영어로 넣어 주세요'); return; } saveTopicQ(t, [...(topics[t] || []), w], `더하기 ${t}: ${w}`); });
+      row.append(inp); box.append(row);
+    });
+    box.append(el('p', 'hint', '검색어마다 구글에서 최근 1주 인스타 릴스 20개쯤을 찾고, 그 계정의 최근 릴스 12개 조회수로 평소 대비 배수를 매겨요. 숫자는 지금 기간 안에 주제 검색으로 들어온 개수. Enter로 더하고 ✕로 빼요. 다음 수집(07·13·19시)부터 반영돼요.'));
+  }
+  async function saveTopicQ(t, list, msg) {
+    try { topicQ = await updateJson(`${CFG.dir}/주제검색어.json`, (d) => ({ ...d, topics: { ...(d.topics || {}), [t]: list }, updatedAt: isoLocal(new Date()) }), `레이더 주제 검색어: ${msg}`); toast(`저장했어요 — ${msg}`); }
+    catch (e) { toast(`저장 실패: ${e.message || e}`); }
+    renderSide();
   }
 
   // ── 상세 ────────────────────────────────────────────────

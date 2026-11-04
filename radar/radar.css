@@ -77,3 +77,11 @@ dialog::backdrop { background: rgba(0,0,0,.7); }
 #toast.on { opacity: 1; transform: translateX(-50%); }
 .empty { grid-column: 1 / -1; padding: 40px; text-align: center; color: var(--muted); }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .filters { position: static; } .dwrap { grid-template-columns: 1fr; } .dleft iframe { height: 520px; } .tiles { grid-template-columns: repeat(2, 1fr); } }
+
+/* 주제 검색어(1.12) */
+#tqBox .tq { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 6px 0; font-size: 12px; }
+#tqBox .tqname { font-weight: 800; padding: 2px 8px; font-size: 12px; }
+#tqBox .tqname.on { outline: 2px solid var(--sky); }
+#tqBox .tqname small { margin-left: 4px; color: var(--lime); }
+#tqBox .w { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--panel2); cursor: pointer; }
+#tqBox input { width: 96px; font-size: 12px; padding: 2px 6px; }
