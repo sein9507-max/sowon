@@ -191,26 +191,32 @@
   }
 
   // ── 거르기·정렬 ─────────────────────────────────────────
-  function filtered() {
+  // 주제 줄 숫자와 격자가 같은 조건을 쓰도록(11/5 사용자 "전체 17인데 0개 표시"): 주제·세부 주제·최소 배수만 빼고 전부 여기서 거른다
+  function passBase(x) {
     const q = F.q.trim().toLowerCase();
+    if (winH(x) > F.span) return false;
+    if (F.src === 'reel' && x.kind !== 'reel') return false;
+    if (F.src === 'carousel' && x.kind !== 'carousel' && x.kind !== 'image') return false;
+    if ((F.src === 'reel' || F.src === 'carousel') && x.platform !== 'insta') return false;
+    if (F.src === 'shorts' && x.platform !== 'yt') return false;
+    if (F.src === 'tiktok' && x.platform !== 'tt') return false;
+    if (F.src === 'xhs' && x.platform !== 'xhs') return false;
+    if (F.src === 'all' && x.platform === 'yt' && x.kind === 'video') return false;
+    if (x.platform === 'yt' && ((x.views || 0) < YT_MIN_VIEWS || ytJunk(x))) return false;   // 유튜브 쇼츠는 조회수 5만 이상만(사용자 기준 11/3)
+    if (F.region !== 'all' && x.region !== F.region) return false;
+    if (F.onlyWatch && !board.watch[x.user]) return false;
+    if (F.onlySaved && !board.saved[x.id]) return false;
+    if (q && !`${x.user} ${x.caption}`.toLowerCase().includes(q)) return false;
+    return true;
+  }
+  const viewsOrProxy = (x) => (x.views != null ? x.views : (x.likes || 0) * 200);   // 조회수 없는 캐러셀·사진·릴스는 좋아요×200(좋아요 50 ≈ 1만 급)
+  const passViews = (x) => !F.minViews || viewsOrProxy(x) >= F.minViews;
+  function filtered() {
     let list = items.filter((x) => {
-      if (winH(x) > F.span) return false;
-      if (F.src === 'reel' && x.kind !== 'reel') return false;
-      if (F.src === 'carousel' && x.kind !== 'carousel' && x.kind !== 'image') return false;
-      if ((F.src === 'reel' || F.src === 'carousel') && x.platform !== 'insta') return false;
-      if (F.src === 'shorts' && x.platform !== 'yt') return false;
-      if (F.src === 'tiktok' && x.platform !== 'tt') return false;
-      if (F.src === 'xhs' && x.platform !== 'xhs') return false;
-      if (F.src === 'all' && x.platform === 'yt' && x.kind === 'video') return false;
-      if (x.platform === 'yt' && ((x.views || 0) < YT_MIN_VIEWS || ytJunk(x))) return false;   // 유튜브 쇼츠는 조회수 5만 이상만(사용자 기준 11/3)
-      if (F.region !== 'all' && x.region !== F.region) return false;
-      if (F.minViews && (x.views != null ? x.views : (x.likes || 0) * 200) < F.minViews) return false;   // 캐러셀·사진은 좋아요 500 ≈ 10만 급
+      if (!passBase(x) || !passViews(x)) return false;
       const g = fitGroup(x);
       if (F.group === 'all' ? g === 'etc' : g !== F.group) return false;   // 전체 = 국내 재테크 + 해외 뷰티, 그 밖은 탭
       if (F.group === 'money' && F.topic && x.topic !== F.topic) return false;
-      if (F.onlyWatch && !board.watch[x.user]) return false;
-      if (F.onlySaved && !board.saved[x.id]) return false;
-      if (q && !`${x.user} ${x.caption}`.toLowerCase().includes(q)) return false;
       return true;
     }).map((x) => ({ x, m: metrics(x) })).filter((r) => !F.minMult || (r.m.mult || 0) >= F.minMult);
     const key = { score: (r) => r.m.score, views: (r) => r.x.views || 0, vph: (r) => r.m.vphRecent || r.m.vph || 0, mult: (r) => r.m.mult || 0, comments: (r) => r.x.comments || 0, likes: (r) => r.x.likes || 0, new: (r) => new Date(r.x.postedAt).getTime() }[F.sort] || ((r) => r.m.score);
@@ -221,7 +227,7 @@
   function setStatus(t) { $('#status').textContent = t; }
   function renderTopics() {
     const row = $('#topicRow'); row.replaceChildren();
-    const within = items.filter((x) => winH(x) <= F.span && !(x.platform === 'yt' && ((x.views || 0) < YT_MIN_VIEWS || ytJunk(x))) && !(F.src === 'all' && x.platform === 'yt' && x.kind === 'video') && (F.region === 'all' || x.region === F.region));
+    const within = items.filter((x) => passBase(x) && passViews(x));
     const cnt = (f) => within.filter(f).length;
     const mk = (label, on, n, fn) => { const b = el('button', on ? 'on' : ''); b.append(label, el('small', '', String(n))); b.addEventListener('click', fn); return b; };
     const setG = (g) => { F.group = g; F.topic = ''; LS.set('radar.group', g); LS.set('radar.topic2', ''); render(); };
@@ -273,7 +279,12 @@
     const list = filtered();
     const grid = $('#grid'); grid.replaceChildren();
     if (!items.length) grid.append(el('p', 'empty', loading ? '읽는 중…' : token ? '아직 쌓인 게 없어요. 조사용 크롬에서 확장 2.0으로 인스타를 내리면 여기 쌓여요. 유튜브 쇼츠는 맥북 떡상_수집.py(API 키 필요).' : '열쇠를 넣으면 불러와요.'));
-    else if (!list.length) grid.append(el('p', 'empty', '조건에 맞는 게 없어요. 기간·주제·최소 조회수를 풀어 보세요.'));
+    else if (!list.length) {
+      const inGroup = (x) => { const g = fitGroup(x); return F.group === 'all' ? g !== 'etc' : g === F.group && !(F.group === 'money' && F.topic && x.topic !== F.topic); };
+      const held = items.filter((x) => passBase(x) && inGroup(x) && !passViews(x)), noViews = held.filter((x) => x.views == null).length;
+      const why = held.length ? ` 최소 조회수(${short(F.minViews)})에 걸린 글 ${held.length}개${noViews ? ` — 그중 ${noViews}개는 아직 조회수를 못 받아 좋아요×200으로 쟀어요(다음 수집 때 채워져요)` : ''}.` : '';
+      grid.append(el('p', 'empty', `조건에 맞는 게 없어요. 기간·주제·최소 조회수를 풀어 보세요.${why}`));
+    }
     else list.slice(0, 300).forEach(({ x, m }) => grid.append(card(x, m)));
     const ig = items.filter((x) => x.platform === 'insta' && winH(x) <= F.span).length, tt = items.filter((x) => x.platform === 'tt' && winH(x) <= F.span).length, xh = items.filter((x) => x.platform === 'xhs' && winH(x) <= F.span).length, yt = items.filter((x) => x.platform === 'yt' && (x.views || 0) >= YT_MIN_VIEWS && !ytJunk(x) && winH(x) <= F.span).length;
     $('#count').textContent = `${list.length}개 표시 · 기간 안 인스타 ${ig} · 유튜브 ${yt} · 틱톡 ${tt} · 레드노트 ${xh} · 캐러셀은 좋아요×200 기준 · * 는 점수에 좋아요×20`;
