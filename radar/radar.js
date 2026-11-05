@@ -94,7 +94,7 @@
   const makeId = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${Math.random().toString(36).slice(2, 5)}`;
 
   // ── 상태 ────────────────────────────────────────────────
-  let items = [], issues = { time: '', list: [] }, threads = null, topicQ = null, board = { saved: {}, watch: {}, picks: {}, memos: {} }, boardSha = null;
+  let items = [], issues = { time: '', list: [] }, threads = null, topicQ = null, collect = null, board = { saved: {}, watch: {}, picks: {}, memos: {} }, boardSha = null;
   let loadedAt = 0, lastCollected = 0, loading = false;
   // 기본값: 3일 안 · 뷰티+재테크(그 밖은 탭) · 최소 조회수 1만 · 떡상점수 정렬. 10만↑은 칸에서 고른다
   const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span72', 72)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews7', 10000)), minMult: Number(LS.get('radar.minMult', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false };
@@ -131,12 +131,13 @@
     try {
       const igDays = daysBack(F.span >= 168 ? 8 : 4), ytDays = daysBack(3), thDays = daysBack(2);
       const extDays = daysBack(F.span >= 168 ? 8 : 3);
-      const [igs, yts, ths, bd, tq, trendToday, trendYday, igx, tts, xhs] = await Promise.all([
+      const [igs, yts, ths, bd, tq, cs, trendToday, trendYday, igx, tts, xhs] = await Promise.all([
         Promise.all(igDays.map((d) => readJson(`${CFG.dir}/일별/${d}.json`).catch(() => null))),
         Promise.all(ytDays.map((d) => readJson(`${CFG.dir}/유튜브/${d}.json`).catch(() => null))),
         Promise.all(thDays.map((d) => readJson(`${CFG.dir}/스레드/${d}.json`).catch(() => null))),
         readJson(`${CFG.dir}/보드.json`).catch(() => null),
         readJson(`${CFG.dir}/주제검색어.json`).catch(() => null),
+        readJson(`${CFG.dir}/수집상태.json`).catch(() => null),
         readFile(`${CFG.trendDir}/${kstDay(new Date())}.md`).catch(() => null),
         readFile(`${CFG.trendDir}/${kstDay(new Date(Date.now() - 864e5))}.md`).catch(() => null),
         Promise.all(extDays.map((d) => readJson(`${CFG.dir}/인스타/${d}.json`).catch(() => null))),
@@ -155,6 +156,7 @@
       items = [...byId.values()].filter((x) => x.postedAt);
       threads = ths.find((f) => f && f.data && Array.isArray(f.data.keywords)) ? ths.find((f) => f && f.data && Array.isArray(f.data.keywords)).data : null;
       topicQ = tq && !tq.broken ? tq.data : null;
+      collect = cs && !cs.broken ? cs.data : null;
       if (bd && !bd.broken) { board = { saved: {}, watch: {}, picks: {}, memos: {}, ...bd.data }; boardSha = bd.sha; } else { boardSha = bd ? bd.sha : null; }
       issues = trendToday ? parseIssues(trendToday.text) : trendYday ? parseIssues(trendYday.text) : { time: '', list: [] };
       if (trendToday && !issues.list.length && trendYday) issues = parseIssues(trendYday.text);
@@ -303,11 +305,33 @@
       $('#thTime').textContent = threads.updatedAt ? ago(threads.updatedAt) : '';
       threads.keywords.slice(0, 20).forEach((k) => { const li = el('li'); li.append(k.q, el('span', 'cnt', `${k.count24h}건`)); const top = (k.top && k.top[0]) || (k.recent && k.recent[0]); if (top && top.url) { const a = el('a', '', ' 대표 글'); a.href = top.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.title = top.text || ''; li.append(a); } tl.append(li); });
     } else { $('#thTime').textContent = ''; tl.append(el('li', '', threads && threads.error ? `스레드 API 오류: ${threads.error.slice(0, 80)}` : '아직 없어요. 스레드 앱 검수 뒤 토큰을 넣으면 맥북이 3시간마다 모아요(운영규칙 7절).')); }
-    renderTopicQ();
+    renderStatus(); renderTopicQ();
     const bb = $('#boardBox'); bb.replaceChildren();
     const ws = Object.keys(board.watch); bb.append(el('div', '', `감시 계정 ${ws.length}개 · 저장 ${Object.keys(board.saved).length}개 · 기획표 담김 ${Object.keys(board.picks).length}개`));
     ws.forEach((u) => { const s = el('span', 'w', `★ @${u} ✕`); s.title = '감시 해제'; s.addEventListener('click', async () => { delete board.watch[u]; await saveBoard('감시 해제 @' + u); render(); renderSide(); }); bb.append(s); });
     if (Object.keys(board.picks).length) { const b = el('button', '', '기획표 비우기'); b.style.cssText = 'margin-top:6px;font-size:11px;padding:2px 8px'; b.addEventListener('click', async () => { board.picks = {}; await saveBoard('기획표 비움'); render(); renderSide(); }); bb.append(el('div'), b); }
+  }
+
+  // 수집 현황(11/5 사용자 "뭘 했다는 거야"): 맥북 수집기가 매 실행 끝에 쓰는 수집상태.json — Aside 가 몇 쪽 검색해 몇 개 찾고, 계정 탭을 몇 개 열어 조회수를 몇 개 받고, 상세를 몇 개 열어 새 글이 몇 개인지
+  const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '');
+  function renderStatus() {
+    const box = $('#stBox'); box.replaceChildren();
+    if (!collect || !collect.last) { $('#stTime').textContent = '아직 없음'; box.append(el('p', 'hint', '맥북 수집기가 돌면 여기에 매 실행 결과가 적혀요(07·10·13·16·19·22시 20분, Aside 는 07·13·19시).')); return; }
+    const L = collect.last, a = L.aside || {}, s = a.search || {}, c = a.accounts || {}, d = a.details || {};
+    $('#stTime').textContent = `${hm(L.at)} 실행 · 다음 Aside ${collect.next || ''}`;
+    const add = (t, cls = '') => box.append(el('div', `stl ${cls}`.trim(), t));
+    if (a.ran) {
+      add(`🔎 구글 검색 ${s.pages || 0}쪽 → 일주일 안 릴스 ${s.reels || 0}개${s.stale ? ` (옛 글 ${s.stale}개는 안 열었어요)` : ''}`);
+      if (c.planned) add(`👤 계정 릴스 탭 ${c.opened}/${c.planned}개 (검색 걸림 ${c.hits} · 감시 차례 ${c.due} · 후보 ${c.cands}) → 조회수 ${c.views}개, 지난 검사 뒤 새로 올라온 릴스 ${c.newSince}개${c.blocked ? ' · ⚠️ 로그인 창이 떠서 멈춤' : ''}`, c.blocked ? 'warn' : '');
+      else add(`👤 계정 릴스 탭 쉼 — ${c.why || ''}`, 'muted');
+      add(`🎬 릴스 상세 ${d.opened || 0}개 → 새 글 ${d.new || 0}개 (새로 올라온 ${d.newSince || 0} · 검색 ${d.fromSearch || 0} · 처음 본 계정 앞쪽 ${d.front || 0}) · 옛 글 ${d.old || 0} · 아는 글 숫자만 새로 ${d.updated || 0}`);
+      if (a.newAccounts && a.newAccounts.length) add(`★ 새 감시 계정 ${a.newAccounts.length}개: ${a.newAccounts.slice(0, 6).map((u) => '@' + u).join(' ')}`);
+      add(`감시 계정 ${c.watchActive ?? '?'}개 활동 · ${c.resting ?? 0}개 쉼 · ${a.secs || 0}초 걸림`, 'muted');
+    } else add(`Aside 쉼 — ${a.skip || '이 시각엔 유튜브만'}`, 'muted');
+    if (L.blockedUntil) add(`⚠️ 인스타 계정 탭이 로그인 창으로 막혀 ${hm(L.blockedUntil)}까지 쉬어요(로그인은 하지 않아요)`, 'warn');
+    add(`📺 유튜브 ${L.youtube || 0}개 · 인스타 ${L.insta || 0}개 저장 · 💵 Apify 이번 달 $${Number(L.apify && L.apify.month || 0).toFixed(2)} / $${L.apify && L.apify.cap || ''}`, 'muted');
+    const runs = (collect.runs || []).slice(0, 8);
+    if (runs.length) add('최근: ' + runs.map((r) => { const x = r.aside || {}; return `${hm(r.at)} ${x.ran ? `계정 ${(x.accounts || {}).opened || 0}·새 글 ${(x.details || {}).new || 0}` : '유튜브만'}`; }).join(' │ '), 'hint');
   }
 
   // 주제별 검색어(11/4 사용자 "어사이드로 주제별로"): 맥북 수집기가 07·13·19시에 Aside 시크릿 창으로 구글 site:instagram.com/reel <검색어> 최근 1주를 찾고,
@@ -457,5 +481,9 @@
   token = findToken();
   bind();
   loadAll(true);
-  setInterval(() => { if (!document.hidden) loadAll(false); }, 5 * 60e3);
+  // 배포가 바뀌면 열려 있던 탭이 스스로 다시 뜬다(11/5: 어젯밤부터 열려 있던 탭이 옛 코드로 "전체 7 · 0개 표시"를 보여 주던 것. 🔄 새로고침은 자료만 다시 읽는다)
+  const VERSION = '1.13';   // index.html 의 radar.js?v= 과 같게 올린다
+  async function checkVersion() { try { const r = await fetch(`index.html?_=${Date.now()}`, { cache: 'no-store' }); const m = (await r.text()).match(/radar\.js\?v=([\d.]+)/); if (m && m[1] !== VERSION) location.reload(); } catch { /* 파일로 열었거나 잠깐 끊김 */ } }
+  setInterval(() => { if (!document.hidden) { checkVersion(); loadAll(false); } }, 5 * 60e3);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVersion(); });
 })();

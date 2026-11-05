@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0B1220">
 <meta http-equiv="Cache-Control" content="no-cache">
 <title>떡상 레이더</title>
-<link rel="stylesheet" href="radar.css?v=1.12.2">
+<link rel="stylesheet" href="radar.css?v=1.13">
 </head>
 <body>
 <header class="top">
@@ -43,6 +43,7 @@
     <section class="grid" id="grid"></section>
   </section>
   <aside class="side">
+    <details open><summary>📡 수집 현황 <small id="stTime"></small></summary><div id="stBox"></div></details>
     <details open><summary>🔎 주제 검색어 <small id="tqTime"></small></summary><div id="tqBox"></div></details>
     <details open><summary>🔥 지금 이슈 탑 20 <small id="issueTime"></small></summary><ol id="issueList" class="plain"></ol></details>
     <details open><summary>🧵 스레드 24시간 화제 키워드 <small id="thTime"></small></summary><ol id="thList" class="plain"></ol></details>
@@ -87,6 +88,6 @@
 </dialog>
 
 <div id="toast"></div>
-<script src="radar.js?v=1.12.2"></script>
+<script src="radar.js?v=1.13"></script>
 </body>
 </html>
