@@ -282,16 +282,28 @@
     $('#sort').value = F.sort; $('#minViews').value = String(F.minViews); $('#minMult').value = String(F.minMult);
     const list = filtered();
     const grid = $('#grid'); grid.replaceChildren();
-    if (!items.length) grid.append(el('p', 'empty', loading ? '읽는 중…' : token ? '아직 쌓인 게 없어요. 조사용 크롬에서 확장 2.0으로 인스타를 내리면 여기 쌓여요. 유튜브 쇼츠는 맥북 떡상_수집.py(API 키 필요).' : '열쇠를 넣으면 불러와요.'));
+    // 지금 보는 칸을 글로 풀어 준다(11/5 사용자 "아무것도 안 떠": 주제 줄의 💄 뷰티(해외)가 눌려 있어서 0개였는데 화면이 그걸 말해 주지 않았다)
+    const GL = { all: '전체(국내 재테크 + 해외 뷰티)', beauty: '💄 뷰티(해외)', money: `💰 재테크(국내)${F.topic ? ` › ${F.topic}` : ''}`, etc: '🗂 그 밖' };
+    const SL = { 24: '24시간', 48: '48시간', 72: '3일', 168: '7일' }, SRC = { all: '전체', reel: '릴스', carousel: '캐러셀', shorts: '유튜브 쇼츠', tiktok: '틱톡', xhs: '레드노트' };
+    const where = `${GL[F.group] || F.group} · ${SL[F.span] || `${F.span}시간`} · ${SRC[F.src] || F.src}${F.region !== 'all' ? ` · ${F.region}` : ''} · 조회 ${short(F.minViews)}↑${F.minMult ? ` · ${F.minMult}배↑` : ''}${F.q.trim() ? ` · "${F.q.trim()}"` : ''}${F.onlyWatch ? ' · ★ 감시 계정만' : ''}${F.onlySaved ? ' · 💾 저장한 것만' : ''}`;
+    const inGroup = (x) => { const g = fitGroup(x); return F.group === 'all' ? g !== 'etc' : g === F.group && !(F.group === 'money' && F.topic && x.topic !== F.topic); };
+    if (!items.length) grid.append(el('p', 'empty', loading ? '읽는 중…' : token ? '아직 쌓인 게 없어요. 맥북 수집기(Aside·유튜브)가 07·10·13·16·19·22시 20분에 쌓아요. 옆 칸 📡 수집 현황을 보세요.' : '열쇠를 넣으면 불러와요.'));
     else if (!list.length) {
-      const inGroup = (x) => { const g = fitGroup(x); return F.group === 'all' ? g !== 'etc' : g === F.group && !(F.group === 'money' && F.topic && x.topic !== F.topic); };
       const held = items.filter((x) => passBase(x) && inGroup(x) && !passViews(x)), noViews = held.filter((x) => x.views == null).length;
-      const why = held.length ? ` 최소 조회수(${short(F.minViews)})에 걸린 글 ${held.length}개${noViews ? ` — 그중 ${noViews}개는 아직 조회수를 못 받아 좋아요×200으로 쟀어요(다음 수집 때 채워져요)` : ''}.` : '';
-      grid.append(el('p', 'empty', `조건에 맞는 게 없어요. 기간·주제·최소 조회수를 풀어 보세요.${why}`));
+      const p = el('p', 'empty'); p.append(`지금 보는 칸은 ${where} 인데, 여기에 맞는 글이 없어요.`);
+      if (held.length) p.append(el('div', 'hint', `최소 조회수(${short(F.minViews)})에 걸린 글 ${held.length}개${noViews ? ` — 그중 ${noViews}개는 아직 조회수를 못 받아 좋아요×200으로 쟀어요(다음 수집 때 채워져요)` : ''}.`));
+      const within = items.filter((x) => passBase(x) && passViews(x));
+      const cntG = { all: within.filter((x) => fitGroup(x) !== 'etc').length, money: within.filter((x) => fitGroup(x) === 'money').length, beauty: within.filter((x) => fitGroup(x) === 'beauty').length, etc: within.filter((x) => fitGroup(x) === 'etc').length };
+      const jump = (label, fn) => { const b = el('button', '', label); b.style.cssText = 'margin:2px 4px;padding:2px 10px;font-size:12px'; b.addEventListener('click', fn); return b; };
+      const alts = [['all', '전체'], ['money', '💰 재테크(국내)'], ['beauty', '💄 뷰티(해외)'], ['etc', '🗂 그 밖']].filter(([g]) => g !== F.group && cntG[g]);
+      if (alts.length) { const d = el('div'); d.style.marginTop = '10px'; d.append('같은 기간·조건에서 다른 칸엔 있어요: '); alts.forEach(([g, label]) => d.append(jump(`${label} ${cntG[g]}개 보기`, () => { F.group = g; F.topic = ''; LS.set('radar.group', g); LS.set('radar.topic2', ''); render(); renderSide(); }))); p.append(d); }
+      const wider = [[48, '48시간'], [72, '3일'], [168, '7일']].filter(([s]) => s > F.span).map(([s, l]) => { const keep = F.span; F.span = s; const n = items.filter((x) => passBase(x) && passViews(x) && inGroup(x)).length; F.span = keep; return [s, l, n]; }).filter((r) => r[2]);
+      if (wider.length) { const d = el('div'); d.style.marginTop = '6px'; d.append('이 칸에서 기간을 넓히면: '); wider.forEach(([s, l, n]) => d.append(jump(`${l} ${n}개 보기`, () => { F.span = s; LS.set('radar.span72', s); if (s >= 168) loadAll(true); else render(); }))); p.append(d); }
+      grid.append(p);
     }
     else list.slice(0, 300).forEach(({ x, m }) => grid.append(card(x, m)));
     const ig = items.filter((x) => x.platform === 'insta' && winH(x) <= F.span).length, tt = items.filter((x) => x.platform === 'tt' && winH(x) <= F.span).length, xh = items.filter((x) => x.platform === 'xhs' && winH(x) <= F.span).length, yt = items.filter((x) => x.platform === 'yt' && (x.views || 0) >= YT_MIN_VIEWS && !ytJunk(x) && winH(x) <= F.span).length;
-    $('#count').textContent = `${list.length}개 표시 · 기간 안 인스타 ${ig} · 유튜브 ${yt} · 틱톡 ${tt} · 레드노트 ${xh} · 캐러셀은 좋아요×200 기준 · * 는 점수에 좋아요×20`;
+    $('#count').textContent = `${list.length}개 표시 — 보는 칸: ${where} · 기간 안 인스타 ${ig} · 유튜브 ${yt} · 틱톡 ${tt} · 레드노트 ${xh} · 캐러셀은 좋아요×200 기준 · * 는 점수에 좋아요×20`;
     setStatus(`마지막 수집 ${lastCollected ? ago(new Date(lastCollected).toISOString()) : '없음'} · 전체 ${items.length}개 · 읽은 시각 ${new Date(loadedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`);
     $('#pickCount').textContent = String(Object.keys(board.picks).length);
   }
@@ -482,7 +494,7 @@
   bind();
   loadAll(true);
   // 배포가 바뀌면 열려 있던 탭이 스스로 다시 뜬다(11/5: 어젯밤부터 열려 있던 탭이 옛 코드로 "전체 7 · 0개 표시"를 보여 주던 것. 🔄 새로고침은 자료만 다시 읽는다)
-  const VERSION = '1.13';   // index.html 의 radar.js?v= 과 같게 올린다
+  const VERSION = '1.13.1';   // index.html 의 radar.js?v= 과 같게 올린다
   async function checkVersion() { try { const r = await fetch(`index.html?_=${Date.now()}`, { cache: 'no-store' }); const m = (await r.text()).match(/radar\.js\?v=([\d.]+)/); if (m && m[1] !== VERSION) location.reload(); } catch { /* 파일로 열었거나 잠깐 끊김 */ } }
   setInterval(() => { if (!document.hidden) { checkVersion(); loadAll(false); } }, 5 * 60e3);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVersion(); });
