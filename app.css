@@ -495,3 +495,17 @@ select.field { background-image: linear-gradient(45deg, transparent 50%, var(--n
 .step-txt { min-width: 0; } .step .sd { font-size: 12px; color: var(--navy-soft); word-break: break-word; overflow-wrap: anywhere; }
 .sched { margin-top: 6px; font-size: 12px; color: var(--navy-soft); border-top: 1px dashed var(--line); padding-top: 4px; }
 .rt-all { margin-top: 12px; } .rt-all > summary { font-family: var(--pix); font-size: 13px; color: var(--blue-deep); cursor: pointer; }
+
+/* 1.15.0 📋 떡상 주제 보고 (급상승 탭): 맥북이 쓴 마크다운 판을 표·대본 칸으로 */
+.tr-report .md h2 { font-size: 15px; margin: 14px 0 6px; }
+.tr-report .md h3 { font-size: 13px; margin: 12px 0 4px; }
+.tr-report .md h4 { font-size: 12.5px; margin: 10px 0 4px; }
+.tr-report .md p, .tr-report .md li { font-size: 12.5px; line-height: 1.55; margin: 4px 0; }
+.tr-report .md-table { overflow-x: auto; margin: 6px 0; }
+.tr-report .md table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.tr-report .md th, .tr-report .md td { border: 1px solid rgba(128, 128, 128, 0.35); padding: 4px 6px; vertical-align: top; text-align: left; }
+.tr-report .md th { font-weight: 700; }
+.tr-report .md-script { position: relative; margin: 6px 0 10px; }
+.tr-report .md-script pre { white-space: pre-wrap; word-break: keep-all; font-size: 12.5px; line-height: 1.6; padding: 10px 10px 10px; border-radius: 10px; background: rgba(128, 128, 128, 0.12); margin: 0; }
+.tr-report .md-copy { margin: 0 0 4px; font-size: 11px; padding: 2px 8px; }
+.tr-report .md code { font-size: 11.5px; padding: 0 3px; border-radius: 4px; background: rgba(128, 128, 128, 0.18); }

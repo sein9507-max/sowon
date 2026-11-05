@@ -4,7 +4,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.14.0';
+  const VERSION = '1.15.0';   // 1.15.0 (11/5): 급상승 탭 📋 떡상 주제 보고
   const DEFAULT_CFG = { owner: 'sein9507-max', repo: 'newlywed_tech', branch: 'main', dir: '아이디어뇌/스택', token: '' };
   const KINDS = ['블로그', '카드뉴스', '대본', '경험', '기타'];
   const FIRST_MONTH = '2026-09';

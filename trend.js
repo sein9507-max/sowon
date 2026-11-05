@@ -114,10 +114,82 @@
     list.forEach((x) => box.append(card(x)));
   }
 
-  document.addEventListener('sowon:tab', (e) => { if (e.detail === 'trend') load(); });
-  $('#trRefresh').addEventListener('click', () => load(true));
+  // ── 📋 떡상 주제 보고 (1.15.0, 사용자 11/5 "매일 자료 보고, 소원저장소 레퍼런스 급상승 탭 안에") ──
+  // 맥북이 매일 아이디어뇌/급상승/떡상보고/<날짜>.md 에 쓴 판(재테크 주제 표·대본 3편, 뷰티 주제·키워드·편집 흐름)을 그대로 보여 준다. 최근 7일치 날짜 칩.
+  const RDIR = () => `${DIR()}/떡상보고`;
+  let reports = [], reportDay = '', reportText = '', reportLoading = false;
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const inline = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\b(https?:\/\/[^\s)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  function mdToNodes(md) {          // 작은 마크다운: #·##·### 제목, | 표 |, ``` 대본 칸(복사 단추), - 목록, 문단
+    const out = document.createDocumentFragment(); const lines = md.split('\n'); let i = 0;
+    const para = (buf) => { if (buf.length) { const p = el('p'); p.innerHTML = inline(buf.join(' ')); out.append(p); buf.length = 0; } };
+    let buf = [];
+    while (i < lines.length) {
+      const ln = lines[i];
+      if (/^```/.test(ln)) {
+        para(buf); const code = []; i++;
+        while (i < lines.length && !/^```/.test(lines[i])) code.push(lines[i++]);
+        i++;
+        const wrap = el('div', 'md-script'); const pre = el('pre', null, code.join('\n'));
+        const b = el('button', 'ghost-btn md-copy', '📋 대본 복사'); b.type = 'button';
+        b.addEventListener('click', async () => { try { await navigator.clipboard.writeText(code.join('\n')); SW.toast('대본을 복사했어요'); } catch { SW.toast('복사가 안 돼요 — 길게 눌러 복사하세요'); } });
+        wrap.append(b, pre); out.append(wrap); continue;
+      }
+      const h = ln.match(/^(#{1,3})\s+(.*)/);
+      if (h) { para(buf); const n = el(`h${h[1].length + 1}`); n.innerHTML = inline(h[2]); out.append(n); i++; continue; }
+      if (/^\|/.test(ln)) {
+        para(buf); const rows = [];
+        while (i < lines.length && /^\|/.test(lines[i])) { if (!/^\|\s*-{2,}/.test(lines[i])) rows.push(lines[i].replace(/^\||\|$/g, '').split('|').map((c) => c.trim())); i++; }
+        const wrap = el('div', 'md-table'); const t = el('table');
+        rows.forEach((r, ri) => { const tr = el('tr'); r.forEach((c) => { const td = el(ri ? 'td' : 'th'); td.innerHTML = inline(c); tr.append(td); }); t.append(tr); });
+        wrap.append(t); out.append(wrap); continue;
+      }
+      if (/^- /.test(ln)) {
+        para(buf); const ul = el('ul');
+        while (i < lines.length && /^- /.test(lines[i])) { const li = el('li'); li.innerHTML = inline(lines[i].slice(2)); ul.append(li); i++; }
+        out.append(ul); continue;
+      }
+      if (!ln.trim()) { para(buf); i++; continue; }
+      buf.push(ln); i++;
+    }
+    para(buf); return out;
+  }
+  async function loadReportList() {
+    try {
+      const files = await SW.gh(url(RDIR()));
+      reports = (Array.isArray(files) ? files : []).map((f) => f.name).filter((n) => /^\d{4}-\d{2}-\d{2}\.md$/.test(n)).map((n) => n.slice(0, 10)).sort().reverse().slice(0, 7);
+    } catch (e) { reports = []; if (e.status !== 404 && e.status !== 401) SW.toast(`떡상 보고 목록 실패: ${e.message || e}`); }
+  }
+  async function loadReport(day) {
+    reportLoading = true; renderReport();
+    try { const meta = await SW.gh(url(`${RDIR()}/${day}.md`)); reportText = SW.b64decode(meta.content || ''); reportDay = day; }
+    catch (e) { reportText = ''; if (e.status !== 401) SW.toast(`떡상 보고 읽기 실패: ${e.message || e}`); }
+    finally { reportLoading = false; renderReport(); }
+  }
+  function renderReport() {
+    const box = $('#trReportBody'); if (!box) return;
+    const nav = $('#trReportNav'); nav.textContent = '';
+    reports.forEach((d) => { const b = el('button', 'chip' + (reportDay === d ? ' is-on' : ''), d.slice(5).replace('-', '/')); b.type = 'button'; b.addEventListener('click', () => loadReport(d)); nav.append(b); });
+    const em = $('#trReportDate'); if (em) em.textContent = reportDay ? reportDay.slice(5).replace('-', '/') : '';
+    box.replaceChildren();
+    if (!SW.cfg().token) { box.append(el('p', 'hint', '설정 ①에서 저장소 열쇠를 넣으면 보여요.')); return; }
+    if (reportLoading && !reportText) { box.append(el('p', 'hint', '불러오는 중…')); return; }
+    if (!reports.length) { box.append(el('p', 'hint', '아직 보고가 없어요. 맥북이 매일 떡상 레이더 자료로 써요(아이디어뇌/급상승/떡상보고/<날짜>.md).')); return; }
+    if (!reportText) { box.append(el('p', 'hint', '이 날짜 파일을 못 읽었어요.')); return; }
+    box.append(mdToNodes(reportText));
+  }
+  async function loadReports(force) {
+    if (!SW.cfg().token || !navigator.onLine) { renderReport(); return; }
+    if (!force && reportDay) { renderReport(); return; }
+    await loadReportList();
+    if (reports.length) await loadReport(reports[0]); else renderReport();
+  }
+
+  document.addEventListener('sowon:tab', (e) => { if (e.detail === 'trend') { load(); loadReports(false); } });
+  $('#trRefresh').addEventListener('click', () => { load(true); loadReports(true); });
   const det0 = $('#trInsta'); if (det0) det0.addEventListener('toggle', () => { det0.dataset.touched = '1'; });
   window.addEventListener('online', () => load(true));
   render();
   load(true);
+  loadReports(true);
 })();
