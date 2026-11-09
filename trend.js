@@ -191,7 +191,10 @@
   const BDIR = () => `${DIR()}/떡상주제`;
   const BGROUPS = [['재테크', '💰 재테크(국내)'], ['뷰티', '💄 뷰티(해외)']];
   let boards = [], boardDay = '', board = null, boardLoading = false, boardGroup = LS.get('mb.boardGroup', '재테크');
-  const agoH = (h) => h == null ? '' : h < 24 ? `${h}시간 전` : `${Math.round(h / 24)}일 전`;
+  function refDate(r) {             // 1.16.1 (사용자 11/9 "레퍼런스 업로드된 날짜도 같이, 그래야 언제 할지 말지 정하니까"): 올린 날짜 MM/DD. 옛 판은 묶은 시각 − hours 로 계산
+    const d = r.posted ? new Date(r.posted) : (r.hours != null && board && board.updatedAt) ? new Date(new Date(board.updatedAt).getTime() - r.hours * 36e5) : null;
+    return d && !isNaN(d) ? `${pad(d.getMonth() + 1)}/${pad(d.getDate())}` : '';
+  }
   async function copyText(text, msg) {
     try { await navigator.clipboard.writeText(text); SW.toast(msg || '복사했어요'); }
     catch { window.prompt('길게 눌러 복사하세요', text); }
@@ -210,7 +213,7 @@
   }
   function boardMemo(t) {           // 스택에 들어갈 메모(글감·대본 둘 다 이 글)
     return [`🧭 레이더 주제(${boardGroup}) — ${t.title}`, t.keywords && t.keywords.length ? `키워드: ${t.keywords.join(', ')}` : '', t.why ? `왜 뜨나: ${t.why}` : '', t.angle ? `우리 각도: ${t.angle}` : '',
-      `근거 ${t.n}편 · 조회 합계 ${short(t.views)}: ` + (t.refs || []).slice(0, 3).map((r) => `@${r.user || '?'} ${short(r.views)} ${r.url || ''}`).join(' / '),
+      `근거 ${t.n}편 · 조회 합계 ${short(t.views)}: ` + (t.refs || []).slice(0, 3).map((r) => `@${r.user || '?'} ${short(r.views)}${refDate(r) ? ` (${refDate(r)} 올림)` : ''} ${r.url || ''}`).join(' / '),
       '근거 글은 왜 터졌는지만 참고하고 문장은 베끼지 않는다.'].filter(Boolean).join('\n');
   }
   function boardCard(t, rank) {
@@ -231,7 +234,7 @@
     ref.append(document.createTextNode(`근거 ${t.n}편 · 조회 합계 ${short(t.views)}${t.maxMult ? ` · 최고 ${t.maxMult}배` : ''}`));
     (t.refs || []).slice(0, 3).forEach((r) => {
       ref.append(document.createTextNode(' · '));
-      const a = el('a', 'bd-ref', `@${r.user || '?'} ${short(r.views)}${r.est ? '*' : ''}${r.mult ? `·${r.mult}배` : ''}${r.hours != null ? `·${agoH(r.hours)}` : ''}${r.src === '유튜브' ? '·유튜브' : ''}`);
+      const a = el('a', 'bd-ref', `@${r.user || '?'} ${short(r.views)}${r.est ? '*' : ''}${r.mult ? `·${r.mult}배` : ''}${refDate(r) ? `·${refDate(r)} 올림` : ''}${r.src === '유튜브' ? '·유튜브' : ''}`);
       if (r.url) { a.href = r.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
       ref.append(a);
     });

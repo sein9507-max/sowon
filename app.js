@@ -4,7 +4,7 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.16.0';   // 1.16.0 (11/9): 급상승 탭 🧭 뜨는 주제·키워드(레이더 주제 판). 1.15.0 (11/5): 📋 떡상 주제 보고
+  const VERSION = '1.16.1';   // 1.16.1 (11/9): 주제 판 근거 글에 올린 날짜. 1.16.0 (11/9): 급상승 탭 🧭 뜨는 주제·키워드(레이더 주제 판). 1.15.0 (11/5): 📋 떡상 주제 보고
   const DEFAULT_CFG = { owner: 'sein9507-max', repo: 'newlywed_tech', branch: 'main', dir: '아이디어뇌/스택', token: '' };
   const KINDS = ['블로그', '카드뉴스', '대본', '경험', '기타'];
   const FIRST_MONTH = '2026-09';

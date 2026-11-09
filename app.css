@@ -520,3 +520,4 @@ select.field { background-image: linear-gradient(45deg, transparent 50%, var(--n
 .bd-angle { color: var(--blue-deep); }
 .bd-refs a { color: var(--blue-deep); text-decoration: underline dotted; }
 .bd-kwline { margin-top: 12px; }
+.bd-refs a { display: block; margin-top: 2px; }
