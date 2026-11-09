@@ -239,6 +239,14 @@
         </div>
       </div>
       <div id="recList" class="list rc-list" aria-label="추천 주제"></div>
+      <!-- 1.16.0 (사용자 11/9 "떡상레이더에서 수집하면 관련 주제들 모아서 소원저장소로 뷰티/재테크별 추천 주제 및 키워드 리스트업, 급상승 주제 쪽에"): 맥북 수집기(떡상_수집.py topic_board)가 수집 때마다 아이디어뇌/급상승/떡상주제/<날짜>.json 으로 묶은 판 — trend.js -->
+      <details id="trBoard" class="sc-opt tr-board" open>
+        <summary>🧭 뜨는 주제·키워드 <em id="trBoardDate"></em></summary>
+        <p class="hint small">떡상 레이더가 최근 4일 모은 릴스·쇼츠(조회 1만↑)를 맥북이 <b>수집할 때마다</b> 주제로 묶어요. 💰 재테크는 국내, 💄 뷰티는 해외 기준이고, 키워드 칩은 누르면 복사돼요.</p>
+        <div id="trBoardNav" class="chips" role="group" aria-label="묶음"></div>
+        <div id="trBoardDays" class="chips bd-days" role="group" aria-label="날짜"></div>
+        <div id="trBoardList" class="list tp-list"></div>
+      </details>
       <h3 class="rc-h">📈 뜨는 주제 TOP 20</h3>
       <div id="tpFilter" class="chips" role="group" aria-label="목록"></div>
       <div id="tpList" class="list tp-list"></div>

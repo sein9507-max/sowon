@@ -509,3 +509,14 @@ select.field { background-image: linear-gradient(45deg, transparent 50%, var(--n
 .tr-report .md-script pre { white-space: pre-wrap; word-break: keep-all; font-size: 12.5px; line-height: 1.6; padding: 10px 10px 10px; border-radius: 10px; background: rgba(128, 128, 128, 0.12); margin: 0; }
 .tr-report .md-copy { margin: 0 0 4px; font-size: 11px; padding: 2px 8px; }
 .tr-report .md code { font-size: 11.5px; padding: 0 3px; border-radius: 4px; background: rgba(128, 128, 128, 0.18); }
+
+/* 1.16.0 🧭 뜨는 주제·키워드 (급상승 탭, 레이더 주제 판 — trend.js) */
+.tr-board .bd-days { margin-top: 6px; }
+.tr-board .bd-meta { margin: 8px 0 6px; }
+.bd-kws { gap: 5px; }
+.bd-kw, .bd-kw-all { font-size: 12px; padding: 5px 9px; min-height: 30px; }
+.bd-kw { background: #FFF8DB; border: 2px solid #F4DE8E; color: var(--navy); }
+.bd-kw-all { color: var(--blue-deep); }
+.bd-angle { color: var(--blue-deep); }
+.bd-refs a { color: var(--blue-deep); text-decoration: underline dotted; }
+.bd-kwline { margin-top: 12px; }

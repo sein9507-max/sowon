@@ -185,11 +185,108 @@
     if (reports.length) await loadReport(reports[0]); else renderReport();
   }
 
-  document.addEventListener('sowon:tab', (e) => { if (e.detail === 'trend') { load(); loadReports(false); } });
-  $('#trRefresh').addEventListener('click', () => { load(true); loadReports(true); });
+  // ── 🧭 뜨는 주제·키워드 (1.16.0, 사용자 11/9 "떡상레이더에서 수집하면 관련 주제들 모아서 소원저장소로 뷰티/재테크별 추천 주제 및 키워드 리스트업, 급상승 주제 쪽에") ──
+  // 맥북 수집기(도구/떡상_수집.py topic_board)가 수집 때마다 아이디어뇌/급상승/떡상주제/<날짜>.json 에 쓴 판.
+  // 묶음 칩(💰 재테크 국내 / 💄 뷰티 해외) + 날짜 칩 7일. 키워드 칩은 누르면 복사, 카드는 글감 메모·대본 탭에 넣기.
+  const BDIR = () => `${DIR()}/떡상주제`;
+  const BGROUPS = [['재테크', '💰 재테크(국내)'], ['뷰티', '💄 뷰티(해외)']];
+  let boards = [], boardDay = '', board = null, boardLoading = false, boardGroup = LS.get('mb.boardGroup', '재테크');
+  const agoH = (h) => h == null ? '' : h < 24 ? `${h}시간 전` : `${Math.round(h / 24)}일 전`;
+  async function copyText(text, msg) {
+    try { await navigator.clipboard.writeText(text); SW.toast(msg || '복사했어요'); }
+    catch { window.prompt('길게 눌러 복사하세요', text); }
+  }
+  async function loadBoardList() {
+    try {
+      const files = await SW.gh(url(BDIR()));
+      boards = (Array.isArray(files) ? files : []).map((f) => f.name).filter((n) => /^\d{4}-\d{2}-\d{2}\.json$/.test(n)).map((n) => n.slice(0, 10)).sort().reverse().slice(0, 7);
+    } catch (e) { boards = []; if (e.status !== 404 && e.status !== 401) SW.toast(`주제 판 목록 실패: ${e.message || e}`); }
+  }
+  async function loadBoard(day) {
+    boardLoading = true; renderBoard();
+    try { const meta = await SW.gh(url(`${BDIR()}/${day}.json`)); board = JSON.parse(SW.b64decode(meta.content || '') || 'null'); boardDay = day; }
+    catch (e) { board = null; if (e.status !== 401) SW.toast(`주제 판 읽기 실패: ${e.message || e}`); }
+    finally { boardLoading = false; renderBoard(); }
+  }
+  function boardMemo(t) {           // 스택에 들어갈 메모(글감·대본 둘 다 이 글)
+    return [`🧭 레이더 주제(${boardGroup}) — ${t.title}`, t.keywords && t.keywords.length ? `키워드: ${t.keywords.join(', ')}` : '', t.why ? `왜 뜨나: ${t.why}` : '', t.angle ? `우리 각도: ${t.angle}` : '',
+      `근거 ${t.n}편 · 조회 합계 ${short(t.views)}: ` + (t.refs || []).slice(0, 3).map((r) => `@${r.user || '?'} ${short(r.views)} ${r.url || ''}`).join(' / '),
+      '근거 글은 왜 터졌는지만 참고하고 문장은 베끼지 않는다.'].filter(Boolean).join('\n');
+  }
+  function boardCard(t, rank) {
+    const c = el('article', 'tp-card bd-card');
+    const lab = el('div', 'tp-check'); lab.append(el('b', 'tp-rank', `${rank}`));
+    const body = el('div', 'tp-body');
+    body.append(el('p', 'tp-title', t.title));
+    const kws = (t.keywords || []).filter(Boolean);
+    if (kws.length) {
+      const row = el('div', 'chips bd-kws');
+      kws.forEach((k) => { const b = el('button', 'chip bd-kw', k); b.type = 'button'; b.title = '누르면 복사'; b.addEventListener('click', () => copyText(k, `'${k}' 복사했어요`)); row.append(b); });
+      if (kws.length > 1) { const all = el('button', 'chip bd-kw-all', '전부 복사'); all.type = 'button'; all.addEventListener('click', () => copyText(kws.join(', '), '키워드를 전부 복사했어요')); row.append(all); }
+      body.append(row);
+    }
+    if (t.why) body.append(el('p', 'tp-why', `왜 뜨나 · ${t.why}`));
+    if (t.angle) body.append(el('p', 'tp-why bd-angle', `우리 각도 · ${t.angle}`));
+    const ref = el('p', 'tp-why bd-refs');
+    ref.append(document.createTextNode(`근거 ${t.n}편 · 조회 합계 ${short(t.views)}${t.maxMult ? ` · 최고 ${t.maxMult}배` : ''}`));
+    (t.refs || []).slice(0, 3).forEach((r) => {
+      ref.append(document.createTextNode(' · '));
+      const a = el('a', 'bd-ref', `@${r.user || '?'} ${short(r.views)}${r.est ? '*' : ''}${r.mult ? `·${r.mult}배` : ''}${r.hours != null ? `·${agoH(r.hours)}` : ''}${r.src === '유튜브' ? '·유튜브' : ''}`);
+      if (r.url) { a.href = r.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      ref.append(a);
+    });
+    body.append(ref);
+    const row = el('div', 'tp-row');
+    const memo = el('button', 'ghost-btn', '✍️ 글감으로 메모'); memo.type = 'button';
+    memo.addEventListener('click', () => { SW.addNote(boardMemo(t), '블로그'); SW.toast('메모에 쌓았어요'); });
+    const go = el('button', 'ghost-btn', '✎ 대본 탭에 넣기'); go.type = 'button';
+    go.addEventListener('click', () => { const entry = SW.addNote(boardMemo(t), '대본'); document.dispatchEvent(new CustomEvent('sowon:toScript', { detail: { ...entry, ref: true } })); });
+    row.append(memo, go); body.append(row);
+    c.append(lab, body); return c;
+  }
+  function renderBoard() {
+    const box = $('#trBoardList'); if (!box) return;
+    const nav = $('#trBoardNav'); nav.textContent = '';
+    const g = board && board.groups ? board.groups : {};
+    BGROUPS.forEach(([k, label]) => {
+      const n = g[k] && Array.isArray(g[k].topics) ? g[k].topics.length : 0;
+      const b = el('button', 'chip' + (boardGroup === k ? ' is-on' : ''), n ? `${label} ${n}` : label); b.type = 'button'; b.setAttribute('aria-pressed', String(boardGroup === k));
+      b.addEventListener('click', () => { boardGroup = k; LS.set('mb.boardGroup', k); renderBoard(); }); nav.append(b);
+    });
+    const days = $('#trBoardDays'); days.textContent = '';
+    boards.forEach((d) => { const b = el('button', 'chip' + (boardDay === d ? ' is-on' : ''), d.slice(5).replace('-', '/')); b.type = 'button'; b.addEventListener('click', () => loadBoard(d)); days.append(b); });
+    const em = $('#trBoardDate'); if (em) em.textContent = board && board.updatedAt ? `${boardDay.slice(5).replace('-', '/')} ${board.updatedAt.slice(11, 16)}` : '';
+    box.replaceChildren();
+    if (!SW.cfg().token) { box.append(el('p', 'hint', '설정 ①에서 저장소 열쇠를 넣으면 보여요.')); return; }
+    if (boardLoading && !board) { box.append(el('p', 'hint', '불러오는 중…')); return; }
+    if (!boards.length) { box.append(el('p', 'hint', '아직 판이 없어요. 맥북 수집기가 수집 때마다 써요(아이디어뇌/급상승/떡상주제/<날짜>.json).')); return; }
+    if (!board) { box.append(el('p', 'hint', '이 날짜 파일을 못 읽었어요.')); return; }
+    const grp = g[boardGroup] || {}; const w = board.window || {};
+    box.append(el('p', 'hint small bd-meta', `최근 ${w.days || 4}일 · 조회 ${short(w.minViews || 10000)}↑ 글 ${grp.total || 0}편 중 ${grp.count || 0}편으로 묶음${grp.topicsBy && grp.topicsBy !== 'ai' ? ` · ${grp.topicsBy}` : ''}`));
+    const tops = Array.isArray(grp.topics) ? grp.topics : [];
+    if (!tops.length) box.append(el('p', 'hint small', '이 묶음은 아직 주제를 못 묶었어요(조회 1만 넘는 글이 적거나 AI 가 쉬었어요).'));
+    tops.forEach((t, i) => box.append(boardCard(t, i + 1)));
+    const kws = Array.isArray(grp.keywords) ? grp.keywords : [];
+    if (kws.length) {
+      const sec = el('div', 'bd-kwline'); sec.append(el('p', 'hint small', '🔑 이 묶음에서 많이 쓴 태그·주제어 (누르면 복사)'));
+      const row = el('div', 'chips bd-kws');
+      kws.forEach((k) => { const b = el('button', 'chip bd-kw', `${k.w} ×${k.n}`); b.type = 'button'; b.addEventListener('click', () => copyText(k.w, `'${k.w}' 복사했어요`)); row.append(b); });
+      sec.append(row); box.append(sec);
+    }
+  }
+  async function loadBoards(force) {
+    if (!SW.cfg().token || !navigator.onLine) { renderBoard(); return; }
+    if (!force && boardDay) { renderBoard(); return; }
+    await loadBoardList();
+    if (boards.length) await loadBoard(boards[0]); else renderBoard();
+  }
+
+  document.addEventListener('sowon:tab', (e) => { if (e.detail === 'trend') { load(); loadReports(false); loadBoards(false); } });
+  $('#trRefresh').addEventListener('click', () => { load(true); loadReports(true); loadBoards(true); });
   const det0 = $('#trInsta'); if (det0) det0.addEventListener('toggle', () => { det0.dataset.touched = '1'; });
   window.addEventListener('online', () => load(true));
   render();
   load(true);
   loadReports(true);
+  loadBoards(true);
 })();
