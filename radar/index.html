@@ -9,11 +9,11 @@
 <meta name="theme-color" content="#0B1220">
 <meta http-equiv="Cache-Control" content="no-cache">
 <title>떡상 레이더</title>
-<link rel="stylesheet" href="radar.css?v=1.13.1">
+<link rel="stylesheet" href="radar.css?v=1.14.0">
 </head>
 <body>
 <header class="top">
-  <div class="brand"><span class="logo">📡 떡상 레이더</span><span class="sub">인스타 · 유튜브 쇼츠 · 틱톡 · 레드노트 · 국내/해외 · 기본 3일 안 · 국내 재테크 + 해외 뷰티 · 조회 1만↑ · 떡상점수순 · 주제별 수집은 Aside(로그인 없음)</span></div>
+  <div class="brand"><span class="logo">📡 떡상 레이더</span><span class="sub">인스타 · 유튜브 쇼츠 · 틱톡 · 레드노트 · 국내/해외 · 기본 3일 안 · 국내 재테크 + 해외 뷰티 · 조회 1만↑ · 떡상점수순 · 카드 왼쪽 위 네모로 레퍼를 고르면 🎬 대본 뽑기</span></div>
   <div class="status" id="status">불러오는 중…</div>
   <div class="tools">
     <button id="refresh" title="GitHub에서 다시 읽기">↻ 새로고침</button>
@@ -27,12 +27,15 @@
     <div class="seg" id="srcSeg"><button data-v="all" class="on">전체</button><button data-v="reel">🎬 릴스</button><button data-v="carousel">🖼 캐러셀</button><button data-v="shorts">▶ 유튜브 쇼츠</button><button data-v="tiktok">🎵 틱톡</button><button data-v="xhs">📕 레드노트</button></div>
     <div class="seg" id="regSeg"><button data-v="all" class="on">🌏 전체</button><button data-v="국내">🇰🇷 국내</button><button data-v="해외">🌎 해외</button></div>
     <div class="seg" id="spanSeg"><button data-v="24">24시간</button><button data-v="48">48시간</button><button data-v="72" class="on">3일</button><button data-v="168">7일</button></div>
-    <select id="sort" title="정렬"><option value="score">떡상점수</option><option value="views">조회수</option><option value="vph">시간당 조회</option><option value="mult">평소 대비 배수</option><option value="comments">댓글</option><option value="likes">좋아요</option><option value="new">최신</option></select>
+    <select id="sort" title="정렬"><option value="score">떡상점수</option><option value="views">조회수</option><option value="vph">시간당 조회</option><option value="mult">평소 대비 배수</option><option value="fmult">팔로워 대비 배수</option><option value="comments">댓글</option><option value="likes">좋아요</option><option value="new">최신</option></select>
     <select id="minViews" title="최소 조회수(캐러셀은 좋아요×200)"><option value="0">최소 조회수 없음</option><option value="10000">조회 1만↑</option><option value="50000">조회 5만↑</option><option value="100000">조회 10만↑</option><option value="150000">조회 15만↑</option><option value="200000">조회 20만↑</option><option value="300000">조회 30만↑</option><option value="1000000">조회 100만↑</option></select>
     <select id="minMult" title="최소 배수(평소 대비)"><option value="0">최소 배수 없음</option><option value="2">2배↑</option><option value="5">5배↑</option><option value="10">10배↑</option></select>
     <input id="q" type="search" placeholder="캡션·계정 검색" autocomplete="off">
     <label class="chk"><input type="checkbox" id="onlyWatch"> ★ 감시 계정만</label>
     <label class="chk"><input type="checkbox" id="onlySaved"> 💾 저장한 것만</label>
+    <label class="chk" title="국내 재테크 글 중 정보·방법을 말로 풀 수 있는 것(브이로그·현장·제품 시연 빼고)"><input type="checkbox" id="onlyTalk"> 🎙 말로 풀 수 있는 것만</label>
+    <label class="chk" title="평소 조회수의 3배↑ 또는 팔로워 수의 2배↑"><input type="checkbox" id="onlyHot"> 🔥 떡상만</label>
+    <label class="chk" title="유료 광고·업체 홍보·기관·방송·브랜드 계정 글은 기본으로 숨겨요"><input type="checkbox" id="showAds"> 광고·홍보도 보기</label>
   </div>
   <div class="row topics" id="topicRow"></div>
 </nav>
@@ -43,13 +46,14 @@
     <section class="grid" id="grid"></section>
   </section>
   <aside class="side">
+    <details open id="sjDetails"><summary>🎬 대본 뽑기 <small id="sjTime"></small></summary><div id="sjBox"></div><button id="sjReload" type="button" class="mini">↻ 지난 결과 다시 읽기</button></details>
     <details open><summary>📡 수집 현황 <small id="stTime"></small></summary><div id="stBox"></div></details>
     <details open><summary>🔎 주제 검색어 <small id="tqTime"></small></summary><div id="tqBox"></div></details>
     <details open><summary>🔥 지금 이슈 탑 20 <small id="issueTime"></small></summary><ol id="issueList" class="plain"></ol></details>
     <details open><summary>🧵 스레드 24시간 화제 키워드 <small id="thTime"></small></summary><ol id="thList" class="plain"></ol></details>
     <details><summary>★ 감시 계정 · 💾 보드</summary><div id="boardBox"></div></details>
     <details><summary>📏 떡상점수 계산법</summary>
-      <p class="hint">조회수(0~35점, 1만 9·10만 17·100만 26) + 평소 대비 배수(0~30점, 4배 14·15배 24·32배↑ 30) + 시간당 조회(0~20점, 5만/h 만점) + 1천뷰당 댓글(0~10점, 20개 만점) + 올라온 지 24시간 안 5점. 조회수가 없는 캐러셀은 좋아요×20을 조회수 대신 쓴다. 배수는 추적 계정이면 최근 글 12개 중앙값, 아니면 같은 계정 게시물이 3개 이상 쌓였을 때.</p>
+      <p class="hint">평소 대비 배수(0~30점, 3배 12·7배 18·15배 24·32배↑ 30) + 팔로워 대비 배수(0~20점, 조회수÷팔로워 1배 10·3배 15·10배↑ 20) + 시간당 조회(0~20점, 3천/h 16·3만/h 만점, 재측정이 있으면 최근 구간) + 조회수(0~15점, 1만 4·10만 8·100만 11) + 1천뷰당 댓글(0~10점, 20개 만점) + 올라온 지 24시간 안 5점(48시간 3점). 배수 둘 중 하나만 있으면 같은 비율로 메운다. 🔥 떡상 = 조회 1만↑이면서 평소의 3배↑ 또는 팔로워의 2배↑. ⚡ = 이틀 안에 시간당 3천↑. 조회수가 없는 캐러셀은 좋아요×20을 대신 쓴다. 카드의 점수에 마우스를 올리면 항목별 점수가 보여요.</p>
     </details>
   </aside>
 </main>
@@ -62,11 +66,13 @@
       <div class="btns"><a id="dOpen" class="btn" target="_blank" rel="noopener noreferrer">원본 열기</a><button id="dCopy">링크 복사</button><button id="dClose">닫기</button></div>
       <div class="tiles" id="tiles"></div>
       <p class="hint" id="dTrend"></p>
+      <p class="hook" id="dHook"></p>
       <pre class="caption" id="dCaption"></pre>
       <p class="tags" id="dTags"></p>
       <textarea id="dMemo" placeholder="벤치마킹 메모: 훅(첫 3초)이 뭔지, 구조, 내 버전 아이디어 — 적고 밖을 누르면 보드에 저장"></textarea>
       <div class="btns">
         <button id="dSave" class="accent" title="보드에 저장 + 소원저장소 대본 스택(받아쓰기→대본 정리→문장틀·소구점 학습)">💾 저장 → 레퍼로 쓰기</button>
+        <button id="dSel" class="accent">🎬 대본 뽑기에 담기</button>
         <button id="dPick">📄 기획표에 담기</button>
         <button id="dScript">🎬 대본 탭에 넣기</button>
         <button id="dPrompt">📋 분석 프롬프트 복사</button>
@@ -87,7 +93,31 @@
   </form>
 </dialog>
 
+<dialog id="scriptDlg">
+  <div class="sdlg">
+    <h3>🎬 대본 뽑기</h3>
+    <p class="hint">고른 레퍼의 구조와 터진 키워드로 내 대본을 써요. 맥북 Claude(구독)가 쓰고 보통 1~3분 걸려요. 창을 닫아도 맥북이 끝까지 써서 옆 칸 '🎬 대본 뽑기'에 남겨요.</p>
+    <ul id="sRefs" class="srefs"></ul>
+    <div class="seg" id="sTypeSeg"><button type="button" data-v="insta">📱 인스타용 대본</button><button type="button" data-v="long">🖥 롱폼 스토리보드</button></div>
+    <p class="hint" id="sTypeDesc"></p>
+    <input id="sMemo" type="text" maxlength="400" placeholder="주제 메모 한 줄 (비워도 돼요) — 예: 파킹통장 말고 월급통장 얘기로" autocomplete="off">
+    <p class="hint" id="sMsg"></p>
+    <div class="btns"><button id="sSend" type="button" class="accent">맥북에 보내서 뽑기</button><button id="sCancel" type="button">닫기</button></div>
+  </div>
+</dialog>
+
+<dialog id="resultDlg">
+  <div class="sdlg">
+    <h3 id="rTitle"></h3>
+    <pre class="hint rmeta" id="rMeta"></pre>
+    <div class="btns"><button id="rCopy" type="button" class="accent">📋 전체 복사</button><button id="rClose" type="button">닫기</button></div>
+    <pre class="result" id="rText"></pre>
+    <p class="hint" id="rPath"></p>
+  </div>
+</dialog>
+
+<div id="selBar" role="region" aria-label="고른 레퍼"><b id="selCount"></b><span id="selList"></span><button id="selGo" type="button" class="accent">🎬 대본 뽑기</button><button id="selClear" type="button">선택 해제</button></div>
 <div id="toast"></div>
-<script src="radar.js?v=1.13.1"></script>
+<script src="radar.js?v=1.14.0"></script>
 </body>
 </html>

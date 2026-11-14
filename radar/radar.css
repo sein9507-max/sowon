@@ -89,3 +89,43 @@ dialog::backdrop { background: rgba(0,0,0,.7); }
 #stBox .stl.muted { color: var(--muted); }
 #stBox .stl.warn { color: #ffb4a8; font-weight: 700; }
 #stBox .stl.hint { color: var(--muted); font-size: 11px; margin-top: 6px; }
+
+/* 1.14: 레퍼 고르기·대본 뽑기·카드 품질 표시 */
+.thumb .tl { left: 40px; }
+.thumb .selbox { position: absolute; top: 6px; left: 6px; width: 28px; height: 28px; padding: 0; border-radius: 8px; border: 2px solid #fff; background: rgba(0,0,0,.45); color: #06182B; font-size: 16px; font-weight: 900; line-height: 1; z-index: 2; }
+.thumb .selbox:hover { border-color: var(--lime); }
+.thumb .selbox.on { background: var(--lime); border-color: var(--lime); }
+.card.selected { border-color: var(--lime); box-shadow: 0 0 0 2px var(--lime); }
+.user .fol { color: var(--muted); font-weight: 400; font-size: 11px; }
+.hook { font-size: 12px; font-weight: 700; color: var(--fg); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hook.none { color: var(--muted); font-weight: 400; }
+#dHook { display: block; margin: 6px 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font-size: 10.5px; padding: 1px 7px; border-radius: 999px; background: var(--panel2); color: var(--sky); white-space: nowrap; }
+.chip.talk { background: #23371a; color: var(--lime); }
+.chip.bad { background: #4a211b; color: #ffb4a8; }
+.chip.dup { background: #2b2440; color: #cdbdff; }
+.met .up { color: var(--lime); }
+.cap { min-height: 0; }
+#selBar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%) translateY(120%); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; max-width: min(960px, 94vw); padding: 10px 14px; background: var(--panel2); border: 1px solid var(--lime); border-radius: 18px; box-shadow: 0 8px 30px rgba(0,0,0,.5); z-index: 20; transition: transform .18s; }
+#selBar.on { transform: translateX(-50%); }
+#selBar .w { font-size: 12px; padding: 2px 8px; font-weight: 400; margin: 0 2px; }
+body.hassel .layout { padding-bottom: 120px; }
+body.hassel #toast { bottom: 90px; }
+.sdlg { padding: 18px 20px; max-height: 90vh; overflow: auto; }
+.sdlg h3 { margin: 0 0 6px; }
+#scriptDlg { max-width: min(640px, 96vw); }
+#resultDlg { max-width: min(860px, 96vw); }
+.srefs { margin: 8px 0 12px; padding-left: 18px; font-size: 13px; }
+.srefs li { margin: 4px 0; }
+#sMemo { width: 100%; background: var(--panel2); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: inherit; }
+.result { white-space: pre-wrap; word-break: break-word; font: 14px/1.7 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; background: var(--panel2); border-radius: 12px; padding: 14px; margin: 8px 0; max-height: 62vh; overflow: auto; }
+.rmeta { white-space: pre-wrap; font: inherit; font-size: 12px; margin: 0 0 6px; }
+#sjBox .job { background: var(--panel2); border-radius: 10px; padding: 8px 10px; margin: 6px 0; font-size: 12px; position: relative; }
+#sjBox .job.bad { border: 1px solid #7a3328; }
+#sjBox .job .spin { position: absolute; top: 10px; right: 10px; width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--lime); border-radius: 50%; animation: rspin .9s linear infinite; }
+@keyframes rspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { #sjBox .job .spin { animation: none; } #selBar { transition: none; } }
+#sjBox .hist { display: block; width: 100%; text-align: left; border-radius: 10px; font-weight: 700; font-size: 12px; padding: 6px 10px; margin: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#sjBox .hist small { color: var(--muted); font-weight: 400; }
+button.mini { font-size: 11px; padding: 2px 8px; margin-top: 6px; }

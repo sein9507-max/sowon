@@ -19,7 +19,7 @@
     ['직장·월급', '월급,연봉,직장인,퇴사,이직,회사,상사,사회초년생,출근,퇴근,성과급'],
   ];
   const OUT = '주제 밖';
-  const BEAUTY = ['뷰티'], MONEY = ['지원금·정책', '주식·코인', '부동산·청약', '재테크·저축', '부업·수익', '직장·월급'];   // 11/3 사용자 "뷰티·재테크만"
+  const BEAUTY = ['뷰티'], MONEY = ['지원금·정책', '주식·코인', '부동산·청약', '재테크·저축', '부업·수익', '직장·월급', '자기계발·AI'];   // 11/3 사용자 "뷰티·재테크만"
   const groupOf = (t) => (BEAUTY.includes(t) ? 'beauty' : MONEY.includes(t) ? 'money' : 'etc');
   // 11/4 사용자 규칙: 재테크는 국내 글만, 뷰티는 해외 글만. 그 밖은 '그 밖' 탭
   const fitGroup = (x) => { const g = groupOf(x.topic || ''); return (g === 'money' && x.region === '국내') || (g === 'beauty' && x.region === '해외') ? g : 'etc'; };
@@ -38,6 +38,56 @@
     return false;
   }
   function topicOf(text) { const hay = String(text || '').toLowerCase(); for (const [t, ws] of TOPICS) { const w = ws.split(',').map((s) => s.trim().toLowerCase()).find((x) => x && (/^[\x00-\x7f]+$/.test(x) ? new RegExp(`(?<![a-z])${x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z])`).test(hay) : hay.includes(x))); if (w) return { topic: t, word: w }; } return { topic: '', word: '' }; }
+
+  // ── 1.14 품질(11/14 사용자 "떡상레이더 퀄리티도 더 높이고 싶고"): 전부 이미 모은 글자로만 판정한다. 수집 동작은 그대로 ──
+  // 광고·홍보: 유료 광고 표시, 업체 매물·상담 글, 기관·방송 계정. 기본은 숨기고 '광고·홍보도 보기'로 연다
+  const AD_RE = /(^\s*|#|\[|\()(유료\s?광고|광고|협찬|ad)(?=[\]\s)·:,.!]|$)|유료\s?광고|제작\s?지원|제품을?\s?제공\s?받|원고료|#sponsored|\bsponsored\b|paid partnership|#gifted|#partner\b|\bpartner\.|discount code|use (my )?code|shop now|공동구매|공구\s?(오픈|진행|마감)|할인\s?코드|체험단/i;
+  const BIZ_RE = /문의는?\s?(DM|디엠|📞|전화)|소재지\s?:|분양\s?(문의|상담|홍보관)|모델하우스|상담\s?(문의|예약)|매물\s?(문의|다수)|다수 보유/i;
+  const GOV_USER_RE = /city$|^gov[._]|[._]gov$/i, GOV_CAP_RE = /주무관|[가-힣]{2,4}(시|군)청[\s,.]|행정안전부|행안부/;
+  const NEWS_USER_RE = /(^|[._])news([._]|$)|news_official|^(mbc|kbs|sbs|jtbc|ytn)/i;
+  const BRAND_USER_RE = /(^|[._])official($|[._])|cosmetics|_global$/i, FIN_BRAND_RE = /(^|[._])etf([._]|$)/i;
+  function noiseOf(x) {
+    const cap = x.caption || '', u = x.user || '';
+    if (AD_RE.test(cap)) return { type: 'ad', label: '광고' };
+    if (BIZ_RE.test(cap)) return { type: 'biz', label: '업체 홍보' };
+    if (GOV_USER_RE.test(u) || GOV_CAP_RE.test(cap)) return { type: 'gov', label: '기관 홍보' };
+    if (NEWS_USER_RE.test(u)) return { type: 'news', label: '방송·뉴스' };
+    if ((BRAND_USER_RE.test(u) && x.region === '해외') || FIN_BRAND_RE.test(u) || /자산운용/.test(cap)) return { type: 'brand', label: '브랜드 계정' };
+    return null;
+  }
+  // 말로만 풀 수 있는 주제(11/14 주제 기준): 국내 재테크 묶음 + 정보·방법 낱말이 있고, 브이로그·현장·제품 시연이 아닌 글
+  const TALK_NO_RE = /브이로그|vlog|워홀|언박싱|하울|맛집|여행|임장\s?(후기|다녀)|사무실을? 옮|촬영|ootd|출근룩|내돈내산|grwm/i;
+  const TALK_YES_RE = /방법|가지|정리|비교|차이|이유|신청|조건|혜택|금리|이자|통장|적금|지원금|장학금|환급|절세|세금|연말정산|ETF|주식|투자|대출|청약|전세|월세|연봉|월급|저축|모으|습관|꿀팁|TOP|BEST|하는 법|알려|챙기|놓치|마감|\?/i;
+  const talkOf = (x) => fitGroup(x) === 'money' && !noiseOf(x) && !TALK_NO_RE.test(x.caption || '') && TALK_YES_RE.test(x.caption || '');
+  // 후킹 첫 문장: 대본 스택에 받아쓰기가 있으면 그 첫 문장, 없으면 캡션 첫 문장(해시태그·"(저장/공유)"·"81 likes, 2 comments -" 같은 자동 글은 뺀다). 없으면 빈칸
+  let stackByCode = new Map(), stackAt = 0;
+  const firstSentence = (t, n = 64) => { const one = String(t || '').split(/\n|(?<=[.?!…])\s+|(?<=[요죠다]\s?[!?]{1,3})\s/).map((v) => v.trim()).find((v) => v.replace(/[^가-힣a-zA-Z0-9]/g, '').length >= 4) || ''; return one.length > n ? one.slice(0, n - 1) + '…' : one; };
+  function hookOf(x) {
+    const st = stackByCode.get(x.code);
+    if (st && st.transcript) return { text: firstSentence(st.transcript), from: '받아쓰기' };
+    let c = String(x.title || x.caption || '');
+    if (/^\s*[\d,.]+[KkMm만천]?\s*likes?,/i.test(c) || /^웹 검색결과/.test(c)) return { text: '', from: '' };
+    c = c.replace(/^\s*[(\[（][^)\]）]{0,24}[)\]）]\s*/, '').replace(/^(#\S+\s*)+/, '').replace(/^[^가-힣a-zA-Z0-9"'“‘]+/, '');
+    const t = firstSentence(c);
+    return t && !/^#/.test(t) ? { text: t, from: '캡션' } : { text: '', from: '' };
+  }
+  // 구조 요약: 캡션에서 읽히는 장치만 규칙으로(대본 스택에 정리본이 있으면 그 구조·후킹 유형을 앞에)
+  function structOf(x) {
+    const st = stackByCode.get(x.code), cap = x.caption || '', hk = hookOf(x).text, out = [];
+    if (st && st.structure) out.push(st.structure); if (st && st.hookType) out.push(`후킹: ${st.hookType}`);
+    const n = cap.match(/(\d{1,2})\s*(가지|개|곳|선|위|단계)\b|(?:BEST|TOP|베스트)\s*(\d{1,2})/i);
+    if (/(2030|20대|30대|청년|직장인|사회초년생|신혼|자취|1인\s?가구|초보)(이라면|이면|들|은|는|라면|분들)?/.test(hk)) out.push('대상 지목');
+    if (/[?？]|까요|나요|일까|아세요|있나요/.test(hk)) out.push('질문 후킹');
+    if (/모르면|놓치|손해|하지\s?마|절대|주의|안\s?하면|날리|위험|사기/.test(hk + ' ' + cap.slice(0, 120))) out.push('손실·경고');
+    if (n) out.push(`나열 ${n[1] || n[3]}${n[2] || '위'}`);
+    if (/\bvs\b|비교|차이/i.test(cap)) out.push('비교');
+    if (/\d[\d,.]*\s?(만\s?원|억|%|배)/.test(cap.slice(0, 200))) out.push('숫자 베네핏');
+    if (/마감|까지만|오늘까지|이번\s?달|말까지|서두르/.test(cap)) out.push('마감 FOMO');
+    if (/댓글.{0,14}(남기|달|적|주시)|DM으로|디엠으로|comment .{1,12} (to|for)/i.test(cap)) out.push('댓글 CTA→자료');
+    else if (/저장|공유|팔로우/.test(cap)) out.push('저장·팔로우 CTA');
+    return [...new Set(out)].slice(0, 5);
+  }
+  const dupKey = (x) => { const k = String(x.caption || '').toLowerCase().replace(/[^가-힣a-z0-9]/g, '').slice(0, 60); return k.length >= 25 ? k : ''; };
 
   // ── 열쇠 ────────────────────────────────────────────────
   let token = '';
@@ -97,7 +147,8 @@
   let items = [], issues = { time: '', list: [] }, threads = null, topicQ = null, collect = null, board = { saved: {}, watch: {}, picks: {}, memos: {} }, boardSha = null;
   let loadedAt = 0, lastCollected = 0, loading = false;
   // 기본값: 3일 안 · 뷰티+재테크(그 밖은 탭) · 최소 조회수 1만 · 떡상점수 정렬. 10만↑은 칸에서 고른다
-  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span72', 72)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews7', 10000)), minMult: Number(LS.get('radar.minMult', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false };
+  const F = { src: LS.get('radar.src', 'all'), span: Number(LS.get('radar.span72', 72)), region: LS.get('radar.region', 'all'), sort: LS.get('radar.sort', 'score'), minViews: Number(LS.get('radar.minViews7', 10000)), minMult: Number(LS.get('radar.minMult', 0)), q: '', group: LS.get('radar.group', 'all'), topic: LS.get('radar.topic2', ''), onlyWatch: false, onlySaved: false, onlyTalk: !!LS.get('radar.onlyTalk', false), onlyHot: !!LS.get('radar.onlyHot', false), showAds: !!LS.get('radar.showAds', false) };
+  let hiddenNoise = 0, mergedDup = 0;
   let current = null;
 
   // ── 불러오기 ────────────────────────────────────────────
@@ -105,7 +156,7 @@
     const kind = x.kind === 'carousel' ? 'carousel' : x.kind === 'reel' ? 'reel' : x.kind === 'image' ? 'image' : (x.url || '').includes('/reel/') ? 'reel' : 'image';
     const t = x.topicBy === 'ai' ? { topic: x.topic || '', word: x.topicWord || '' } : x.topic ? { topic: x.topic, word: x.topicWord || '' } : topicOf(`${x.user} ${x.caption}`);   // 클로드 판정('' = 주제 밖)은 단어 규칙으로 덮지 않는다
     return { windowAt: x.windowAt || null, id: `ig:${x.code}`, code: x.code, platform: 'insta', region: x.region || (/[가-힣]/.test(`${x.caption || ''}`) ? '국내' : '해외'), kind, url: x.url || `https://www.instagram.com/${kind === 'reel' ? 'reel' : 'p'}/${x.code}/`, user: x.user || '', caption: x.caption || '', views: x.views ?? null, likes: x.likes ?? null, comments: x.comments ?? null, shares: x.shares ?? null,
-      postedAt: x.postedAt || x.capturedAt, capturedAt: x.capturedAt, seenAt: x.seenAt || x.capturedAt, thumb: x.thumb || '', carouselCount: x.carouselCount || null, audio: x.audio || '', duration: x.duration || null, followers: x.followers ?? null, video: x.video || '', medianViews: x.medianViews || null, medianN: x.medianN || null, topic: t.topic, topicWord: t.word, source: x.source || x.how || '', history: Array.isArray(x.history) ? x.history : [] };
+      postedAt: x.postedAt || x.capturedAt, capturedAt: x.capturedAt, seenAt: x.seenAt || x.capturedAt, thumb: x.thumb || '', carouselCount: x.carouselCount || null, audio: x.audio || '', duration: x.duration || null, followers: x.followers ?? null, video: x.video || '', medianViews: x.medianViews || null, medianN: x.medianN || null, pinned: !!x.pinned, postedApprox: !!x.postedApprox, topic: t.topic, topicWord: t.word, source: x.source || x.how || '', history: Array.isArray(x.history) ? x.history : [] };
   }
   function normYt(x) {
     const t = x.topicBy === 'ai' ? { topic: x.topic || '', word: x.topicWord || '' } : x.topic ? { topic: x.topic, word: x.topicWord || '' } : topicOf(`${x.title} ${x.caption}`);
@@ -162,8 +213,19 @@
       if (trendToday && !issues.list.length && trendYday) issues = parseIssues(trendYday.text);
       loadedAt = Date.now();
       computeMedians();
+      if (Date.now() - stackAt > 30 * 60e3) loadStack();
     } catch (e) { toast(`불러오기 실패: ${e.message || e}`); if (e.status === 401) openSetup(); }
     finally { loading = false; render(); renderSide(); }
+  }
+
+  async function loadStack() {   // 대본 스택에 받아쓰기·정리본이 있는 레퍼(카드의 🎣 첫 문장·구조, 대본 뽑기 재료)
+    stackAt = Date.now();
+    try {
+      const f = await readJson(`${CFG.stackDir.replace('스택', '대본스택')}/스택.json`); if (!f || f.broken) return;
+      const mp = new Map();
+      (f.data.entries || []).forEach((e) => { let c = e.code || ''; if (!c) { const m = String(e.url || '').match(/\/(?:reel|reels|p|shorts)\/([\w-]+)|[?&]v=([\w-]+)|\/video\/(\d+)/); c = m ? (m[1] || m[2] || m[3]) : ''; } if (c && (e.transcript || '').trim()) mp.set(c, { transcript: e.transcript, structure: (e.script && e.script.structure) || '', hookType: (e.script && e.script.hookType) || '' }); });
+      stackByCode = mp; render();
+    } catch { /* 스택이 없어도 레이더는 돈다 */ }
   }
 
   // ── 지표 ────────────────────────────────────────────────
@@ -184,20 +246,28 @@
     const cpk = views ? (x.comments || 0) / views * 1000 : null;
     const likeRate = x.views ? (x.likes || 0) / x.views : null;
     const m = x.medianViews ? { med: x.medianViews, n: x.medianN || 0, acct: true } : medians.get(`${x.platform}:${x.user}`); const mult = m && x.views != null ? x.views / Math.max(1, m.med) : null;
+    const fmult = x.followers && x.views != null ? x.views / Math.max(1, x.followers) : null;   // 팔로워 대비 조회 배수(1.14)
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-    // 떡상점수(레퍼 사이트처럼 조회수·평소 대비 배수 위주, 11/3): 조회수 35 + 배수 30 + 시간당 20 + 1천뷰당 댓글 10 + 신선도 5
-    const s1 = views != null ? clamp(Math.log10(Math.max(1, views) / 1000) / 4 * 35, 0, 35) : 0;          // 1만 9 · 10만 17 · 100만 26 · 1000만 35
-    const s2 = mult != null ? clamp(Math.log2(mult + 1) / Math.log2(33) * 30, 0, 30) : 0;                // 1배 7 · 4배 14 · 15배 24 · 32배↑ 30
-    const s3 = vph != null ? clamp(Math.log10(vph + 1) / Math.log10(50001) * 20, 0, 20) : 0;            // 5만/h 만점
-    const s4 = cpk != null ? clamp(cpk / 20 * 10, 0, 10) : 0;                                            // 1천뷰당 댓글 20개 만점
-    const s5 = h <= 24 ? 5 : h <= 48 ? 3 : 0;
-    return { h, vph, vphRecent, cpk, likeRate, mult, med: m, score: Math.round(s1 + s2 + s3 + s4 + s5), viewsLike: x.views == null && x.likes != null };
+    // 떡상점수 1.14: '그 계정 평소보다, 팔로워 수보다 얼마나 더 퍼졌나'와 '얼마나 빨리'가 먼저고 절대 조회수는 뒤로(큰 계정의 평범한 글이 위로 오던 것).
+    // 평소 대비 배수 30 + 팔로워 대비 배수 20 + 시간당 속도 20 + 조회수 15 + 1천뷰당 댓글 10 + 신선도 5
+    let sM = mult != null ? clamp(Math.log2(mult + 1) / Math.log2(33) * 30, 0, 30) : null;               // 1배 6 · 3배 12 · 7배 18 · 15배 24 · 32배↑ 30
+    let sF = fmult != null ? clamp(Math.log10(fmult / 0.1) / Math.log10(100) * 20, 0, 20) : null;         // 팔로워의 0.1배 0 · 1배 10 · 3배 15 · 10배↑ 20
+    if (sM == null && sF != null) sM = sF / 20 * 30; if (sF == null && sM != null) sF = sM / 30 * 20;      // 한쪽만 있으면 같은 비율로 메운다
+    const sp = vphRecent != null ? Math.max(vphRecent, vph || 0) : vph;                                   // 재측정이 있으면 최근 구간 속도
+    const sV = sp != null ? clamp(Math.log10(sp + 1) / Math.log10(30001) * 20, 0, 20) : 0;               // 300/h 11 · 3천/h 16 · 3만/h 만점
+    const sA = views != null ? clamp(Math.log10(Math.max(1, views) / 1000) / 4 * 15, 0, 15) : 0;          // 1만 4 · 10만 8 · 100만 11 · 1000만 15
+    const sC = cpk != null ? clamp(cpk / 20 * 10, 0, 10) : 0;                                            // 1천뷰당 댓글 20개 만점
+    const sN = h <= 24 ? 5 : h <= 48 ? 3 : 0;
+    const hot = x.views != null && x.views >= 10000 && ((mult != null && mult >= 3) || (fmult != null && fmult >= 2));   // 🔥 떡상 = 평소의 3배↑ 또는 팔로워의 2배↑
+    const fast = h <= 48 && sp != null && sp >= 3000;                                                    // ⚡ 올린 지 이틀 안에 시간당 3천↑
+    return { h, vph, vphRecent, cpk, likeRate, mult, fmult, med: m, hot, fast, score: Math.round((sM || 0) + (sF || 0) + sV + sA + sC + sN), parts: { 배수: sM, 팔로워: sF, 속도: sV, 조회: sA, 댓글: sC, 신선: sN }, viewsLike: x.views == null && x.likes != null };
   }
 
   // ── 거르기·정렬 ─────────────────────────────────────────
   // 주제 줄 숫자와 격자가 같은 조건을 쓰도록(11/5 사용자 "전체 17인데 0개 표시"): 주제·세부 주제·최소 배수만 빼고 전부 여기서 거른다
-  function passBase(x) {
+  function passBase(x, withNoise) {
     const q = F.q.trim().toLowerCase();
+    if (!withNoise && !F.showAds && !F.onlySaved && noiseOf(x)) return false;   // 광고·홍보는 기본으로 숨긴다(주제 줄 숫자도 같이). 저장한 것만 볼 땐 그대로
     if (winH(x) > F.span) return false;
     if (F.src === 'reel' && x.kind !== 'reel') return false;
     if (F.src === 'carousel' && x.kind !== 'carousel' && x.kind !== 'image') return false;
@@ -211,20 +281,22 @@
     if (F.onlyWatch && !board.watch[x.user]) return false;
     if (F.onlySaved && !board.saved[x.id]) return false;
     if (q && !`${x.user} ${x.caption}`.toLowerCase().includes(q)) return false;
+    if (F.onlyTalk && !talkOf(x)) return false;
     return true;
   }
   const viewsOrProxy = (x) => (x.views != null ? x.views : (x.likes || 0) * 200);   // 조회수 없는 캐러셀·사진·릴스는 좋아요×200(좋아요 50 ≈ 1만 급)
   const passViews = (x) => !F.minViews || viewsOrProxy(x) >= F.minViews;
   function filtered() {
-    let list = items.filter((x) => {
-      if (!passBase(x) || !passViews(x)) return false;
-      const g = fitGroup(x);
-      if (F.group === 'all' ? g === 'etc' : g !== F.group) return false;   // 전체 = 국내 재테크 + 해외 뷰티, 그 밖은 탭
-      if (F.group === 'money' && F.topic && x.topic !== F.topic) return false;
-      return true;
-    }).map((x) => ({ x, m: metrics(x) })).filter((r) => !F.minMult || (r.m.mult || 0) >= F.minMult);
-    const key = { score: (r) => r.m.score, views: (r) => r.x.views || 0, vph: (r) => r.m.vphRecent || r.m.vph || 0, mult: (r) => r.m.mult || 0, comments: (r) => r.x.comments || 0, likes: (r) => r.x.likes || 0, new: (r) => new Date(r.x.postedAt).getTime() }[F.sort] || ((r) => r.m.score);
-    return list.sort((a, b) => key(b) - key(a));
+    mergedDup = 0;
+    const inTab = (x) => { const g = fitGroup(x); if (F.group === 'all' ? g === 'etc' : g !== F.group) return false; return !(F.group === 'money' && F.topic && x.topic !== F.topic); };   // 전체 = 국내 재테크 + 해외 뷰티, 그 밖은 탭
+    hiddenNoise = F.showAds || F.onlySaved ? 0 : items.filter((x) => noiseOf(x) && passBase(x, true) && passViews(x) && inTab(x)).length;
+    let list = items.filter((x) => passBase(x) && passViews(x) && inTab(x)).map((x) => ({ x, m: metrics(x) })).filter((r) => (!F.minMult || (r.m.mult || 0) >= F.minMult) && (!F.onlyHot || r.m.hot));
+    const key = { score: (r) => r.m.score, views: (r) => r.x.views || 0, vph: (r) => r.m.vphRecent || r.m.vph || 0, mult: (r) => r.m.mult || 0, fmult: (r) => r.m.fmult || 0, comments: (r) => r.x.comments || 0, likes: (r) => r.x.likes || 0, new: (r) => new Date(r.x.postedAt).getTime() }[F.sort] || ((r) => r.m.score);
+    list.sort((a, b) => key(b) - key(a));
+    // 같은 글(재업로드·같은 캡션 복사)은 맨 위 것 하나로 묶는다
+    const seen = new Map(), out = [];
+    list.forEach((r) => { const k = dupKey(r.x); const rep = k && seen.get(k); if (rep) { (rep.dups || (rep.dups = [])).push(r); mergedDup++; return; } if (k) seen.set(k, r); r.dups = null; out.push(r); });
+    return out;
   }
 
   // ── 그리기 ──────────────────────────────────────────────
@@ -246,8 +318,8 @@
   }
   function platName(x) { return { insta: '인스타', yt: '유튜브', tt: '틱톡', xhs: '레드노트' }[x.platform] || x.platform; }
   function kindLabel(x) { if (x.platform === 'tt') return '🎵 틱톡'; if (x.platform === 'xhs') return x.kind === 'video' ? '📕 영상' : '📕 노트'; return x.kind === 'carousel' ? `🖼 캐러셀${x.carouselCount ? ` ${x.carouselCount}장` : ''}` : x.kind === 'reel' ? '🎬 릴스' : x.kind === 'shorts' ? '▶ 쇼츠' : x.kind === 'video' ? '▶ 영상' : '📷 사진'; }
-  function card(x, m) {
-    const c = el('article', 'card' + (board.picks[x.id] ? ' picked' : ''));
+  function card(x, m, dups) {
+    const c = el('article', 'card' + (board.picks[x.id] ? ' picked' : '') + (sel.has(x.id) ? ' selected' : ''));
     const th = el('div', 'thumb');
     const ph = el('div', 'ph', (x.title || x.caption || '').slice(0, 60) || `@${x.user}`);
     if (x.thumb) {   // 인스타 계정 글 썸네일(fbcdn.net)은 다른 사이트에서 못 불러오게 막혀 있어서(CORP) 공개 이미지 중계 wsrv.nl 을 거친다. 실패하면 원래 주소 → 글자 카드
@@ -257,18 +329,30 @@
       img.addEventListener('error', () => { if (img.src !== direct && viaProxy !== direct) { img.src = direct; return; } img.remove(); th.prepend(ph); });
       th.append(img);
     } else th.append(ph);
+    const sb = el('button', 'selbox' + (sel.has(x.id) ? ' on' : ''), sel.has(x.id) ? '✓' : ''); sb.type = 'button'; sb.title = '대본 뽑기에 쓸 레퍼로 고르기'; sb.setAttribute('aria-label', '레퍼 선택'); sb.setAttribute('aria-pressed', String(sel.has(x.id)));
+    sb.addEventListener('click', (e) => { e.stopPropagation(); toggleSel(x); });
+    th.append(sb);
     th.append(el('span', 'tl', `${x.region === '해외' ? '🌎' : '🇰🇷'} ${platName(x)} · ${kindLabel(x)}`));
-    const tr = el('span', 'tr' + (m.mult != null && m.mult >= 5 ? ' hot' : ''), m.mult != null ? `${m.mult.toFixed(1)}x` : `${m.score}점`); tr.title = m.mult != null ? `평소(중앙값 ${short(m.med.med)}, ${m.med.n}개) 대비` : '떡상점수'; th.append(tr);
+    const tr = el('span', 'tr' + (m.hot ? ' hot' : ''), `${m.hot ? '🔥 ' : m.fast ? '⚡ ' : ''}${m.mult != null ? `${m.mult.toFixed(1)}x` : `${m.score}점`}`); tr.title = (m.mult != null ? `평소(중앙값 ${short(m.med.med)}, ${m.med.n}개) 대비 ${m.mult.toFixed(1)}배` : '떡상점수') + (m.fmult != null ? ` · 팔로워 대비 ${m.fmult.toFixed(1)}배` : '') + (m.hot ? ' · 🔥 떡상(평소 3배↑ 또는 팔로워 2배↑)' : ''); th.append(tr);
     th.append(el('span', 'bl', x.views != null ? short(x.views) : `♥ ${short(x.likes)}`));
-    th.append(el('span', 'br', ago(x.postedAt)));
+    th.append(el('span', 'br', `${x.postedApprox ? '약 ' : ''}${ago(x.postedAt)}`));
     const body = el('div', 'body');
-    const u = el('div', 'user'); if (board.watch[x.user]) u.append(el('span', 'star', '★ ')); u.append(`@${x.user || '?'}`); body.append(u);
+    const u = el('div', 'user'); if (board.watch[x.user]) u.append(el('span', 'star', '★ ')); u.append(`@${x.user || '?'}`); if (x.followers) u.append(el('small', 'fol', ` ${short(x.followers)}`)); body.append(u);
     body.append(el('div', 'src', `${x.source || ''}${x.topic ? ` · ${x.topic}` : ` · ${OUT}`}`));
-    body.append(el('div', 'cap', (x.title || x.caption || '').replace(/\s+/g, ' ')));
+    const hk = hookOf(x);
+    const hook = el('div', 'hook' + (hk.text ? '' : ' none'), hk.text ? `🎣 ${hk.text}` : '🎣 (첫 문장 없음)'); hook.title = hk.text ? `후킹 첫 문장 — ${hk.from}에서` : '캡션이 비었거나 해시태그뿐이에요'; body.append(hook);
+    const chips = el('div', 'chips');
+    const nz = noiseOf(x); if (nz) chips.append(el('span', 'chip bad', nz.label));
+    if (talkOf(x)) chips.append(el('span', 'chip talk', '🎙 말로 가능'));
+    if (stackByCode.has(x.code)) chips.append(el('span', 'chip talk', '받아쓰기 있음'));
+    structOf(x).forEach((t) => chips.append(el('span', 'chip', t)));
+    if (dups && dups.length) { const d = el('span', 'chip dup', `같은 글 +${dups.length}`); d.title = dups.map((r) => `@${r.x.user} ${short(r.x.views)}`).join(' · '); chips.append(d); }
+    if (chips.childNodes.length) body.append(chips);
     const met = el('div', 'met');
     met.append(el('span', '', `♥ ${short(x.likes)}`), el('span', '', `💬 ${short(x.comments)}`));
     if (m.vph != null) met.append(el('span', '', `${short(m.vphRecent || m.vph)}/h${m.viewsLike ? '*' : ''}`));
-    met.append(el('span', 'score', `점수 ${m.score}`));
+    if (m.fmult != null) { const f = el('span', m.fmult >= 2 ? 'up' : '', `팔로워×${m.fmult >= 10 ? Math.round(m.fmult) : m.fmult.toFixed(1)}`); f.title = '조회수 ÷ 팔로워'; met.append(f); }
+    const sc = el('span', 'score', `점수 ${m.score}`); sc.title = Object.entries(m.parts).map(([k, v]) => `${k} ${Math.round(v || 0)}`).join(' + '); met.append(sc);
     body.append(met);
     c.append(th, body);
     c.addEventListener('click', () => openDetail(x));
@@ -280,17 +364,20 @@
     $('#regSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === F.region));
     $('#spanSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === F.span));
     $('#sort').value = F.sort; $('#minViews').value = String(F.minViews); $('#minMult').value = String(F.minMult);
+    $('#onlyTalk').checked = F.onlyTalk; $('#onlyHot').checked = F.onlyHot; $('#showAds').checked = F.showAds;
     const list = filtered();
     const grid = $('#grid'); grid.replaceChildren();
     // 지금 보는 칸을 글로 풀어 준다(11/5 사용자 "아무것도 안 떠": 주제 줄의 💄 뷰티(해외)가 눌려 있어서 0개였는데 화면이 그걸 말해 주지 않았다)
     const GL = { all: '전체(국내 재테크 + 해외 뷰티)', beauty: '💄 뷰티(해외)', money: `💰 재테크(국내)${F.topic ? ` › ${F.topic}` : ''}`, etc: '🗂 그 밖' };
     const SL = { 24: '24시간', 48: '48시간', 72: '3일', 168: '7일' }, SRC = { all: '전체', reel: '릴스', carousel: '캐러셀', shorts: '유튜브 쇼츠', tiktok: '틱톡', xhs: '레드노트' };
-    const where = `${GL[F.group] || F.group} · ${SL[F.span] || `${F.span}시간`} · ${SRC[F.src] || F.src}${F.region !== 'all' ? ` · ${F.region}` : ''} · 조회 ${short(F.minViews)}↑${F.minMult ? ` · ${F.minMult}배↑` : ''}${F.q.trim() ? ` · "${F.q.trim()}"` : ''}${F.onlyWatch ? ' · ★ 감시 계정만' : ''}${F.onlySaved ? ' · 💾 저장한 것만' : ''}`;
+    const where = `${GL[F.group] || F.group} · ${SL[F.span] || `${F.span}시간`} · ${SRC[F.src] || F.src}${F.region !== 'all' ? ` · ${F.region}` : ''} · 조회 ${short(F.minViews)}↑${F.minMult ? ` · ${F.minMult}배↑` : ''}${F.q.trim() ? ` · "${F.q.trim()}"` : ''}${F.onlyWatch ? ' · ★ 감시 계정만' : ''}${F.onlySaved ? ' · 💾 저장한 것만' : ''}${F.onlyTalk ? ' · 🎙 말로 풀 수 있는 것만' : ''}${F.onlyHot ? ' · 🔥 떡상만' : ''}`;
     const inGroup = (x) => { const g = fitGroup(x); return F.group === 'all' ? g !== 'etc' : g === F.group && !(F.group === 'money' && F.topic && x.topic !== F.topic); };
     if (!items.length) grid.append(el('p', 'empty', loading ? '읽는 중…' : token ? '아직 쌓인 게 없어요. 맥북 수집기(Aside·유튜브)가 07·10·13·16·19·22시 20분에 쌓아요. 옆 칸 📡 수집 현황을 보세요.' : '열쇠를 넣으면 불러와요.'));
     else if (!list.length) {
       const held = items.filter((x) => passBase(x) && inGroup(x) && !passViews(x)), noViews = held.filter((x) => x.views == null).length;
       const p = el('p', 'empty'); p.append(`지금 보는 칸은 ${where} 인데, 여기에 맞는 글이 없어요.`);
+      if (hiddenNoise) p.append(el('div', 'hint', `광고·홍보로 숨긴 글 ${hiddenNoise}개 — 위 '광고·홍보도 보기'를 켜면 나와요.`));
+      if (F.onlyTalk || F.onlyHot) p.append(el('div', 'hint', `${[F.onlyTalk ? '🎙 말로 풀 수 있는 것만' : '', F.onlyHot ? '🔥 떡상만' : ''].filter(Boolean).join(' · ')} 이 켜져 있어요. 끄면 더 나와요.`));
       if (held.length) p.append(el('div', 'hint', `최소 조회수(${short(F.minViews)})에 걸린 글 ${held.length}개${noViews ? ` — 그중 ${noViews}개는 아직 조회수를 못 받아 좋아요×200으로 쟀어요(다음 수집 때 채워져요)` : ''}.`));
       const within = items.filter((x) => passBase(x) && passViews(x));
       const cntG = { all: within.filter((x) => fitGroup(x) !== 'etc').length, money: within.filter((x) => fitGroup(x) === 'money').length, beauty: within.filter((x) => fitGroup(x) === 'beauty').length, etc: within.filter((x) => fitGroup(x) === 'etc').length };
@@ -301,11 +388,12 @@
       if (wider.length) { const d = el('div'); d.style.marginTop = '6px'; d.append('이 칸에서 기간을 넓히면: '); wider.forEach(([s, l, n]) => d.append(jump(`${l} ${n}개 보기`, () => { F.span = s; LS.set('radar.span72', s); if (s >= 168) loadAll(true); else render(); }))); p.append(d); }
       grid.append(p);
     }
-    else list.slice(0, 300).forEach(({ x, m }) => grid.append(card(x, m)));
+    else list.slice(0, 300).forEach(({ x, m, dups }) => grid.append(card(x, m, dups)));
     const ig = items.filter((x) => x.platform === 'insta' && winH(x) <= F.span).length, tt = items.filter((x) => x.platform === 'tt' && winH(x) <= F.span).length, xh = items.filter((x) => x.platform === 'xhs' && winH(x) <= F.span).length, yt = items.filter((x) => x.platform === 'yt' && (x.views || 0) >= YT_MIN_VIEWS && !ytJunk(x) && winH(x) <= F.span).length;
-    $('#count').textContent = `${list.length}개 표시 — 보는 칸: ${where} · 기간 안 인스타 ${ig} · 유튜브 ${yt} · 틱톡 ${tt} · 레드노트 ${xh} · 캐러셀은 좋아요×200 기준 · * 는 점수에 좋아요×20`;
+    $('#count').textContent = `${list.length}개 표시${hiddenNoise ? ` · 광고·홍보 ${hiddenNoise}개 숨김` : ''}${mergedDup ? ` · 같은 글 ${mergedDup}개 묶음` : ''} — 보는 칸: ${where} · 기간 안 인스타 ${ig} · 유튜브 ${yt} · 틱톡 ${tt} · 레드노트 ${xh} · 캐러셀은 좋아요×200 기준 · * 는 점수에 좋아요×20`;
     setStatus(`마지막 수집 ${lastCollected ? ago(new Date(lastCollected).toISOString()) : '없음'} · 전체 ${items.length}개 · 읽은 시각 ${new Date(loadedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`);
     $('#pickCount').textContent = String(Object.keys(board.picks).length);
+    renderSelBar();
   }
   function renderSide() {
     const ol = $('#issueList'); ol.replaceChildren();
@@ -386,6 +474,7 @@
     const tiles = $('#tiles'); tiles.replaceChildren();
     tiles.append(tile('조회수', x.views != null ? short(x.views) : '-', x.views == null ? '캐러셀·사진은 조회수가 안 와요' : ''),
       tile('평소 대비', m.mult != null ? `${m.mult.toFixed(1)}x` : '-', m.med ? `중앙값 ${short(m.med.med)} (${m.med.acct ? '최근 ' : ''}${m.med.n}개)` : '같은 계정 3개↑ 쌓이면 나와요'),
+      tile('팔로워 대비', m.fmult != null ? `${m.fmult.toFixed(1)}x` : '-', x.followers ? `팔로워 ${short(x.followers)}${m.hot ? ' · 🔥 떡상' : ''}` : '팔로워 수를 못 받았어요'),
       tile('시간당 조회', m.vph != null ? short(m.vphRecent || m.vph) : '-', m.vphRecent ? `최근 구간 기준 · 평균 ${short(m.vph)}` : m.viewsLike ? '좋아요×20 기준' : '올린 뒤 평균'),
       tile('1천뷰당 댓글', m.cpk != null ? m.cpk.toFixed(1) : '-', ''),
       tile('좋아요', short(x.likes), ''), tile('댓글', short(x.comments), ''), tile('공유', x.shares != null ? short(x.shares) : '-', '인스타 응답에 있을 때만'),
@@ -398,6 +487,8 @@
     $('#dSave').textContent = board.saved[x.id] ? '💾 저장됨 (누르면 해제)' : '💾 보드에 저장';
     $('#dPick').textContent = board.picks[x.id] ? '📄 기획표에 담김 (누르면 빼기)' : '📄 기획표에 담기';
     $('#dWatch').textContent = board.watch[x.user] ? '★ 감시 중 (누르면 해제)' : '☆ 이 계정 감시';
+    $('#dSel').textContent = sel.has(x.id) ? '✓ 대본 뽑기에 담김 (누르면 빼기)' : '🎬 대본 뽑기에 담기';
+    { const hk = hookOf(x), st = structOf(x), nz = noiseOf(x); $('#dHook').textContent = `🎣 후킹 첫 문장${hk.from ? `(${hk.from})` : ''}: ${hk.text || '없음'}${st.length ? ` · 구조: ${st.join(' → ')}` : ''}${talkOf(x) ? ' · 🎙 말로 풀 수 있는 주제' : ''}${nz ? ` · ${nz.label}` : ''}`; }
     $('#detail').showModal();
   }
   function closeDetail() { $('#detail').close(); $('#embed').src = 'about:blank'; }
@@ -436,6 +527,126 @@
     return `# 떡상 탑리스트 기획표 ${day} ${pad(now.getHours())}:${pad(now.getMinutes())}\n\n떡상 레이더에서 담은 ${picks.length}개. 규칙(신혼테크/떡상레이더_운영규칙_2026-11-03.md 5절): 남의 클립을 이어 붙이지 않는다. 한 편 = 내 해설이 주, 레퍼는 '이런 반응이 있었다'는 작은 캡처+출처(@계정) 한 컷, 순위마다 내 한 줄 판정. 숫자는 이 표의 것만 쓴다.\n\n| # | 종류 | 계정 | 조회 | 시간당 | 좋아요 | 댓글 | 배수 | 점수 | 주제 | 올린 지 | 링크 |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n${picks.map(row).join('\n')}\n\n## 편마다\n\n${body}\n## 영상으로 만들 때\n- 형식: 쇼츠 45~60초 '오늘 2030이 가장 많이 본 돈 얘기 TOP${Math.min(5, picks.length)}' — 순위는 쑤욱 훑고(쪽마다 한 문장, 1위만 이유) 마지막에 내 한 마디.\n- 화면: 내 얼굴 또는 내 카드, 레퍼는 흐림 처리한 작은 캡처 + @계정 글자. 워터마크 있는 영상·남의 클립 금지.\n- 캡션: 출처 계정 전부 @멘션, '정보 제공·투자 권유 아님'.\n- 캐러셀판: 표지 1장(제목만) + 순위 1장씩 + 마지막 내 판정 카드.\n`;
   }
 
+  // ── 대본 뽑기(1.14, 11/14 사용자 "레퍼 선택하고 대본뽑기 누르면 대본 바로", "인스타용/롱폼 두 가지", "롱폼은 스토리보드") ──
+  // 레퍼를 고르고 종류를 정하면 재료(radar)를 아이디어뇌/맥북요청/<id>.json 에 '대기'로 올린다(소원저장소가 쓰는 길 그대로).
+  // 맥북 도구/소원_맥북답변.py 가 받아쓰기·대본 규칙 문서를 붙여 claude(구독)로 쓰고, 아이디어뇌/대본/레이더/ 에 md 로 남긴 뒤 '완료'로 바꾼다.
+  const REQ_DIR = '아이디어뇌/맥북요청', OUT_DIR = '아이디어뇌/대본/레이더', SEL_MAX = 5, MODEL_BEST = 'claude-fable-5-1';
+  const sel = new Map(Object.entries(LS.get('radar.sel', {})));          // id → 레퍼 한 줄(새로고침해도 남게)
+  let jobs = LS.get('radar.jobs', []), pastList = null, jobTimer = 0, sType = LS.get('radar.sType', 'insta'), shown = null;
+  const TYPE = { insta: { label: '📱 인스타용 대본', file: '인스타대본', desc: '릴스 30~50초 · 블록 라벨·초·대사·(화면 요소) · / 는 두 줄 자막' }, long: { label: '🖥 롱폼 스토리보드', file: '롱폼보드', desc: '3~4분 · 장면 보드(장 번호·시간·말할 요점·화면·후킹/재후킹 자리) · 제목·썸네일 가안' } };
+  const saveSel = () => LS.set('radar.sel', Object.fromEntries(sel)), saveJobs = () => LS.set('radar.jobs', jobs);
+  function refOf(x) {
+    const m = metrics(x), hk = hookOf(x);
+    return { id: x.id, code: x.code, platform: `${platName(x)} ${kindLabel(x).replace(/^\S+\s/, '')}`, user: x.user, url: x.url, caption: (x.caption || '').slice(0, 1500), views: x.views, likes: x.likes, comments: x.comments, followers: x.followers || null,
+      mult: m.mult != null ? Number(m.mult.toFixed(1)) : null, fmult: m.fmult != null ? Number(m.fmult.toFixed(1)) : null, age: ago(x.postedAt), topic: x.topic || '', hook: hk.text, hookFrom: hk.from, struct: structOf(x).join(' → '), memo: board.memos[x.id] || '', hasTranscript: stackByCode.has(x.code) };
+  }
+  function toggleSel(x) {
+    if (sel.has(x.id)) sel.delete(x.id);
+    else { if (sel.size >= SEL_MAX) { toast(`레퍼는 한 번에 ${SEL_MAX}개까지 골라요`); return; } sel.set(x.id, refOf(x)); }
+    saveSel(); render();
+    if (current && current.id === x.id) $('#dSel').textContent = sel.has(x.id) ? '✓ 대본 뽑기에 담김 (누르면 빼기)' : '🎬 대본 뽑기에 담기';
+  }
+  function renderSelBar() {
+    const bar = $('#selBar'); bar.classList.toggle('on', sel.size > 0); document.body.classList.toggle('hassel', sel.size > 0);
+    const box = $('#selList'); box.replaceChildren();
+    $('#selCount').textContent = `레퍼 ${sel.size}개 선택`;
+    sel.forEach((r, id) => { const c = el('button', 'w', `@${r.user} ${short(r.views)} ✕`); c.type = 'button'; c.title = '빼기'; c.addEventListener('click', () => { sel.delete(id); saveSel(); render(); }); box.append(c); });
+  }
+  function openScriptDlg() {
+    if (!sel.size) { toast('카드 왼쪽 위 네모를 눌러 레퍼를 먼저 골라요'); return; }
+    sel.forEach((r, id) => { const x = items.find((v) => v.id === id); if (x) sel.set(id, refOf(x)); });   // 숫자·받아쓰기 여부를 지금 값으로
+    const ul = $('#sRefs'); ul.replaceChildren();
+    sel.forEach((r) => { const li = el('li'); li.append(el('b', '', `@${r.user}`), ` 조회 ${short(r.views)}${r.mult ? ` · 평소 ${r.mult}배` : ''} · ${r.hasTranscript ? '받아쓰기 있음' : '캡션만(받아쓰기 없음)'}`); if (r.hook) li.append(el('div', 'muted', `🎣 ${r.hook}`)); ul.append(li); });
+    $('#sTypeSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === sType));
+    $('#sTypeDesc').textContent = TYPE[sType].desc; $('#sMsg').textContent = '';
+    $('#scriptDlg').showModal(); $('#sMemo').focus();
+  }
+  async function submitScript() {
+    const refs = [...sel.values()]; if (!refs.length) return;
+    const now = new Date(), id = makeId(now), memo = $('#sMemo').value.trim().slice(0, 400);
+    const title = memo ? memo.slice(0, 30) : `${refs[0].user}${refs.length > 1 ? ` 외 ${refs.length - 1}` : ''}`;
+    const req = { version: 1, id, at: isoLocal(now), kind: '레이더대본', model: MODEL_BEST, effort: 'high', status: '대기', radar: { type: sType, title, memo, refs },
+      note: '떡상 레이더 대본 뽑기. 맥북 도구/소원_맥북답변.py 가 받아쓰기·대본 규칙을 붙여 쓰고 아이디어뇌/대본/레이더/ 에 md 로 남긴다' };
+    $('#sSend').disabled = true; $('#sMsg').textContent = '맥북에 보내는 중…';
+    try {
+      await writeFile(`${REQ_DIR}/${id}.json`, JSON.stringify(req, null, 2) + '\n', null, `떡상 레이더: 대본 뽑기 요청 ${id}`);
+      jobs.unshift({ id, type: sType, title, at: Date.now(), status: '대기', n: refs.length }); saveJobs();
+      $('#scriptDlg').close(); $('#sMemo').value = ''; toast(`맥북에 보냈어요 — ${TYPE[sType].label} · 보통 1~3분`);
+      $('#sjDetails').open = true; renderJobs(); pollJobs(true);
+    } catch (e) { $('#sMsg').textContent = `보내지 못했어요: ${e.message || e}`; }
+    finally { $('#sSend').disabled = false; }
+  }
+  const fmtSec = (s) => (s < 60 ? `${s}초` : `${Math.floor(s / 60)}분 ${pad(s % 60)}초`);
+  function jobLine(j) {
+    const sec = Math.round((Date.now() - j.at) / 1000);
+    if (j.status === '한도대기') return `맥북 Claude 사용량 한도예요. ${j.retryAt ? `${j.retryAt}에` : '잠시 뒤'} 맥북이 다시 써요(창을 닫아도 돼요)`;
+    if (j.status === '처리중') return `맥북 Claude가 쓰는 중… ${fmtSec(sec)}`;
+    if (j.status === '실패') return `실패: ${j.error || '다시 눌러 주세요'}`;
+    return sec >= 150 ? `맥북이 아직 안 받았어요(${fmtSec(sec)}). 맥북이 켜져 있는지 봐 주세요` : `맥북이 받기를 기다리는 중… ${fmtSec(sec)}`;
+  }
+  function renderJobs() {
+    const box = $('#sjBox'); box.replaceChildren();
+    const live = jobs.filter((j) => j.status !== '완료');
+    $('#sjTime').textContent = live.length ? `${live.length}개 진행 중` : pastList ? `지난 결과 ${pastList.length}개` : '';
+    live.forEach((j) => { const d = el('div', 'job' + (j.status === '실패' ? ' bad' : '')); d.append(el('b', '', `${TYPE[j.type].label} · ${j.title}`), el('div', 'muted', jobLine(j))); if (j.status === '실패') { const b = el('button', '', '지우기'); b.type = 'button'; b.addEventListener('click', () => { jobs = jobs.filter((v) => v.id !== j.id); saveJobs(); renderJobs(); }); d.append(b); } else d.append(el('span', 'spin', '')); box.append(d); });
+    if (pastList == null) { box.append(el('p', 'hint', '카드 왼쪽 위 네모로 레퍼를 고르고 아래에 뜨는 🎬 대본 뽑기를 누르면 여기에 결과가 쌓여요.')); return; }
+    if (!pastList.length && !live.length) box.append(el('p', 'hint', '아직 뽑은 대본이 없어요. 카드 왼쪽 위 네모로 레퍼를 고르고 아래에 뜨는 🎬 대본 뽑기를 눌러요.'));
+    pastList.slice(0, 30).forEach((h) => { const b = el('button', 'hist', `${h.type === 'long' ? '🖥' : '📱'} ${h.title}`); b.type = 'button'; b.append(el('small', '', ` ${h.when}`)); b.title = h.path; b.addEventListener('click', () => openResult(h)); box.append(b); });
+  }
+  async function loadHistory() {
+    try {
+      const ls = await gh(`${repo()}/contents/${enc(OUT_DIR)}?ref=${encodeURIComponent(CFG.branch)}&t=${Date.now()}`);
+      pastList = (Array.isArray(ls) ? ls : []).filter((f) => /\.md$/.test(f.name)).map((f) => { const m = f.name.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})\d{2}-\w+_(인스타대본|롱폼보드)_(.*)\.md$/); return m ? { path: f.path, name: f.name, type: m[6] === '롱폼보드' ? 'long' : 'insta', title: m[7].replace(/-/g, ' '), when: `${Number(m[2])}/${Number(m[3])} ${m[4]}:${m[5]}`, key: f.name } : { path: f.path, name: f.name, type: /롱폼/.test(f.name) ? 'long' : 'insta', title: f.name.replace(/\.md$/, ''), when: '', key: f.name }; }).sort((a, b) => (a.key < b.key ? 1 : -1));
+    } catch (e) { if (e.status === 404) pastList = []; }
+    renderJobs();
+  }
+  function showResult(o) {   // o: { type, title, meta, text, path }
+    shown = o;
+    $('#rTitle').textContent = `${TYPE[o.type].label} — ${o.title}`; $('#rMeta').textContent = o.meta || ''; $('#rText').textContent = o.text || '';
+    $('#rPath').textContent = o.path ? `저장: ${o.path} (맥북 폴더에는 5분쯤 뒤 동기화)` : '';
+    if (!$('#resultDlg').open) $('#resultDlg').showModal();
+  }
+  async function openResult(h) {
+    try { const f = await readFile(h.path); if (!f) { toast('파일이 없어요'); return; } const i = f.text.indexOf('\n---\n'); showResult({ type: h.type, title: h.title, meta: i > 0 ? f.text.slice(0, i).replace(/^# .*\n+/, '').trim() : '', text: i > 0 ? f.text.slice(i + 5).trim() : f.text, path: h.path }); }
+    catch (e) { toast(`읽기 실패: ${e.message || e}`); }
+  }
+  let polling = false;
+  async function pollJobs(now) {
+    clearTimeout(jobTimer);
+    const live = jobs.filter((j) => j.status !== '완료' && j.status !== '실패');
+    if (!live.length || !token) { renderJobs(); return; }
+    const next = () => { jobTimer = setTimeout(() => pollJobs(), live.some((j) => j.status !== '한도대기') ? 8000 : 60000); };
+    if (polling) { next(); return; }
+    if (!now) renderJobs();
+    polling = true;
+    try {
+      for (const j of live) {
+        let f = null;
+        try { f = await readJson(`${REQ_DIR}/${j.id}.json`); } catch { continue; }   // 잠깐 끊긴 건 다음 차례에
+        if (!f) { if (Date.now() - j.at > 20e3) { j.status = '실패'; j.error = '요청 파일이 사라졌어요. 지난 결과에 있는지 보고, 없으면 다시 눌러 주세요'; } continue; }
+        const d = f.data || {};
+        if (d.status === '완료' && d.text) {
+          j.status = '완료';
+          let path = d.saved || '';
+          if (!path) {   // 맥북이 md 를 못 남겼으면 여기서 남긴다
+            path = `${OUT_DIR}/${j.id}_${TYPE[j.type].file}_${j.title.replace(/[^가-힣0-9A-Za-z]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || '레퍼'}.md`;
+            const refs = ((d.radar || {}).refs || []).map((r) => `  - @${r.user} · 조회 ${short(r.views)} · ${r.url}`).join('\n');
+            try { await writeFile(path, `# ${TYPE[j.type].label.replace(/^\S+\s/, '')} — ${j.title}\n\n- 만든 때: ${isoLocal(new Date()).slice(0, 16).replace('T', ' ')} · 떡상 레이더 '대본 뽑기' · 모델 ${d.modelUsed || ''}\n- 주제 메모: ${(d.radar || {}).memo || '(없음)'}\n- 레퍼:\n${refs}\n\n---\n\n${d.text.trim()}\n`, null, `떡상 레이더 대본 뽑기: ${j.id}`); } catch { path = ''; }
+          }
+          showResult({ type: j.type, title: j.title, meta: `모델 ${d.modelUsed || ''} · ${d.took ? fmtSec(d.took) : ''} · 레퍼 ${j.n}개${(d.ruleFiles || []).length ? ` · 규칙 ${d.ruleFiles.join(', ')}` : ''}`, text: d.text, path });
+          toast('대본이 나왔어요');
+          gh(`${repo()}/contents/${enc(`${REQ_DIR}/${j.id}.json`)}`, { method: 'DELETE', body: { message: `떡상 레이더: 대본 받음 ${j.id}`, branch: CFG.branch, sha: f.sha } }).catch(() => { /* 못 지우면 맥북이 2시간 뒤 치운다 */ });
+          loadHistory();
+        } else if (d.status === '실패') { j.status = '실패'; j.error = d.error || ''; }
+        else if (d.status === '한도대기') { j.status = '한도대기'; j.retryAt = d.retryAt || ''; }
+        else if (d.status === '처리중') j.status = '처리중';
+        if (Date.now() - j.at > 6 * 3600e3 && j.status !== '한도대기' && j.status !== '완료') { j.status = '실패'; j.error = '6시간이 지나도 답이 없어요'; }
+      }
+    } finally { polling = false; }
+    jobs = jobs.filter((j) => j.status !== '완료').slice(0, 10); saveJobs(); renderJobs();
+    if (jobs.some((j) => j.status !== '실패')) next();
+  }
+
   // ── 토스트·설정 ─────────────────────────────────────────
   let toastT = 0;
   function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2800); }
@@ -452,6 +663,19 @@
     let qt = 0; $('#q').addEventListener('input', (e) => { clearTimeout(qt); qt = setTimeout(() => { F.q = e.target.value; render(); }, 200); });
     $('#onlyWatch').addEventListener('change', (e) => { F.onlyWatch = e.target.checked; render(); });
     $('#onlySaved').addEventListener('change', (e) => { F.onlySaved = e.target.checked; render(); });
+    $('#onlyTalk').addEventListener('change', (e) => { F.onlyTalk = e.target.checked; LS.set('radar.onlyTalk', F.onlyTalk); render(); });
+    $('#onlyHot').addEventListener('change', (e) => { F.onlyHot = e.target.checked; LS.set('radar.onlyHot', F.onlyHot); render(); });
+    $('#showAds').addEventListener('change', (e) => { F.showAds = e.target.checked; LS.set('radar.showAds', F.showAds); render(); });
+    $('#selGo').addEventListener('click', openScriptDlg);
+    $('#selClear').addEventListener('click', () => { sel.clear(); saveSel(); render(); });
+    $('#dSel').addEventListener('click', () => { if (current) toggleSel(current); });
+    $('#sTypeSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; sType = b.dataset.v; LS.set('radar.sType', sType); $('#sTypeSeg').querySelectorAll('button').forEach((v) => v.classList.toggle('on', v.dataset.v === sType)); $('#sTypeDesc').textContent = TYPE[sType].desc; });
+    $('#sSend').addEventListener('click', submitScript);
+    $('#sCancel').addEventListener('click', () => $('#scriptDlg').close());
+    $('#sMemo').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); submitScript(); } });
+    $('#rClose').addEventListener('click', () => $('#resultDlg').close());
+    $('#rCopy').addEventListener('click', async () => { if (!shown) return; try { await navigator.clipboard.writeText(shown.text); toast('복사했어요'); } catch { const r = document.createRange(); r.selectNodeContents($('#rText')); const g = getSelection(); g.removeAllRanges(); g.addRange(r); toast('글자를 골라 뒀어요 — ⌘C 로 복사'); } });
+    $('#sjReload').addEventListener('click', () => { loadHistory(); pollJobs(true); });
     $('#refresh').addEventListener('click', () => loadAll(true));
     $('#setupBtn').addEventListener('click', openSetup);
     $('#tokenSave').addEventListener('click', async (e) => {
@@ -493,8 +717,10 @@
   token = findToken();
   bind();
   loadAll(true);
+  if (token) { loadHistory(); pollJobs(true); }
+  window.radarDebug = { get items() { return items; }, metrics, filtered, noiseOf, talkOf, hookOf, structOf, fitGroup, F, get hidden() { return hiddenNoise; }, get merged() { return mergedDup; } };   // 시험·진단용(읽기)
   // 배포가 바뀌면 열려 있던 탭이 스스로 다시 뜬다(11/5: 어젯밤부터 열려 있던 탭이 옛 코드로 "전체 7 · 0개 표시"를 보여 주던 것. 🔄 새로고침은 자료만 다시 읽는다)
-  const VERSION = '1.13.1';   // index.html 의 radar.js?v= 과 같게 올린다
+  const VERSION = '1.14.0';   // index.html 의 radar.js?v= 과 같게 올린다
   async function checkVersion() { try { const r = await fetch(`index.html?_=${Date.now()}`, { cache: 'no-store' }); const m = (await r.text()).match(/radar\.js\?v=([\d.]+)/); if (m && m[1] !== VERSION) location.reload(); } catch { /* 파일로 열었거나 잠깐 끊김 */ } }
   setInterval(() => { if (!document.hidden) { checkVersion(); loadAll(false); } }, 5 * 60e3);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkVersion(); });
