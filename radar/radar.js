@@ -615,7 +615,7 @@
     clearTimeout(jobTimer);
     const live = jobs.filter((j) => j.status !== '완료' && j.status !== '실패');
     if (!live.length || !token) { renderJobs(); return; }
-    const next = () => { jobTimer = setTimeout(() => pollJobs(), live.some((j) => j.status !== '한도대기') ? 8000 : 60000); };
+    const next = () => { jobTimer = setTimeout(() => pollJobs(), live.some((j) => j.status !== '한도대기') ? (document.hidden ? 40000 : 12000) : 60000); };   // GitHub 한 시간 5천 번을 다른 도구와 나눠 쓰니 느긋하게
     if (polling) { next(); return; }
     if (!now) renderJobs();
     polling = true;
