@@ -737,7 +737,7 @@ function client() { return new Anthropic({ apiKey: claudeKey(), dangerouslyAllow
 // 맥북 Claude 사용량 한도에 걸리면 '한도대기'(retryAt) → 그 시각 뒤 맥북이 다시 시도한다.
 const macDir = () => SW.cfg().dir.split('/').filter(Boolean)[0] + '/맥북요청';
 const macPoll = () => LS.get('mb.macPoll', 8000);
-const KIND_LABEL = { 대본: '대본을', 다듬기: '대본을 다듬어', 후킹: '후킹 후보를', 바꾸기: '이 칸의 후보를', 주제: '주제를', 블로그: '블로그 글과 전자책을', 정리: '대본 칸을' };
+const KIND_LABEL = { 대본: '대본을', 다듬기: '대본을 다듬어', 후킹: '후킹 후보를', 바꾸기: '이 칸의 후보를', 주제: '주제를', 블로그: '블로그 글과 전자책을', 정리: '대본 칸을', 검토: '대본 검토를' };
 const fmtSec = (s) => (s < 60 ? `${s}초` : `${Math.floor(s / 60)}분 ${pad(s % 60)}초`);
 function macErr(m) { const e = new Error(m); e.code = 'mac'; return e; }
 function abortErr() { const e = new Error('aborted'); e.name = 'AbortError'; return e; }
@@ -1521,6 +1521,121 @@ async function onResultClick(e) {
   }
 }
 
+// ── 1.17.0 내 대본 검토 (사용자 11/17 "소원저장소도 이런 식으로 피드백 잘 해 줘") ──
+// 사용자가 레퍼를 변형해 직접 쓴 대본을 simli-marketing 기준(구조·후킹 2초·베네핏·딸깍·받는 것 일치·설득 원칙·CTA)과
+// 메모리 규칙(괄호 소자막·화면, 저작권, 수익 화면, 표기)으로 짚고, 고친 통합본을 ``` 안에 준다. 고쳐서 다시 넣으면 지난 검토와 비교한다.
+const RV_CTA = {
+  '인스타 릴스': '인스타 릴스 = 팔로우 + 댓글 키워드 하나(자료에 뭐가 들었는지 살짝 말해 주기).',
+  '유튜브 쇼츠': '유튜브 쇼츠 = 댓글 질문 하나(팔로우·키워드 댓글 대신 시청자가 답할 질문).',
+  '광고·공구·제휴': '광고·공구·제휴 = 댓글만(팔로우 요구하면 전환이 떨어짐). 광고인 게 문제 해결 전까지 드러나지 않게.',
+  '유튜브 롱폼': '유튜브 롱폼 = 댓글 질문 하나. 롱폼은 3~4분, 기릿처럼 풀어서 설명.',
+};
+function buildReviewPrompt(script, ch, prev) {
+  return `너는 "신혼테크"(2030 초보 대상 돈·재테크·AI 부업 정보 채널)의 숏폼 대본을 검토하는 편집자야. 사용자가 터진 레퍼런스를 변형해서 직접 쓴 대본을 심리 구조 기준으로 검토하고, 고친 통합본을 줘.
+
+[올릴 곳] ${ch}
+
+[검토 기준 — 해당하는 것만 짚어]
+1. 구조: 대본에 적힌 구조(없으면 칸 이름으로 짐작)의 뼈대 순서를 따르는지.
+   - 혜택강조형: 후킹(충격 혜택) → 주제 → 혜택 나열 → FOMO → CTA. "0원·공짜·무료"면 셈.
+   - 문제해결형: 후킹 → 주제·베네핏 → 공감·문제 → 해결(딸깍) → CTA.
+   - N가지형: 후킹 → 베네핏+주제+N가지 → 하나씩 짧게 → CTA(상세는 자료로).
+   - 인터뷰형·질문형: 질문(후킹) → 답(베네핏) → 문제 → 정보 → CTA.
+2. 후킹: 첫 문장만 듣고 2초 안에 "나한테 해당되나, 뭘 얻나/잃나"가 답이 되는지. 시청자 이득(무료·금액·시간)이 문장 앞에 있는지, 괄호·소자막·문장 뒤에 숨어 있지 않은지. 대상(예: 블로그 하는 분들, 2030)이 보이는지. "제가 만들었어요"처럼 내 얘기로 시작하면 이득을 앞으로 꺼내라고 짚기.
+3. 베네핏: 내가 얼마나 애썼는지 말고 시청자가 얻을 변화인지. 추상어(폼 미쳤다, 삶의 질, 현명하게, 효율 2배)는 숫자로 바꾸는 예시를 줘. 숫자는 1·3·5·7·10처럼 쉬운 것.
+4. 해결은 딸깍: "세팅부터 해 놓는 게 핵심", "이 상태에서", "여기에 ○○ 넣으면"처럼 조건이 쌓이거나 할 일이 많아 보이면 짚고, "○○ 넣으면 → ○○ 나옴" 한 동작으로 줄인 예시를 줘. 거짓말은 안 됨(사실 안에서 유리한 것만).
+5. 공감: 시청자를 탓하지 않는지(물가·나라·경제가 공동의 적). 이득 80 : 손실 20, 손실을 꺼냈으면 해결로 닫는지. 손실회피("안 쓰면 나만 손해")가 FOMO 자리에 있으면 좋다고 짚기.
+6. 길이: 혜택·항목이 4개 넘으면 30초를 넘기기 쉬우니 3개 안팎으로 줄이거나 화면으로 빠르게 넘기라고.
+7. 받는 것 일치: 후킹에서 약속한 것(프로그램·가이드·자료·템플릿)과 CTA 앞에서 준다고 한 것이 같은지. 다르면 댓글 단 사람이 실망한다고 짚기. 목적어 없이 "정리해 놨으니까"만 있으면 뭘 정리했는지 넣으라고.
+8. 빈 칸: "혜택 강조)"처럼 칸 이름만 있고 비어 있는 칸은 무엇을 넣을지 예시 문장으로.
+9. 설득 7원칙(사회적 증거·상호성·일관성·호감·희소성·권위·연대감) 중 들어간 것을 세고, 2개 미만이면 짚기. 희소성(기한·인원)은 실제로 있을 때만 쓰고 지어내지 말라고.
+10. CTA: ${RV_CTA[ch] || RV_CTA['인스타 릴스']} 댓글 키워드는 주제 단어("월천 달아줘" 같은 공격형, '무료' 반복은 스팸 위험).
+11. 메인 키워드(레퍼에서 터진 행동·사물·이득 단어, 예: 블로그 자동화, 체크카드)는 바꾸라고 하지 마. 숫자·대상·꾸밈말만 손봐.
+12. 괄호 ( ) 안은 소자막·화면 요소야. 괄호마다 봐:
+   - 소자막으로 숨기기엔 아까운 큰 이득(무료 등)이면 메인 자막이나 말로 꺼내라고.
+   - 화면에서 보면 뜻이 모호한 말(예: "(선택)")은 바로 읽히는 말로("(안 적어도 돼요)").
+   - 남의 뉴스 기사·뉴스 썸네일·남의 유튜브 썸네일 캡처는 저작권 때문에 금지 → 미리캔버스 이모지·아이콘, 내 화면 녹화로.
+   - 수익·금액 화면은 실제 정산 화면만, 계좌번호 같은 개인정보는 가리고, 소자막으로 숫자를 부풀리지 않기.
+   - 주식 차트 이모지 금지, 사람 사진은 사용자 본인 얼굴만.
+   - "(자동으로 써지는 모습 영상)"처럼 증거를 보여 주는 화면은 좋다고 짚기.
+13. 금융·수익 문구: "누구나 수익", "자동 수익 보장"처럼 들리면 과장 신고 위험이라고.
+14. 표기: 맞춤법·띄어쓰기(셋팅→세팅, 하는게→하는 게, 안쓰면→안 쓰면, 한번에→한 번에, 싸주는데처럼 오타), 요체 대본 안에서 혼자 튀는 ~입니다, ".?" ".!" 같은 문장부호.
+${prev ? `
+[지난 검토 — 이어서 비교]
+사용자가 지난 검토를 보고 대본을 고쳐서 다시 넣었어. 먼저 무엇이 바뀌었는지 알아채고(뺀 것·더한 것·옮긴 것), 좋아진 점을 첫 문단에서 짚어. 지난번에 짚었는데 그대로인 건 짧게 한 번만 다시 말하고, 같은 설명을 길게 반복하지 마. 이번에 새로 생긴 문제(오타 포함)도 짚어.
+
+지난번 대본:
+${String(prev.script).slice(0, 4000)}
+
+지난번 검토:
+${String(prev.text).slice(0, 6000)}
+` : ''}
+[답 형식 — 이대로]
+- 한국어 요체로, 옆에서 말해 주듯 이어서 써. 이유·결과는 "~는데", "~해서", "~니까"로 한 문장 안에 이어. 같은 끝맺음(~어요)이 세 번 이어지지 않게 ~거든요·~는데요·~습니다를 섞어.
+- 쓰지 않는 것: ** 굵게, # 머리말 기호, 이모지, "정리하면·결론은·핵심은·한마디로", "A가 아니라 B예요" 뒤집기, "세 가지예요. 첫째" 개수 예고, 혼자 묻고 답하기, 감성 마무리, "무려·압도적" 같은 꾸밈말.
+- 맨 앞 문단 두세 문장: 구조가 맞는지 전체 판단과 가장 큰 문제 하나.
+- "잘 된 부분" 한 줄 뒤에 "- " 목록 2~4개(무엇이 어떤 심리로 먹히는지).
+- "고치면 좋은 부분" 한 줄 뒤에 "- " 목록. 효과 큰 것부터, 항목마다 문제 + 이유 + 바꾼 예시 문장.
+- "소자막·화면" 한 줄 뒤에 "- " 목록. 괄호마다 짧게, 문제 없는 것들은 한 항목으로 묶어.
+- "표기" 한 줄 뒤에 한 문단.
+- 그다음 "고친 통합본" 한 줄, 그리고 \`\`\` 로 감싼 통합본. 사용자 말투·칸 이름·"/" 줄 나눔·괄호 형식을 그대로 두고 걸리는 데만 고쳐. 비어 있던 칸은 채워.
+- 통합본 뒤에 한두 문장: 네가 예시로 지어 넣은 숫자·내용(예: 걸리는 시간, 자료에 든 것)을 짚고 실제 것으로 바꾸라고. 확인 못 한 사실을 사실처럼 쓰지 마.
+
+[검토할 대본]
+${script}`;
+}
+const RV = { busy: false, ctl: null };
+function renderReview() {
+  const out = $('#rvOut'); if (!out) return;
+  const r = LS.get('sw.review', null);
+  $('#rvBtn').disabled = RV.busy;
+  $('#rvBtn').innerHTML = `검토 받기 <span class="tier">${claudeKey() ? 'Fable 5.1' : 'Fable · 맥북'}</span>`;
+  $('#rvBusy').hidden = !RV.busy;
+  if (!r || !r.text) { out.hidden = true; out.innerHTML = ''; return; }
+  out.hidden = false;
+  const parts = String(r.text).split(/```[^\n]*\n?([\s\S]*?)```/);   // 홀수 칸 = 통합본
+  const full = parts.filter((_, i) => i % 2 === 1).map((s) => s.trim()).filter(Boolean);
+  out.innerHTML = `<p class="rv-meta">${esc(fmtDate(r.at))} 검토${r.round > 1 ? ` · ${r.round}번째` : ''}${r.ch ? ` · ${esc(r.ch)}` : ''}</p>`
+    + parts.map((s, i) => (i % 2 ? `<pre class="rv-full">${esc(s.trim())}</pre>` : s.trim() ? `<div class="rv-text">${esc(s.trim())}</div>` : '')).join('')
+    + `<div class="sc-btns"><button class="aqua-btn small" type="button" data-rv="copyAll">검토 복사</button>${full.length ? '<button class="ghost-btn" type="button" data-rv="copyFull">통합본 복사</button><button class="ghost-btn" type="button" data-rv="useFull">통합본으로 다시 검토</button>' : ''}<button class="ghost-btn" type="button" data-rv="clear">지우기</button></div>`;
+}
+async function runReview(resume) {
+  const script = ($('#rvText').value || '').trim();
+  if (!resume && script.length < 20) { toast('검토할 대본을 붙여 넣어 주세요'); return; }
+  if (!resume && !claudeKey() && !SW.cfg().token) { toast('설정 ①에 GitHub 열쇠가 있어야 맥북에 보낼 수 있어요'); return; }
+  const ch = resume ? (resume.ch || '인스타 릴스') : $('#rvCh').value;
+  const last = LS.get('sw.review', null);
+  const prev = !resume && $('#rvPrev').value === '1' && last && last.text && last.script && last.script.trim() !== script ? last : null;
+  RV.busy = true; RV.ctl = new AbortController(); renderReview();
+  const say = (m) => { const t = $('#rvBusyText'); if (t) t.textContent = m; };
+  say(claudeKey() ? 'Fable이 대본을 읽는 중… 1~2분' : resume ? '맥북에 보낸 검토를 이어서 기다리는 중…' : '맥북에 보내는 중…');
+  let keep = false;
+  try {
+    const text = await askBest(resume ? null : buildReviewPrompt(script, ch, prev), { signal: RV.ctl.signal, kind: '검토', say, resume,
+      onLen: (n) => say(`검토 쓰는 중… ${n}자`),
+      onSent: (req) => LS.set('sw.macRev', { ...req, script, ch, round: prev ? (prev.round || 1) + 1 : 1, at: Date.now() }) });
+    const src = resume || { script, ch, round: prev ? (prev.round || 1) + 1 : 1 };
+    LS.set('sw.review', { script: src.script, ch: src.ch, round: src.round, text: String(text).trim(), at: localISO() });
+    toast('검토가 왔어요'); setTimeout(() => { const o = $('#rvOut'); if (o && !o.hidden) o.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+  } catch (e) {
+    keep = !!(e && e.keep);
+    if (resume && e && e.gone) { /* 이미 없어진 요청 */ }
+    else if (!isAbort(e)) toast(errMsg(e));
+  } finally {
+    RV.busy = false; RV.ctl = null; if (!keep) LS.set('sw.macRev', null); renderReview();
+  }
+}
+function onReviewClick(e) {
+  const b = e.target.closest('[data-rv]'); if (!b) return;
+  const r = LS.get('sw.review', null); if (!r) return;
+  const full = String(r.text).split(/```[^\n]*\n?([\s\S]*?)```/).filter((_, i) => i % 2 === 1).map((s) => s.trim()).filter(Boolean);
+  const act = b.dataset.rv;
+  if (act === 'copyAll') copyText(String(r.text).replace(/```[^\n]*\n?/g, ''), '검토');
+  else if (act === 'copyFull' && full.length) copyText(full[full.length - 1], '통합본');
+  else if (act === 'useFull' && full.length) { $('#rvText').value = full[full.length - 1]; LS.set('sw.rvText', $('#rvText').value); $('#rvText').scrollIntoView({ behavior: 'smooth', block: 'center' }); toast('통합본을 칸에 넣었어요. 더 고치고 검토 받기를 눌러요'); }
+  else if (act === 'clear') { LS.set('sw.review', null); renderReview(); }
+}
+
 function saveCurrent() {
   const sc = S.current; if (!sc || sc.example) return;
   const now = new Date();
@@ -1718,6 +1833,18 @@ function init() {
   $('#beautyMeSave').addEventListener('click', () => { const v = meBox.value.trim(); LS.set('sw.beautyMe', v === BEAUTY_ME_DEFAULT.trim() ? '' : v); meBox.value = beautyMe(); toast('뷰티 내 정보를 저장했어요'); });
   $('#beautyMeReset').addEventListener('click', () => { LS.set('sw.beautyMe', ''); meBox.value = beautyMe(); toast('기본값으로 돌렸어요'); });
   $('#pasteApply').addEventListener('click', applyPasted);
+  // 1.17.0 내 대본 검토
+  $('#rvText').value = LS.get('sw.rvText', '');
+  $('#rvText').addEventListener('input', (e) => LS.set('sw.rvText', e.target.value));
+  $('#rvCh').value = LS.get('sw.rvCh', '인스타 릴스');
+  $('#rvCh').addEventListener('change', (e) => LS.set('sw.rvCh', e.target.value));
+  $('#rvBtn').addEventListener('click', () => runReview());
+  $('#rvStop').addEventListener('click', () => { if (RV.ctl) RV.ctl.abort(); });
+  $('#rvOut').addEventListener('click', onReviewClick);
+  renderReview();
+  const rvPend = LS.get('sw.macRev', null);   // 맥북에 보낸 검토도 앱을 닫았다 열면 이어서 기다린다 (40분까지)
+  if (rvPend && rvPend.id && !claudeKey() && Date.now() - (rvPend.at || 0) < 40 * 60 * 1000) runReview(rvPend);
+  else if (rvPend) LS.set('sw.macRev', null);
   $('#resultBody').addEventListener('click', onResultClick);
   $('#scFilter').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; S.scFilter = b.dataset.f; renderScripts(); });
   $('#scQ').addEventListener('input', (e) => { S.scQ = e.target.value.trim(); renderScripts(); });

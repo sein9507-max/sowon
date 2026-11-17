@@ -159,6 +159,23 @@
         <div id="resultBody" class="win-body sc-result"></div>
       </div>
 
+      <!-- 1.17.0 (사용자 11/17 "소원저장소도 이런 식으로 피드백 잘 해 줘"): 내가 직접 쓴 대본을 심리 구조·소자막·표기까지 검토하고 고친 통합본을 받는다 -->
+      <div id="reviewWin" class="win">
+        <div class="win-bar"><span class="win-title">🩺 review_script.exe</span><span class="win-right"><span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
+        <div class="win-body sc-form">
+          <p class="hint small">레퍼를 변형해서 직접 쓴 대본을 붙여 넣으면 심리 구조, 괄호 속 소자막·화면, 맞춤법까지 짚고 고친 통합본을 같이 줘요. 고쳐서 다시 넣으면 지난 검토와 비교해서 봐요.</p>
+          <label class="lab" for="rvText">내 대본 <small>첫 줄에 대본구조·후킹 유형을 적으면 더 정확해요</small></label>
+          <textarea id="rvText" class="paper" rows="7" placeholder="대본구조: 혜택강조형 · 후킹: 선언·단정&#10;&#10;후킹) …&#10;주제 - 베네핏) …&#10;CTA) …"></textarea>
+          <div class="sc-grid">
+            <div><label class="lab" for="rvCh">올릴 곳</label><select id="rvCh" class="field"><option>인스타 릴스</option><option>유튜브 쇼츠</option><option>광고·공구·제휴</option><option>유튜브 롱폼</option></select></div>
+            <div><label class="lab" for="rvPrev">지난 검토</label><select id="rvPrev" class="field"><option value="1">이어서 비교</option><option value="0">새로 보기</option></select></div>
+          </div>
+          <button id="rvBtn" class="aqua-btn" type="button">검토 받기</button>
+          <div id="rvBusy" class="sc-busy" hidden><div class="pbar"><i></i></div><p id="rvBusyText"></p><button id="rvStop" class="ghost-btn" type="button">그만</button></div>
+          <div id="rvOut" class="rv-out" hidden></div>
+        </div>
+      </div>
+
       <details class="sc-opt sc-paste">
         <summary>맥북이 꺼져 있을 때: Claude 앱에 붙여넣기</summary>
         <ol class="steps">
